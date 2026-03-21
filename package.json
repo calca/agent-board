@@ -3,6 +3,10 @@
   "displayName": "Agent Board",
   "description": "Manage tasks. Run agents.",
   "version": "0.1.0",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/calca/agent-board.git"
+  },
   "engines": {
     "vscode": "^1.85.0"
   },
