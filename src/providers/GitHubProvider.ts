@@ -2,8 +2,9 @@ import * as vscode from 'vscode';
 import { ITaskProvider } from './ITaskProvider';
 import { KanbanTask } from '../types/KanbanTask';
 import { ColumnId } from '../types/ColumnId';
+import { ProjectConfig } from '../config/ProjectConfig';
 
-interface GitHubIssue {
+export interface GitHubIssue {
   number: number;
   title: string;
   body: string | null;
@@ -15,19 +16,14 @@ interface GitHubIssue {
   [key: string]: unknown;
 }
 
-interface GitHubApiOptions {
-  owner: string;
-  repo: string;
-  token: string;
-  perPage?: number;
-  cacheTtlMs?: number;
-}
-
 /**
  * Task provider backed by GitHub Issues (REST API).
  *
- * Auth is read from VSCode SecretStorage (preferred) or the
- * `agentBoard.github.token` setting as fallback.
+ * Auth uses the VSCode built-in GitHub SSO (`vscode.authentication`),
+ * falling back to the `agentBoard.github.token` setting.
+ *
+ * Repository coordinates (`owner`/`repo`) are read from the per-project
+ * file `.agent-board/config.json` first, then from VS Code settings.
  */
 export class GitHubProvider implements ITaskProvider {
   readonly id = 'github';
@@ -58,8 +54,9 @@ export class GitHubProvider implements ITaskProvider {
   }
 
   async updateTask(task: KanbanTask): Promise<void> {
+    await this.ensureToken();
     if (!this.token) {
-      throw new Error('GitHub token not configured');
+      throw new Error('GitHub authentication required. Please sign in via the Accounts menu.');
     }
 
     const nativeId = task.id.replace(`${this.id}:`, '');
@@ -95,11 +92,35 @@ export class GitHubProvider implements ITaskProvider {
   // ── private ─────────────────────────────────────────────────────────
 
   private readConfig(): void {
+    // Repo coordinates: project config file first, then VS Code settings
+    const ghCfg = ProjectConfig.getGitHubConfig();
+    this.owner = ghCfg.owner;
+    this.repo = ghCfg.repo;
+
+    // Token from settings (fallback; SSO is attempted at fetch time)
     const cfg = vscode.workspace.getConfiguration('agentBoard');
     this.token = cfg.get<string>('github.token', '');
-    this.owner = cfg.get<string>('github.owner', '');
-    this.repo = cfg.get<string>('github.repo', '');
     this.cacheTtlMs = 60_000;
+  }
+
+  /**
+   * Try to obtain a token via VSCode's built-in GitHub SSO.
+   * Falls back to the `agentBoard.github.token` setting.
+   */
+  private async ensureToken(): Promise<void> {
+    if (this.token) {
+      return;
+    }
+    try {
+      const session = await vscode.authentication.getSession('github', ['repo'], {
+        createIfNone: false,
+      });
+      if (session) {
+        this.token = session.accessToken;
+      }
+    } catch {
+      // SSO not available — rely on setting
+    }
   }
 
   private isCacheValid(): boolean {
@@ -107,6 +128,8 @@ export class GitHubProvider implements ITaskProvider {
   }
 
   private async fetchTasks(): Promise<KanbanTask[]> {
+    await this.ensureToken();
+
     if (!this.token || !this.owner || !this.repo) {
       return [];
     }
@@ -137,7 +160,7 @@ export class GitHubProvider implements ITaskProvider {
     return this.cache;
   }
 
-  private mapIssue(issue: GitHubIssue): KanbanTask {
+  mapIssue(issue: GitHubIssue): KanbanTask {
     return {
       id: `${this.id}:${issue.number}`,
       title: issue.title,
@@ -152,7 +175,7 @@ export class GitHubProvider implements ITaskProvider {
     };
   }
 
-  private mapStatus(state: string, labels: Array<{ name: string }>): ColumnId {
+  mapStatus(state: string, labels: Array<{ name: string }>): ColumnId {
     if (state === 'closed') {
       return 'done';
     }
