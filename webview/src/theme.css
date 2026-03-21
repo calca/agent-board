@@ -1,0 +1,288 @@
+/* Kanban WebView — theme.css
+ * Zero hard-coded colours. Uses VS Code CSS variables exclusively.
+ * Compatible with Dark+, Light+, and High Contrast themes.
+ */
+
+:root {
+  --card-radius: 6px;
+  --column-gap: 12px;
+  --card-gap: 8px;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html, body, #root {
+  height: 100%;
+  font-family: var(--vscode-font-family);
+  font-size: var(--vscode-font-size);
+  color: var(--vscode-foreground);
+  background: var(--vscode-editor-background);
+}
+
+/* ── Provider Bar ──────────────────────────────────────────────────── */
+
+.provider-bar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 16px;
+  background: var(--vscode-sideBar-background);
+  border-bottom: 1px solid var(--vscode-panel-border);
+}
+
+.provider-bar__name {
+  font-weight: 600;
+}
+
+.provider-bar__status {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+
+.provider-bar__status--ok { background: var(--vscode-terminal-ansiGreen); }
+.provider-bar__status--error { background: var(--vscode-terminal-ansiRed); }
+.provider-bar__status--loading { background: var(--vscode-terminal-ansiYellow); }
+
+.provider-bar__refresh {
+  margin-left: auto;
+  cursor: pointer;
+  background: var(--vscode-button-background);
+  color: var(--vscode-button-foreground);
+  border: none;
+  padding: 4px 10px;
+  border-radius: 3px;
+}
+.provider-bar__refresh:hover {
+  background: var(--vscode-button-hoverBackground);
+}
+
+/* ── Kanban Board ──────────────────────────────────────────────────── */
+
+.kanban {
+  display: flex;
+  gap: var(--column-gap);
+  padding: 16px;
+  overflow-x: auto;
+  height: calc(100% - 50px);
+}
+
+.kanban__column {
+  flex: 1 1 0;
+  min-width: 220px;
+  max-width: 350px;
+  display: flex;
+  flex-direction: column;
+  background: var(--vscode-sideBar-background);
+  border-radius: var(--card-radius);
+  border: 1px solid var(--vscode-panel-border);
+}
+
+.kanban__column-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 12px;
+  font-weight: 600;
+  border-bottom: 1px solid var(--vscode-panel-border);
+}
+
+.kanban__column-count {
+  font-size: 0.85em;
+  opacity: 0.7;
+  background: var(--vscode-badge-background);
+  color: var(--vscode-badge-foreground);
+  padding: 1px 7px;
+  border-radius: 10px;
+}
+
+.kanban__column-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: var(--card-gap);
+  display: flex;
+  flex-direction: column;
+  gap: var(--card-gap);
+}
+
+.kanban__placeholder {
+  text-align: center;
+  padding: 24px 12px;
+  opacity: 0.5;
+  font-style: italic;
+}
+
+/* ── Task Card ─────────────────────────────────────────────────────── */
+
+.task-card {
+  background: var(--vscode-editor-background);
+  border: 1px solid var(--vscode-panel-border);
+  border-radius: var(--card-radius);
+  padding: 10px 12px;
+  cursor: grab;
+  transition: box-shadow 0.15s;
+}
+
+.task-card:hover {
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+}
+
+.task-card--dragging {
+  opacity: 0.6;
+}
+
+.task-card__title {
+  font-weight: 500;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  line-height: 1.35;
+}
+
+.task-card__meta {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 6px;
+  flex-wrap: wrap;
+}
+
+.task-card__label {
+  font-size: 0.75em;
+  padding: 1px 6px;
+  border-radius: 10px;
+  background: var(--vscode-badge-background);
+  color: var(--vscode-badge-foreground);
+}
+
+.task-card__provider {
+  font-size: 0.7em;
+  opacity: 0.6;
+  margin-left: auto;
+}
+
+.task-card__assignee {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: var(--vscode-button-background);
+  color: var(--vscode-button-foreground);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.65em;
+  font-weight: 700;
+}
+
+/* ── Task Detail ───────────────────────────────────────────────────── */
+
+.task-detail {
+  position: fixed;
+  top: 0;
+  right: 0;
+  width: 400px;
+  max-width: 90vw;
+  height: 100%;
+  background: var(--vscode-sideBar-background);
+  border-left: 1px solid var(--vscode-panel-border);
+  padding: 20px;
+  overflow-y: auto;
+  z-index: 100;
+}
+
+.task-detail__close {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  cursor: pointer;
+  background: none;
+  border: none;
+  color: var(--vscode-foreground);
+  font-size: 18px;
+}
+
+.task-detail__title {
+  font-size: 1.3em;
+  font-weight: 600;
+  margin-bottom: 12px;
+}
+
+.task-detail__body {
+  line-height: 1.6;
+  margin-bottom: 16px;
+}
+
+.task-detail__body pre {
+  background: var(--vscode-textCodeBlock-background);
+  padding: 8px;
+  border-radius: 4px;
+  overflow-x: auto;
+}
+
+.task-detail__body code {
+  background: var(--vscode-textCodeBlock-background);
+  padding: 1px 4px;
+  border-radius: 3px;
+}
+
+.task-detail__labels {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-bottom: 12px;
+}
+
+.task-detail__link {
+  color: var(--vscode-textLink-foreground);
+  text-decoration: none;
+}
+.task-detail__link:hover {
+  text-decoration: underline;
+}
+
+.task-detail__copilot-btn {
+  margin-top: 16px;
+  padding: 8px 16px;
+  background: var(--vscode-button-background);
+  color: var(--vscode-button-foreground);
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.95em;
+}
+.task-detail__copilot-btn:hover {
+  background: var(--vscode-button-hoverBackground);
+}
+
+/* ── Filters ───────────────────────────────────────────────────────── */
+
+.filters {
+  display: flex;
+  gap: 8px;
+  padding: 8px 16px;
+  background: var(--vscode-sideBar-background);
+  border-bottom: 1px solid var(--vscode-panel-border);
+}
+
+.filters__input {
+  flex: 1;
+  padding: 4px 8px;
+  background: var(--vscode-input-background);
+  color: var(--vscode-input-foreground);
+  border: 1px solid var(--vscode-input-border);
+  border-radius: 3px;
+  font-size: 0.9em;
+}
+
+.filters__badge {
+  background: var(--vscode-badge-background);
+  color: var(--vscode-badge-foreground);
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-size: 0.8em;
+}

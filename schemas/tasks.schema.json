@@ -1,0 +1,52 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Agent Board Tasks",
+  "description": "Schema for the JSON task file used by the Agent Board JSON provider.",
+  "type": "array",
+  "items": {
+    "type": "object",
+    "required": ["id", "title"],
+    "properties": {
+      "id": {
+        "type": "string",
+        "description": "Unique task identifier."
+      },
+      "title": {
+        "type": "string",
+        "description": "Task title."
+      },
+      "body": {
+        "type": "string",
+        "description": "Markdown body / description.",
+        "default": ""
+      },
+      "status": {
+        "type": "string",
+        "enum": ["todo", "inprogress", "review", "done"],
+        "default": "todo",
+        "description": "Kanban column."
+      },
+      "labels": {
+        "type": "array",
+        "items": { "type": "string" },
+        "default": [],
+        "description": "Labels / tags."
+      },
+      "assignee": {
+        "type": "string",
+        "description": "Assignee username."
+      },
+      "url": {
+        "type": "string",
+        "format": "uri",
+        "description": "Link to the task source."
+      },
+      "createdAt": {
+        "type": "string",
+        "format": "date-time",
+        "description": "ISO 8601 creation timestamp."
+      }
+    },
+    "additionalProperties": true
+  }
+}

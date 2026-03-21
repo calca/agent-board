@@ -3,17 +3,51 @@ import { TaskStore } from './taskStore';
 import { AgentManager } from './agentManager';
 import { TasksTreeProvider, TaskTreeItem } from './tasksTreeProvider';
 import { AgentsTreeProvider, AgentTreeItem } from './agentsTreeProvider';
+import { Logger } from './utils/logger';
+import { ProviderRegistry } from './providers/ProviderRegistry';
+import { ProviderPicker } from './providers/ProviderPicker';
+import { AggregatorProvider } from './providers/AggregatorProvider';
+import { refreshTasksCommand } from './commands/refreshTasks';
+import { KanbanPanel } from './kanban/KanbanPanel';
+import { CopilotLauncher } from './copilot/CopilotLauncher';
+import { ModelSelector } from './copilot/ModelSelector';
+import { registerChatParticipant } from './copilot/ChatParticipant';
 
 export function activate(context: vscode.ExtensionContext): void {
-  // Initialize stores
+  const logger = Logger.getInstance();
+  logger.info('Agent Board activating…');
+
+  // ── Provider infrastructure ────────────────────────────────────────────
+
+  const providerRegistry = new ProviderRegistry();
+  const providerPicker = new ProviderPicker(providerRegistry, context);
+
+  // ── Copilot infrastructure ─────────────────────────────────────────────
+
+  const copilotLauncher = new CopilotLauncher(providerRegistry, context);
+  const modelSelector = new ModelSelector(context);
+
+  // Register @taskai chat participant (gracefully skipped if API unavailable)
+  const chatParticipant = registerChatParticipant(context, providerRegistry);
+
+  // Re-read log level when settings change
+  context.subscriptions.push(
+    vscode.workspace.onDidChangeConfiguration(e => {
+      if (e.affectsConfiguration('agentBoard.logLevel')) {
+        logger.refreshLevel();
+      }
+    }),
+  );
+
+  // ── Internal stores ────────────────────────────────────────────────────
+
   const taskStore = new TaskStore(context);
   const agentManager = new AgentManager(context, taskStore);
 
-  // Initialize tree view providers
+  // Tree views
   const tasksProvider = new TasksTreeProvider(taskStore);
   const agentsProvider = new AgentsTreeProvider(agentManager);
 
-  // Register tree views
   const tasksView = vscode.window.createTreeView('agentBoardTasks', {
     treeDataProvider: tasksProvider,
     showCollapseAll: false,
@@ -30,14 +64,20 @@ export function activate(context: vscode.ExtensionContext): void {
   updateStatusBar(statusBarItem, taskStore);
   statusBarItem.show();
 
-  // Helper to refresh everything
   function refresh(): void {
     tasksProvider.refresh();
     agentsProvider.refresh();
     updateStatusBar(statusBarItem, taskStore);
   }
 
-  // ── Commands ──────────────────────────────────────────────────────────────
+  // ── WebView panel serializer ───────────────────────────────────────────
+
+  vscode.window.registerWebviewPanelSerializer(
+    KanbanPanel.viewType,
+    KanbanPanel.getSerializer(context.extensionUri),
+  );
+
+  // ── Commands ───────────────────────────────────────────────────────────
 
   const addTask = vscode.commands.registerCommand('agentBoard.addTask', async () => {
     const title = await vscode.window.showInputBox({
@@ -108,8 +148,61 @@ export function activate(context: vscode.ExtensionContext): void {
     refresh();
   });
 
-  const refreshTasks = vscode.commands.registerCommand('agentBoard.refreshTasks', () => {
+  const refreshTasks = vscode.commands.registerCommand('agentBoard.refreshTasks', async () => {
     refresh();
+    await refreshTasksCommand(providerRegistry);
+  });
+
+  // ── Kanban / Provider / Copilot commands ─────────────────────────────
+
+  const openKanban = vscode.commands.registerCommand('agentBoard.openKanban', async () => {
+    logger.info('openKanban command invoked');
+    const panel = KanbanPanel.createOrShow(context.extensionUri);
+
+    // Wire WebView messages
+    panel.onMessage(async (msg) => {
+      switch (msg.type) {
+        case 'ready':
+          // Send initial tasks
+          await sendTasksToPanel(panel, providerRegistry);
+          break;
+        case 'refreshRequest':
+          await refreshTasksCommand(providerRegistry);
+          await sendTasksToPanel(panel, providerRegistry);
+          break;
+        case 'taskMoved': {
+          const [providerId] = msg.taskId.split(':');
+          const provider = providerRegistry.get(providerId);
+          if (provider) {
+            const tasks = await provider.getTasks();
+            const task = tasks.find(t => t.id === msg.taskId);
+            if (task) {
+              await provider.updateTask({ ...task, status: msg.toCol });
+            }
+          }
+          await sendTasksToPanel(panel, providerRegistry);
+          break;
+        }
+        case 'openCopilot':
+          await copilotLauncher.launch(msg.taskId, msg.mode);
+          break;
+      }
+    });
+  });
+
+  const selectProvider = vscode.commands.registerCommand('agentBoard.selectProvider', async () => {
+    logger.info('selectProvider command invoked');
+    await providerPicker.pick();
+  });
+
+  const launchCopilot = vscode.commands.registerCommand('agentBoard.launchCopilot', async () => {
+    logger.info('launchCopilot command invoked');
+    const mode = await modelSelector.pick();
+    if (!mode) {
+      return;
+    }
+    // If no task is selected, just show info
+    vscode.window.showInformationMessage(`Copilot mode set to "${mode}". Select a task from the Kanban board to launch.`);
   });
 
   const runAgent = vscode.commands.registerCommand('agentBoard.runAgent', async (item?: AgentTreeItem) => {
@@ -124,7 +217,6 @@ export function activate(context: vscode.ExtensionContext): void {
       return;
     }
 
-    // Create a new agent
     const name = await vscode.window.showInputBox({
       prompt: 'Agent name',
       placeHolder: 'e.g. Code reviewer',
@@ -134,7 +226,6 @@ export function activate(context: vscode.ExtensionContext): void {
       return;
     }
 
-    // Optionally link to a pending task
     const pendingTasks = taskStore.getTasksByStatus('pending');
     let taskId: string | undefined;
     if (pendingTasks.length > 0) {
@@ -171,6 +262,8 @@ export function activate(context: vscode.ExtensionContext): void {
     vscode.window.showInformationMessage(`Agent "${item.agent.name}" stopped.`);
   });
 
+  // ── Subscriptions ─────────────────────────────────────────────────────
+
   context.subscriptions.push(
     tasksView,
     agentsView,
@@ -182,7 +275,19 @@ export function activate(context: vscode.ExtensionContext): void {
     refreshTasks,
     runAgent,
     stopAgent,
+    openKanban,
+    selectProvider,
+    launchCopilot,
+    modelSelector,
+    { dispose: () => providerRegistry.disposeAll() },
+    logger,
   );
+
+  if (chatParticipant) {
+    context.subscriptions.push(chatParticipant);
+  }
+
+  logger.info('Agent Board activated — %d subscriptions registered', context.subscriptions.length);
 }
 
 export function deactivate(): void {
@@ -220,4 +325,18 @@ function simulateAgentRun(agentId: string, agentManager: AgentManager, refresh: 
     refresh();
     vscode.window.showInformationMessage('Agent finished successfully.');
   }, SIMULATE_MS);
+}
+
+/**
+ * Gather tasks from all providers and push them to the Kanban panel.
+ */
+async function sendTasksToPanel(panel: KanbanPanel, registry: ProviderRegistry): Promise<void> {
+  const providers = registry.getAll();
+  const allTasks = (
+    await Promise.allSettled(providers.map(p => p.getTasks()))
+  )
+    .filter((r): r is PromiseFulfilledResult<import('./types/KanbanTask').KanbanTask[]> => r.status === 'fulfilled')
+    .flatMap(r => r.value);
+
+  panel.updateTasks(allTasks);
 }
