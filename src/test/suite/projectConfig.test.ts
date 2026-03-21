@@ -1,43 +1,37 @@
 import * as assert from 'assert';
-import { mergeGitHubConfig, ProjectConfigData } from '../../config/configTypes';
+import { extractGitHubConfig, ProjectConfigData } from '../../config/configTypes';
 
-suite('ProjectConfig (mergeGitHubConfig)', () => {
-  test('file config takes priority over settings', () => {
+suite('ProjectConfig (extractGitHubConfig)', () => {
+  test('extracts owner and repo from file config', () => {
     const file: ProjectConfigData = { github: { owner: 'fileOwner', repo: 'fileRepo' } };
-    const result = mergeGitHubConfig(file, 'settingsOwner', 'settingsRepo');
+    const result = extractGitHubConfig(file);
     assert.strictEqual(result.owner, 'fileOwner');
     assert.strictEqual(result.repo, 'fileRepo');
   });
 
-  test('falls back to settings when file config is undefined', () => {
-    const result = mergeGitHubConfig(undefined, 'settingsOwner', 'settingsRepo');
-    assert.strictEqual(result.owner, 'settingsOwner');
-    assert.strictEqual(result.repo, 'settingsRepo');
+  test('returns empty strings when file config is undefined', () => {
+    const result = extractGitHubConfig(undefined);
+    assert.strictEqual(result.owner, '');
+    assert.strictEqual(result.repo, '');
   });
 
-  test('falls back to settings when file config has no github key', () => {
+  test('returns empty strings when file config has no github key', () => {
     const file: ProjectConfigData = {};
-    const result = mergeGitHubConfig(file, 'settingsOwner', 'settingsRepo');
-    assert.strictEqual(result.owner, 'settingsOwner');
-    assert.strictEqual(result.repo, 'settingsRepo');
+    const result = extractGitHubConfig(file);
+    assert.strictEqual(result.owner, '');
+    assert.strictEqual(result.repo, '');
   });
 
-  test('partial file config falls back per-field', () => {
+  test('partial file config returns empty for missing field', () => {
     const file: ProjectConfigData = { github: { owner: 'fileOwner' } };
-    const result = mergeGitHubConfig(file, 'settingsOwner', 'settingsRepo');
+    const result = extractGitHubConfig(file);
     assert.strictEqual(result.owner, 'fileOwner');
-    assert.strictEqual(result.repo, 'settingsRepo');
+    assert.strictEqual(result.repo, '');
   });
 
-  test('empty strings in file config fall back to settings', () => {
+  test('empty strings in file config return empty strings', () => {
     const file: ProjectConfigData = { github: { owner: '', repo: '' } };
-    const result = mergeGitHubConfig(file, 'settingsOwner', 'settingsRepo');
-    assert.strictEqual(result.owner, 'settingsOwner');
-    assert.strictEqual(result.repo, 'settingsRepo');
-  });
-
-  test('both empty returns empty strings', () => {
-    const result = mergeGitHubConfig(undefined, '', '');
+    const result = extractGitHubConfig(file);
     assert.strictEqual(result.owner, '');
     assert.strictEqual(result.repo, '');
   });

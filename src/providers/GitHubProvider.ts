@@ -19,11 +19,10 @@ export interface GitHubIssue {
 /**
  * Task provider backed by GitHub Issues (REST API).
  *
- * Auth uses the VSCode built-in GitHub SSO (`vscode.authentication`),
- * falling back to the `agentBoard.github.token` setting.
+ * Auth uses the VSCode built-in GitHub SSO (`vscode.authentication`).
  *
  * Repository coordinates (`owner`/`repo`) are read from the per-project
- * file `.agent-board/config.json` first, then from VS Code settings.
+ * file `.agent-board/config.json`.
  */
 export class GitHubProvider implements ITaskProvider {
   readonly id = 'github';
@@ -92,20 +91,14 @@ export class GitHubProvider implements ITaskProvider {
   // ── private ─────────────────────────────────────────────────────────
 
   private readConfig(): void {
-    // Repo coordinates: project config file first, then VS Code settings
     const ghCfg = ProjectConfig.getGitHubConfig();
     this.owner = ghCfg.owner;
     this.repo = ghCfg.repo;
-
-    // Token from settings (fallback; SSO is attempted at fetch time)
-    const cfg = vscode.workspace.getConfiguration('agentBoard');
-    this.token = cfg.get<string>('github.token', '');
     this.cacheTtlMs = 60_000;
   }
 
   /**
-   * Try to obtain a token via VSCode's built-in GitHub SSO.
-   * Falls back to the `agentBoard.github.token` setting.
+   * Obtain a token via VSCode's built-in GitHub SSO.
    */
   private async ensureToken(): Promise<void> {
     if (this.token) {
@@ -119,7 +112,7 @@ export class GitHubProvider implements ITaskProvider {
         this.token = session.accessToken;
       }
     } catch {
-      // SSO not available — rely on setting
+      // SSO not available
     }
   }
 

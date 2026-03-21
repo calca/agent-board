@@ -9,18 +9,14 @@ export interface ProjectConfigData {
 }
 
 /**
- * Pure merge logic — resolves GitHub `owner`/`repo` from a file-based
- * config and VS Code setting values.
- *
- * Priority: file config > settings > empty string.
+ * Pure extraction logic — resolves GitHub `owner`/`repo` from
+ * the per-project config file data.
  */
-export function mergeGitHubConfig(
+export function extractGitHubConfig(
   fileConfig: ProjectConfigData | undefined,
-  settingsOwner: string,
-  settingsRepo: string,
 ): { owner: string; repo: string } {
   return {
-    owner: fileConfig?.github?.owner || settingsOwner,
-    repo: fileConfig?.github?.repo || settingsRepo,
+    owner: fileConfig?.github?.owner || '',
+    repo: fileConfig?.github?.repo || '',
   };
 }

@@ -1,35 +1,24 @@
 import * as vscode from 'vscode';
 import * as path from 'path';
 import * as fs from 'fs';
-import { ProjectConfigData, mergeGitHubConfig } from './configTypes';
+import { ProjectConfigData, extractGitHubConfig } from './configTypes';
 
-export { ProjectConfigData, mergeGitHubConfig };
+export { ProjectConfigData, extractGitHubConfig };
 
 /**
  * Reads per-project configuration from `.agent-board/config.json`
- * in the first workspace folder.  Falls back to VS Code settings
- * (`agentBoard.github.*`) when the file is missing or incomplete.
+ * in the first workspace folder.
  */
 export class ProjectConfig {
   static readonly CONFIG_DIR = '.agent-board';
   static readonly CONFIG_FILE = 'config.json';
 
   /**
-   * Resolve the GitHub `owner` and `repo`.
-   *
-   * Priority:
-   *   1. `.agent-board/config.json` in the workspace root
-   *   2. VS Code settings  (`agentBoard.github.owner` / `.repo`)
+   * Resolve the GitHub `owner` and `repo` from `.agent-board/config.json`.
    */
   static getGitHubConfig(): { owner: string; repo: string } {
     const file = ProjectConfig.readConfigFile();
-    const settings = vscode.workspace.getConfiguration('agentBoard');
-
-    return mergeGitHubConfig(
-      file,
-      settings.get<string>('github.owner', ''),
-      settings.get<string>('github.repo', ''),
-    );
+    return extractGitHubConfig(file);
   }
 
   /**
