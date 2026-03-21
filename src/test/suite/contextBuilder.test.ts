@@ -94,8 +94,9 @@ suite('ContextBuilder', () => {
   });
 
   test('build includes URL', () => {
-    const result = buildPrompt(makeTask());
-    assert.ok(result.includes('https://github.com/example/repo/issues/1'));
+    const task = makeTask();
+    const result = buildPrompt(task);
+    assert.ok(result.includes(task.url!));
   });
 
   test('build includes body', () => {
