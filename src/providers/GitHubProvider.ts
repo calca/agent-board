@@ -160,7 +160,7 @@ export class GitHubProvider implements ITaskProvider {
     return this.cache;
   }
 
-  mapIssue(issue: GitHubIssue): KanbanTask {
+  private mapIssue(issue: GitHubIssue): KanbanTask {
     return {
       id: `${this.id}:${issue.number}`,
       title: issue.title,
@@ -175,7 +175,7 @@ export class GitHubProvider implements ITaskProvider {
     };
   }
 
-  mapStatus(state: string, labels: Array<{ name: string }>): ColumnId {
+  private mapStatus(state: string, labels: Array<{ name: string }>): ColumnId {
     if (state === 'closed') {
       return 'done';
     }

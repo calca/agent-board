@@ -10,7 +10,7 @@
       "properties": {
         "owner": {
           "type": "string",
-          "description": "GitHub repository owner (user or organisation)."
+          "description": "GitHub repository owner (user or organization)."
         },
         "repo": {
           "type": "string",
