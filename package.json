@@ -111,6 +111,16 @@
           "description": "GitHub personal access token for the GitHub task provider. For better security, prefer storing the token in VSCode SecretStorage.",
           "markdownDescription": "GitHub personal access token for the GitHub task provider. For better security, prefer storing the token via the **Accounts** menu."
         },
+        "agentBoard.github.owner": {
+          "type": "string",
+          "default": "",
+          "description": "GitHub repository owner (user or org) for the GitHub task provider."
+        },
+        "agentBoard.github.repo": {
+          "type": "string",
+          "default": "",
+          "description": "GitHub repository name for the GitHub task provider."
+        },
         "agentBoard.jsonProvider.path": {
           "type": "string",
           "default": "",
@@ -135,6 +145,11 @@
             "Use a local Ollama model",
             "Run in background and save result to a file"
           ]
+        },
+        "agentBoard.copilot.localModel": {
+          "type": "string",
+          "default": "llama3",
+          "description": "Ollama model name to use in local Copilot mode."
         },
         "agentBoard.kanban.columns": {
           "type": "array",

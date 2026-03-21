@@ -37,9 +37,12 @@ Open **File > Preferences > Settings** and search for `agentBoard`:
 | Setting | Default | Description |
 |---------|---------|-------------|
 | `agentBoard.github.token` | `""` | GitHub personal access token |
+| `agentBoard.github.owner` | `""` | GitHub repository owner (user or org) |
+| `agentBoard.github.repo` | `""` | GitHub repository name |
 | `agentBoard.jsonProvider.path` | `""` | Path to JSON tasks file |
 | `agentBoard.beadsProvider.executable` | `"beads"` | Path to Beads CLI |
 | `agentBoard.copilot.defaultMode` | `"cloud"` | Default Copilot mode: `cloud`, `local`, `background` |
+| `agentBoard.copilot.localModel` | `"llama3"` | Ollama model name for local mode |
 | `agentBoard.kanban.columns` | `["todo","inprogress","review","done"]` | Kanban column IDs |
 | `agentBoard.pollInterval` | `30000` | Polling interval (ms) for providers |
 | `agentBoard.logLevel` | `"INFO"` | Log level: `DEBUG`, `INFO`, `WARN`, `ERROR` |

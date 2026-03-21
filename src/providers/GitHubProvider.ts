@@ -97,15 +97,9 @@ export class GitHubProvider implements ITaskProvider {
   private readConfig(): void {
     const cfg = vscode.workspace.getConfiguration('agentBoard');
     this.token = cfg.get<string>('github.token', '');
+    this.owner = cfg.get<string>('github.owner', '');
+    this.repo = cfg.get<string>('github.repo', '');
     this.cacheTtlMs = 60_000;
-
-    // Try to detect owner/repo from workspace git
-    const folders = vscode.workspace.workspaceFolders;
-    if (folders && folders.length > 0) {
-      // Use first folder name as a fallback
-      this.owner = '';
-      this.repo = '';
-    }
   }
 
   private isCacheValid(): boolean {

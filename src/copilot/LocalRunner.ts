@@ -10,6 +10,8 @@ export class LocalRunner {
   static async run(prompt: string): Promise<void> {
     const logger = Logger.getInstance();
     const endpoint = 'http://localhost:11434/api/generate';
+    const cfg = vscode.workspace.getConfiguration('agentBoard');
+    const model = cfg.get<string>('copilot.localModel', 'llama3');
 
     const channel = vscode.window.createOutputChannel('Copilot Local');
     channel.show(true);
@@ -20,7 +22,7 @@ export class LocalRunner {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          model: 'llama3',
+          model,
           prompt,
           stream: false,
         }),
