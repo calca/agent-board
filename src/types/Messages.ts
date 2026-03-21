@@ -8,7 +8,7 @@ export interface Column {
   label: string;
 }
 
-export type CopilotMode = 'cloud' | 'local' | 'background';
+export type CopilotMode = 'cloud' | 'local' | 'background' | 'chat';
 
 export type HostToWebView =
   | { type: 'tasksUpdate'; tasks: KanbanTask[]; columns: Column[] }

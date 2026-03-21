@@ -134,13 +134,15 @@
         "agentBoard.copilot.defaultMode": {
           "type": "string",
           "enum": [
+            "chat",
             "cloud",
             "local",
             "background"
           ],
-          "default": "cloud",
+          "default": "chat",
           "description": "Default Copilot mode when launching a task session.",
           "enumDescriptions": [
+            "Open VS Code chat with task context pre-filled",
             "Use GitHub Copilot cloud model",
             "Use a local Ollama model",
             "Run in background and save result to a file"

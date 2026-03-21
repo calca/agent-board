@@ -6,6 +6,7 @@ import { ContextBuilder } from './ContextBuilder';
 import { CloudRunner } from './CloudRunner';
 import { LocalRunner } from './LocalRunner';
 import { BackgroundRunner } from './BackgroundRunner';
+import { ChatRunner } from './ChatRunner';
 import { Logger } from '../utils/logger';
 
 /**
@@ -43,6 +44,9 @@ export class CopilotLauncher {
         break;
       case 'background':
         await BackgroundRunner.run(task, prompt);
+        break;
+      case 'chat':
+        await ChatRunner.run(prompt);
         break;
     }
   }

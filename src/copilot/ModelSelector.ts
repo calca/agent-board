@@ -19,6 +19,7 @@ export class ModelSelector {
   /** Show Quick Pick and return the selected mode. */
   async pick(): Promise<CopilotMode | undefined> {
     const items: Array<vscode.QuickPickItem & { mode: CopilotMode }> = [
+      { label: '$(comment-discussion) Chat', description: 'Open VS Code chat with task context', mode: 'chat' },
       { label: '$(cloud) Cloud', description: 'GitHub Copilot cloud model', mode: 'cloud' },
       { label: '$(server) Local', description: 'Local Ollama model', mode: 'local' },
       { label: '$(file-text) Background', description: 'Run silently, save to file', mode: 'background' },
@@ -52,6 +53,7 @@ export class ModelSelector {
   private updateStatusBar(): void {
     const mode = this.getMode();
     const icons: Record<CopilotMode, string> = {
+      chat: '$(comment-discussion)',
       cloud: '$(cloud)',
       local: '$(server)',
       background: '$(file-text)',
