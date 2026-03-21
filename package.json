@@ -1,0 +1,142 @@
+{
+  "name": "agent-board",
+  "displayName": "Agent Board",
+  "description": "Manage tasks. Run agents.",
+  "version": "0.1.0",
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "activationEvents": [],
+  "main": "./out/extension.js",
+  "contributes": {
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "agent-board",
+          "title": "Agent Board",
+          "icon": "media/icon.svg"
+        }
+      ]
+    },
+    "views": {
+      "agent-board": [
+        {
+          "id": "agentBoardTasks",
+          "name": "Tasks"
+        },
+        {
+          "id": "agentBoardAgents",
+          "name": "Agents"
+        }
+      ]
+    },
+    "commands": [
+      {
+        "command": "agentBoard.addTask",
+        "title": "Add Task",
+        "icon": "$(add)",
+        "category": "Agent Board"
+      },
+      {
+        "command": "agentBoard.completeTask",
+        "title": "Complete Task",
+        "icon": "$(check)",
+        "category": "Agent Board"
+      },
+      {
+        "command": "agentBoard.deleteTask",
+        "title": "Delete Task",
+        "icon": "$(trash)",
+        "category": "Agent Board"
+      },
+      {
+        "command": "agentBoard.runAgent",
+        "title": "Run Agent",
+        "icon": "$(play)",
+        "category": "Agent Board"
+      },
+      {
+        "command": "agentBoard.stopAgent",
+        "title": "Stop Agent",
+        "icon": "$(stop-circle)",
+        "category": "Agent Board"
+      },
+      {
+        "command": "agentBoard.refreshTasks",
+        "title": "Refresh Tasks",
+        "icon": "$(refresh)",
+        "category": "Agent Board"
+      },
+      {
+        "command": "agentBoard.editTask",
+        "title": "Edit Task",
+        "icon": "$(edit)",
+        "category": "Agent Board"
+      }
+    ],
+    "menus": {
+      "view/title": [
+        {
+          "command": "agentBoard.addTask",
+          "when": "view == agentBoardTasks",
+          "group": "navigation"
+        },
+        {
+          "command": "agentBoard.refreshTasks",
+          "when": "view == agentBoardTasks",
+          "group": "navigation"
+        }
+      ],
+      "view/item/context": [
+        {
+          "command": "agentBoard.completeTask",
+          "when": "view == agentBoardTasks && viewItem == task-pending",
+          "group": "inline"
+        },
+        {
+          "command": "agentBoard.editTask",
+          "when": "view == agentBoardTasks && viewItem =~ /^task-/",
+          "group": "inline"
+        },
+        {
+          "command": "agentBoard.deleteTask",
+          "when": "view == agentBoardTasks && viewItem =~ /^task-/",
+          "group": "inline"
+        },
+        {
+          "command": "agentBoard.runAgent",
+          "when": "view == agentBoardAgents && viewItem == agent-idle",
+          "group": "inline"
+        },
+        {
+          "command": "agentBoard.stopAgent",
+          "when": "view == agentBoardAgents && viewItem == agent-running",
+          "group": "inline"
+        }
+      ]
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run compile",
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "pretest": "npm run compile && npm run lint",
+    "lint": "eslint src --ext ts",
+    "test": "mocha out/test/suite/taskStore.test.js out/test/suite/agentManager.test.js --ui tdd --reporter spec"
+  },
+  "devDependencies": {
+    "@types/mocha": "^10.0.6",
+    "@types/node": "18.x",
+    "@types/vscode": "^1.85.0",
+    "@typescript-eslint/eslint-plugin": "^6.15.0",
+    "@typescript-eslint/parser": "^6.15.0",
+    "@vscode/test-electron": "^2.3.8",
+    "eslint": "^8.56.0",
+    "glob": "^10.3.10",
+    "mocha": "^10.2.0",
+    "typescript": "^5.3.3"
+  }
+}
