@@ -3,8 +3,25 @@ import { TaskStore } from './taskStore';
 import { AgentManager } from './agentManager';
 import { TasksTreeProvider, TaskTreeItem } from './tasksTreeProvider';
 import { AgentsTreeProvider, AgentTreeItem } from './agentsTreeProvider';
+import { Logger } from './utils/logger';
+import { ProviderRegistry } from './providers/ProviderRegistry';
 
 export function activate(context: vscode.ExtensionContext): void {
+  const logger = Logger.getInstance();
+  logger.info('Agent Board activating…');
+
+  // Initialize provider registry (exposed for third-party extensions)
+  const providerRegistry = new ProviderRegistry();
+
+  // Re-read log level when settings change
+  context.subscriptions.push(
+    vscode.workspace.onDidChangeConfiguration(e => {
+      if (e.affectsConfiguration('agentBoard.logLevel')) {
+        logger.refreshLevel();
+      }
+    }),
+  );
+
   // Initialize stores
   const taskStore = new TaskStore(context);
   const agentManager = new AgentManager(context, taskStore);
@@ -112,6 +129,23 @@ export function activate(context: vscode.ExtensionContext): void {
     refresh();
   });
 
+  // ── Kanban / Provider / Copilot commands (Phase 01 stubs) ───────────────
+
+  const openKanban = vscode.commands.registerCommand('agentBoard.openKanban', () => {
+    logger.info('openKanban command invoked');
+    vscode.window.showInformationMessage('Kanban board is not yet implemented.');
+  });
+
+  const selectProvider = vscode.commands.registerCommand('agentBoard.selectProvider', () => {
+    logger.info('selectProvider command invoked');
+    vscode.window.showInformationMessage('Provider selection is not yet implemented.');
+  });
+
+  const launchCopilot = vscode.commands.registerCommand('agentBoard.launchCopilot', () => {
+    logger.info('launchCopilot command invoked');
+    vscode.window.showInformationMessage('Copilot launcher is not yet implemented.');
+  });
+
   const runAgent = vscode.commands.registerCommand('agentBoard.runAgent', async (item?: AgentTreeItem) => {
     if (item) {
       const started = agentManager.startAgent(item.agent.id);
@@ -182,7 +216,14 @@ export function activate(context: vscode.ExtensionContext): void {
     refreshTasks,
     runAgent,
     stopAgent,
+    openKanban,
+    selectProvider,
+    launchCopilot,
+    { dispose: () => providerRegistry.disposeAll() },
+    logger,
   );
+
+  logger.info('Agent Board activated — %d commands registered', context.subscriptions.length);
 }
 
 export function deactivate(): void {
