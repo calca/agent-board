@@ -54,7 +54,7 @@ export function activate(context: vscode.ExtensionContext): void {
   const squadManager = new SquadManager(
     providerRegistry,
     copilotLauncher,
-    () => modelSelector.getMode(),
+    () => modelSelector.getProviderId(),
   );
 
   // Register @taskai chat participant (gracefully skipped if API unavailable)
