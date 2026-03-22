@@ -8,7 +8,8 @@
 
 - **Kanban Board** — drag-and-drop task management with configurable columns
 - **Extensible Providers** — load tasks from GitHub Issues, local JSON files, Beads CLI, or any custom source
-- **Copilot Integration** — launch Copilot sessions with full task context (chat, cloud, local Ollama, or background mode)
+- **Copilot Integration** — launch Copilot sessions with full task context via extensible GenAI providers
+- **Git Worktree Support** — providers that support it (e.g. Copilot CLI) automatically create an isolated git worktree per task
 - **Per-Project Configuration** — every setting can be overridden per project via `.agent-board/config.json`
 - **GitHub SSO** — authenticate via VS Code's built-in GitHub SSO (no PAT required)
 - **Tree Views** — sidebar tasks and agents views in the Activity Bar
@@ -49,9 +50,8 @@ Create a `.agent-board/config.json` file in the workspace root to override any V
   "beadsProvider": {
     "executable": "/usr/local/bin/beads"
   },
-  "copilot": {
-    "defaultMode": "chat",
-    "localModel": "codellama"
+  "worktree": {
+    "enabled": true
   },
   "genAiProviders": {
     "ollama": { "enabled": true, "model": "codellama" },
@@ -75,8 +75,7 @@ All settings can also be configured globally through **File > Preferences > Sett
 |---------|---------|-------------|
 | `agentBoard.jsonProvider.path` | `".agent-board/tasks"` | Path to JSON tasks file |
 | `agentBoard.beadsProvider.executable` | `"beads"` | Path to Beads CLI |
-| `agentBoard.copilot.defaultMode` | `"chat"` | Default Copilot mode: `chat`, `cloud`, `local`, `background` |
-| `agentBoard.copilot.localModel` | `"llama3"` | Ollama model name for local mode |
+| `agentBoard.worktree.enabled` | `true` | Create an isolated git worktree for providers that support it |
 | `agentBoard.kanban.columns` | `["todo","inprogress","review","done"]` | Kanban column IDs |
 | `agentBoard.pollInterval` | `30000` | Polling interval (ms) for providers |
 | `agentBoard.logLevel` | `"INFO"` | Log level: `DEBUG`, `INFO`, `WARN`, `ERROR` |
@@ -129,13 +128,28 @@ const registry = agentBoard?.exports?.providerRegistry;
 registry?.register(myCustomProvider);
 ```
 
-## Copilot Modes
-| Mode | Description |
-|------|-------------|
-| **Chat** | Opens VS Code native chat with task context pre-filled (default) |
-| **Cloud** | Uses GitHub Copilot via `vscode.lm` API |
-| **Local** | Sends prompts to Ollama at `localhost:11434` |
-| **Background** | Runs silently, saves results to `.kanban-notes/` |
+## Git Worktree Support
+
+Providers that declare `supportsWorktree` (e.g. **Copilot CLI**) automatically create an
+isolated git worktree under `.agent-board/worktrees/<taskId>` before the provider runs. This
+lets the AI agent work on a dedicated branch without affecting the main working tree.
+
+**Worktree creation is enabled by default.** To disable it:
+
+```jsonc
+// .agent-board/config.json
+{
+  "worktree": { "enabled": false }
+}
+```
+
+Or via VS Code settings:
+
+```json
+{
+  "agentBoard.worktree.enabled": false
+}
+```
 
 ## GenAI Providers
 
@@ -149,7 +163,7 @@ These providers integrate with VS Code APIs and are always registered. Their con
 |----------|-------------|
 | **Chat** (`chat`) | Opens VS Code native chat with task context pre-filled |
 | **Cloud** (`cloud`) | Uses GitHub Copilot cloud model via `vscode.lm` API |
-| **Copilot CLI** (`copilot-cli`) | Runs silently via `vscode.lm`, saves result to `.kanban-notes/` |
+| **Copilot CLI** (`copilot-cli`) | Runs silently via `vscode.lm`, saves result to `.kanban-notes/` — **supports worktree** |
 
 ### Project Providers
 
@@ -195,10 +209,11 @@ Extension Host (Node.js)
 ├── GenAiProviderRegistry → IGenAiProvider implementations
 │   ├── ChatGenAiProvider (global — VS Code chat)
 │   ├── CloudGenAiProvider (global — vscode.lm API)
-│   ├── CopilotCliGenAiProvider (global — background + file save)
+│   ├── CopilotCliGenAiProvider (global — background + file save, worktree)
 │   ├── OllamaGenAiProvider (project — local HTTP)
 │   └── MistralGenAiProvider (project — Mistral API)
-├── CopilotLauncher → ContextBuilder + GenAiProviderRegistry
+├── CopilotLauncher → ContextBuilder + GenAiProviderRegistry + WorktreeManager
+├── WorktreeManager → git worktree create / remove
 ├── KanbanPanel → WebView (HTML/CSS/JS)
 │   ├── MessageBridge (typed postMessage)
 │   └── theme.css (--vscode-* variables)

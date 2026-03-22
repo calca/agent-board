@@ -113,7 +113,7 @@ suite('ProjectConfigData (full shape)', () => {
       github: { owner: 'calca', repo: 'agent-board' },
       jsonProvider: { path: '.agent-board/tasks' },
       beadsProvider: { executable: '/usr/local/bin/beads' },
-      copilot: { defaultMode: 'local', localModel: 'codellama' },
+      worktree: { enabled: true },
       genAiProviders: {
         ollama: { enabled: true, model: 'llama3', endpoint: 'http://localhost:11434/api/generate' },
         mistral: { enabled: true, model: 'mistral-small-latest' },
@@ -126,8 +126,7 @@ suite('ProjectConfigData (full shape)', () => {
     assert.strictEqual(cfg.github?.owner, 'calca');
     assert.strictEqual(cfg.jsonProvider?.path, '.agent-board/tasks');
     assert.strictEqual(cfg.beadsProvider?.executable, '/usr/local/bin/beads');
-    assert.strictEqual(cfg.copilot?.defaultMode, 'local');
-    assert.strictEqual(cfg.copilot?.localModel, 'codellama');
+    assert.strictEqual(cfg.worktree?.enabled, true);
     assert.strictEqual(cfg.genAiProviders?.ollama?.enabled, true);
     assert.strictEqual(cfg.genAiProviders?.ollama?.model, 'llama3');
     assert.strictEqual(cfg.genAiProviders?.mistral?.enabled, true);
@@ -141,7 +140,7 @@ suite('ProjectConfigData (full shape)', () => {
     const cfg: ProjectConfigData = {};
     assert.strictEqual(cfg.github, undefined);
     assert.strictEqual(cfg.jsonProvider, undefined);
-    assert.strictEqual(cfg.copilot, undefined);
+    assert.strictEqual(cfg.worktree, undefined);
     assert.strictEqual(cfg.genAiProviders, undefined);
     assert.strictEqual(cfg.pollInterval, undefined);
     assert.strictEqual(cfg.logLevel, undefined);
@@ -158,5 +157,20 @@ suite('ProjectConfigData (full shape)', () => {
     assert.strictEqual(cfg.genAiProviders?.ollama?.model, undefined);
     assert.strictEqual(cfg.genAiProviders?.mistral?.enabled, undefined);
     assert.strictEqual(cfg.genAiProviders?.mistral?.model, 'mistral-tiny');
+  });
+
+  test('worktree can be explicitly enabled', () => {
+    const cfg: ProjectConfigData = { worktree: { enabled: true } };
+    assert.strictEqual(cfg.worktree?.enabled, true);
+  });
+
+  test('worktree can be explicitly disabled', () => {
+    const cfg: ProjectConfigData = { worktree: { enabled: false } };
+    assert.strictEqual(cfg.worktree?.enabled, false);
+  });
+
+  test('worktree section is optional', () => {
+    const cfg: ProjectConfigData = {};
+    assert.strictEqual(cfg.worktree, undefined);
   });
 });

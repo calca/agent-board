@@ -25,9 +25,16 @@ export interface ProjectConfigData {
   beadsProvider?: {
     executable?: string;
   };
-  copilot?: {
-    defaultMode?: string;
-    localModel?: string;
+  /**
+   * Git worktree settings.
+   *
+   * When enabled, providers that declare `supportsWorktree` will run
+   * inside an isolated git worktree created under
+   * `.agent-board/worktrees/<taskId>`.
+   */
+  worktree?: {
+    /** Whether worktree creation is enabled.  Defaults to `true`. */
+    enabled?: boolean;
   };
   /**
    * Per-provider GenAI configuration.
