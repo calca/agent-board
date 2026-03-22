@@ -43,6 +43,8 @@ export class CopilotLauncher {
     }
 
     // ── Worktree support ──────────────────────────────────────────────
+    // Worktrees are created once and persist so the user (or agent) can
+    // inspect the isolated branch after the provider finishes.
     let worktree: WorktreeInfo | undefined;
     if (provider.supportsWorktree && this.isWorktreeEnabled()) {
       worktree = await this.tryCreateWorktree(taskId);
@@ -91,8 +93,8 @@ export class CopilotLauncher {
     try {
       const info = await createWorktree(repoRoot, taskId);
       if (info) {
-        vscode.window.showInformationMessage(
-          `Worktree created at ${info.path} (branch: ${info.branch})`,
+        this.logger.info(
+          `CopilotLauncher: worktree created at ${info.path} (branch: ${info.branch})`,
         );
       }
       return info;

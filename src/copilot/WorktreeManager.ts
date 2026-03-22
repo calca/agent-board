@@ -49,7 +49,7 @@ export function worktreeBranch(taskId: string): string {
 /** Helper: promisified `execFile`. */
 function exec(cmd: string, args: string[], cwd: string): Promise<string> {
   return new Promise((resolve, reject) => {
-    execFile(cmd, args, { cwd, timeout: 30_000 }, (err, stdout, stderr) => {
+    execFile(cmd, args, { cwd, timeout: 60_000 }, (err, stdout, stderr) => {
       if (err) {
         reject(new Error(`${cmd} ${args.join(' ')} failed: ${stderr || err.message}`));
       } else {
