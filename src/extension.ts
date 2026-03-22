@@ -343,6 +343,10 @@ export function activate(context: vscode.ExtensionContext): void {
     handleToggleAutoSquad(squadManager, agentSlug);
   });
 
+  const toggleMaximize = vscode.commands.registerCommand('agentBoard.toggleMaximize', () => {
+    vscode.commands.executeCommand('workbench.action.toggleSidebarVisibility');
+  });
+
   const runAgent = vscode.commands.registerCommand('agentBoard.runAgent', async (item?: AgentTreeItem) => {
     if (item) {
       const started = agentManager.startAgent(item.agent.id);
@@ -414,6 +418,7 @@ export function activate(context: vscode.ExtensionContext): void {
     runAgent,
     stopAgent,
     openKanban,
+    toggleMaximize,
     selectProvider,
     launchCopilot,
     startSquad,

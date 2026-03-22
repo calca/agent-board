@@ -49,7 +49,7 @@ function render(): void {
 
   root.innerHTML = `
     <div class="provider-bar">
-      <span class="provider-bar__name">Kanban Board</span>
+      <span class="provider-bar__name">Agent Board - Kanban</span>
       <div class="mcp-status">
         <span class="mcp-status__dot mcp-status__dot--${mcpEnabled ? 'on' : 'off'}"></span>
         <span class="mcp-status__label">MCP ${mcpEnabled ? 'On' : 'Off'}</span>

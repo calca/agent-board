@@ -50,7 +50,7 @@ export class KanbanPanel {
 
     const panel = vscode.window.createWebviewPanel(
       KanbanPanel.viewType,
-      'Kanban Board',
+      'Agent Board — Kanban',
       column || vscode.ViewColumn.One,
       {
         enableScripts: true,
@@ -144,7 +144,7 @@ export class KanbanPanel {
                  font-src ${webview.cspSource};
                  img-src ${webview.cspSource} https:;">
   <link rel="stylesheet" href="${styleUri}">
-  <title>Kanban Board</title>
+  <title>Agent Board - Kanban</title>
 </head>
 <body>
   <div id="root"></div>

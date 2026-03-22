@@ -82,7 +82,7 @@
       },
       {
         "command": "agentBoard.openKanban",
-        "title": "Open Kanban Board",
+        "title": "Open Kanban",
         "icon": "$(preview)",
         "category": "Agent Board"
       },
@@ -108,6 +108,12 @@
         "command": "agentBoard.toggleAutoSquad",
         "title": "Toggle Auto Squad",
         "icon": "$(sync)",
+        "category": "Agent Board"
+      },
+      {
+        "command": "agentBoard.toggleMaximize",
+        "title": "Toggle Maximize",
+        "icon": "$(screen-full)",
         "category": "Agent Board"
       }
     ],
@@ -263,7 +269,19 @@
       }
     },
     "menus": {
+      "editor/title": [
+        {
+          "command": "agentBoard.toggleMaximize",
+          "when": "activeWebviewPanelId == 'agentBoard.kanbanView'",
+          "group": "navigation"
+        }
+      ],
       "view/title": [
+        {
+          "command": "agentBoard.openKanban",
+          "when": "view == agentBoardTasks",
+          "group": "navigation"
+        },
         {
           "command": "agentBoard.addTask",
           "when": "view == agentBoardTasks",
