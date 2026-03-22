@@ -218,15 +218,13 @@ export function activate(context: vscode.ExtensionContext): void {
           await copilotLauncher.launch(msg.taskId, msg.mode);
           break;
         case 'startSquad': {
-          const launched = await squadManager.startSquad();
-          vscode.window.showInformationMessage(`Squad: launched ${launched} session${launched === 1 ? '' : 's'}.`);
+          await handleStartSquad(squadManager);
           panel.updateSquadStatus(squadManager.getStatus());
           await sendTasksToPanel(panel, providerRegistry);
           break;
         }
         case 'toggleAutoSquad': {
-          const enabled = squadManager.toggleAutoSquad();
-          vscode.window.showInformationMessage(`Auto-squad ${enabled ? 'enabled' : 'disabled'}.`);
+          handleToggleAutoSquad(squadManager);
           panel.updateSquadStatus(squadManager.getStatus());
           break;
         }
@@ -251,14 +249,12 @@ export function activate(context: vscode.ExtensionContext): void {
 
   const startSquad = vscode.commands.registerCommand('agentBoard.startSquad', async () => {
     logger.info('startSquad command invoked');
-    const launched = await squadManager.startSquad();
-    vscode.window.showInformationMessage(`Squad: launched ${launched} session${launched === 1 ? '' : 's'}.`);
+    await handleStartSquad(squadManager);
   });
 
   const toggleAutoSquad = vscode.commands.registerCommand('agentBoard.toggleAutoSquad', async () => {
     logger.info('toggleAutoSquad command invoked');
-    const enabled = squadManager.toggleAutoSquad();
-    vscode.window.showInformationMessage(`Auto-squad ${enabled ? 'enabled' : 'disabled'}.`);
+    handleToggleAutoSquad(squadManager);
   });
 
   const runAgent = vscode.commands.registerCommand('agentBoard.runAgent', async (item?: AgentTreeItem) => {
@@ -403,6 +399,26 @@ async function sendTasksToPanel(panel: KanbanPanel, registry: ProviderRegistry):
 
 /** IDs of GenAI providers that are always registered (VS Code integrated). */
 const GLOBAL_GENAI_PROVIDER_IDS = ['chat', 'cloud', 'copilot-cli'];
+
+/**
+ * Handle starting a squad session — shared between command and WebView handler.
+ */
+async function handleStartSquad(squadManager: SquadManager): Promise<void> {
+  const launched = await squadManager.startSquad();
+  vscode.window.showInformationMessage(
+    `Squad: launched ${launched} session${launched === 1 ? '' : 's'}.`,
+  );
+}
+
+/**
+ * Handle toggling auto-squad — shared between command and WebView handler.
+ */
+function handleToggleAutoSquad(squadManager: SquadManager): void {
+  const enabled = squadManager.toggleAutoSquad();
+  vscode.window.showInformationMessage(
+    `Auto-squad ${enabled ? 'enabled' : 'disabled'}.`,
+  );
+}
 
 /**
  * Register project-scoped GenAI providers based on `.agent-board/config.json`.

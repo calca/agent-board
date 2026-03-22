@@ -11,7 +11,7 @@ export { DEFAULT_MAX_SESSIONS, computeAvailableSlots } from './squadUtils';
 
 /**
  * Manages "squad" sessions — parallel copilot launches across
- * multiple tasks that are in the "todo" or "inprogress" columns.
+ * multiple tasks that are in the "todo" column.
  *
  * Supports two modes:
  * - **Start Squad**: one-shot launch of up to `maxSessions` copilot sessions.
