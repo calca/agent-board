@@ -77,7 +77,7 @@ export const MCP_TOOLS: McpToolDefinition[] = [
         labels: {
           type: 'string',
           description:
-            'Comma-separated list of labels to set on the task.',
+            'JSON array of label strings to set on the task (e.g. ["bug","urgent"]).',
         },
         assignee: {
           type: 'string',
