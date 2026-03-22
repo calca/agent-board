@@ -6,6 +6,7 @@ import {
   isTimedOut,
   shouldExclude,
   matchesAssignee,
+  resolveSquadConfig,
   DEFAULT_MAX_SESSIONS,
   DEFAULT_SOURCE_COLUMN,
   DEFAULT_ACTIVE_COLUMN,
@@ -512,5 +513,60 @@ suite('matchesAssignee', () => {
 
   test('undefined assignee does not match a username', () => {
     assert.strictEqual(matchesAssignee(undefined, 'alice'), false);
+  });
+});
+
+suite('resolveSquadConfig', () => {
+  test('returns all defaults when called with no arguments', () => {
+    const cfg = resolveSquadConfig();
+    assert.strictEqual(cfg.maxSessions, DEFAULT_MAX_SESSIONS);
+    assert.strictEqual(cfg.sourceColumn, DEFAULT_SOURCE_COLUMN);
+    assert.strictEqual(cfg.activeColumn, DEFAULT_ACTIVE_COLUMN);
+    assert.strictEqual(cfg.doneColumn, DEFAULT_DONE_COLUMN);
+    assert.strictEqual(cfg.autoSquadInterval, DEFAULT_AUTO_SQUAD_INTERVAL);
+    assert.strictEqual(cfg.maxRetries, DEFAULT_MAX_RETRIES);
+    assert.deepStrictEqual(cfg.priorityLabels, []);
+    assert.strictEqual(cfg.sessionTimeout, DEFAULT_SESSION_TIMEOUT);
+    assert.strictEqual(cfg.cooldownMs, DEFAULT_COOLDOWN_MS);
+    assert.deepStrictEqual(cfg.excludeLabels, []);
+    assert.strictEqual(cfg.assigneeFilter, '');
+    assert.strictEqual(cfg.notifyTaskActive, true);
+    assert.strictEqual(cfg.notifyTaskDone, true);
+  });
+
+  test('overrides individual squad values', () => {
+    const cfg = resolveSquadConfig({ maxSessions: 5, maxRetries: 3 });
+    assert.strictEqual(cfg.maxSessions, 5);
+    assert.strictEqual(cfg.maxRetries, 3);
+    // defaults preserved
+    assert.strictEqual(cfg.sourceColumn, DEFAULT_SOURCE_COLUMN);
+  });
+
+  test('overrides notification values', () => {
+    const cfg = resolveSquadConfig(undefined, { taskActive: false, taskDone: false });
+    assert.strictEqual(cfg.notifyTaskActive, false);
+    assert.strictEqual(cfg.notifyTaskDone, false);
+  });
+
+  test('overrides both squad and notification values', () => {
+    const cfg = resolveSquadConfig(
+      { cooldownMs: 5000, excludeLabels: ['blocked'] },
+      { taskDone: false },
+    );
+    assert.strictEqual(cfg.cooldownMs, 5000);
+    assert.deepStrictEqual(cfg.excludeLabels, ['blocked']);
+    assert.strictEqual(cfg.notifyTaskDone, false);
+    assert.strictEqual(cfg.notifyTaskActive, true); // default
+  });
+
+  test('custom column names are supported', () => {
+    const cfg = resolveSquadConfig({
+      sourceColumn: 'backlog',
+      activeColumn: 'doing',
+      doneColumn: 'shipped',
+    });
+    assert.strictEqual(cfg.sourceColumn, 'backlog');
+    assert.strictEqual(cfg.activeColumn, 'doing');
+    assert.strictEqual(cfg.doneColumn, 'shipped');
   });
 });

@@ -6,6 +6,8 @@
 import { ColumnId } from '../types/ColumnId';
 import { KanbanTask } from '../types/KanbanTask';
 
+// ── Defaults ────────────────────────────────────────────────────────────────
+
 /** Default maximum parallel sessions when not configured. */
 export const DEFAULT_MAX_SESSIONS = 10;
 
@@ -29,6 +31,60 @@ export const DEFAULT_SESSION_TIMEOUT = 300_000;
 
 /** Default cooldown between consecutive session launches in milliseconds. 0 = no cooldown. */
 export const DEFAULT_COOLDOWN_MS = 0;
+
+// ── SquadConfig ─────────────────────────────────────────────────────────────
+
+/**
+ * Resolved squad configuration snapshot.
+ *
+ * All values are fully resolved (project file → VS Code settings → defaults).
+ * Passed as a single object to avoid repeated config reads.
+ */
+export interface SquadConfig {
+  maxSessions: number;
+  sourceColumn: ColumnId;
+  activeColumn: ColumnId;
+  doneColumn: ColumnId;
+  autoSquadInterval: number;
+  maxRetries: number;
+  priorityLabels: string[];
+  sessionTimeout: number;
+  cooldownMs: number;
+  excludeLabels: string[];
+  assigneeFilter: string;
+  notifyTaskActive: boolean;
+  notifyTaskDone: boolean;
+}
+
+/**
+ * Build a fully-resolved {@link SquadConfig} from raw project config
+ * values.  Every field falls back to its default.
+ *
+ * This is a pure function (no VS Code dependency) so it can be tested
+ * in isolation.
+ */
+export function resolveSquadConfig(
+  squad?: Partial<SquadConfig>,
+  notifications?: { taskActive?: boolean; taskDone?: boolean },
+): SquadConfig {
+  return {
+    maxSessions: squad?.maxSessions ?? DEFAULT_MAX_SESSIONS,
+    sourceColumn: squad?.sourceColumn ?? DEFAULT_SOURCE_COLUMN,
+    activeColumn: squad?.activeColumn ?? DEFAULT_ACTIVE_COLUMN,
+    doneColumn: squad?.doneColumn ?? DEFAULT_DONE_COLUMN,
+    autoSquadInterval: squad?.autoSquadInterval ?? DEFAULT_AUTO_SQUAD_INTERVAL,
+    maxRetries: squad?.maxRetries ?? DEFAULT_MAX_RETRIES,
+    priorityLabels: squad?.priorityLabels ?? [],
+    sessionTimeout: squad?.sessionTimeout ?? DEFAULT_SESSION_TIMEOUT,
+    cooldownMs: squad?.cooldownMs ?? DEFAULT_COOLDOWN_MS,
+    excludeLabels: squad?.excludeLabels ?? [],
+    assigneeFilter: squad?.assigneeFilter ?? '',
+    notifyTaskActive: notifications?.taskActive ?? true,
+    notifyTaskDone: notifications?.taskDone ?? true,
+  };
+}
+
+// ── Pure helpers ─────────────────────────────────────────────────────────────
 
 /**
  * Compute how many new sessions can be launched.

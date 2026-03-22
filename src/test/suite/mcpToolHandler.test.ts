@@ -6,6 +6,7 @@ import {
   handleGetTask,
   handleUpdateTask,
   handleCreateTask,
+  handleDeleteTask,
   handleToolCall,
   successResult,
   errorResult,
@@ -46,15 +47,23 @@ function createAdapter(tasks: KanbanTask[]): McpTaskAdapter & { tasks: KanbanTas
       store.push(created);
       return created;
     },
+    async deleteTask(taskId: string) {
+      const idx = store.findIndex(t => t.id === taskId);
+      if (idx === -1) {
+        return false;
+      }
+      store.splice(idx, 1);
+      return true;
+    },
   };
 }
 
 // ── Tests ───────────────────────────────────────────────────────────
 
 suite('MCP_TOOLS catalogue', () => {
-  test('exposes list_tasks, get_task, update_task, create_task', () => {
+  test('exposes list_tasks, get_task, update_task, create_task, delete_task', () => {
     const names = MCP_TOOLS.map(t => t.name);
-    assert.deepStrictEqual(names, ['list_tasks', 'get_task', 'update_task', 'create_task']);
+    assert.deepStrictEqual(names, ['list_tasks', 'get_task', 'update_task', 'create_task', 'delete_task']);
   });
 
   test('every tool has a description and inputSchema', () => {
@@ -77,6 +86,11 @@ suite('MCP_TOOLS catalogue', () => {
   test('create_task requires title', () => {
     const tool = MCP_TOOLS.find(t => t.name === 'create_task')!;
     assert.deepStrictEqual(tool.inputSchema.required, ['title']);
+  });
+
+  test('delete_task requires taskId', () => {
+    const tool = MCP_TOOLS.find(t => t.name === 'delete_task')!;
+    assert.deepStrictEqual(tool.inputSchema.required, ['taskId']);
   });
 
   test('list_tasks has no required params', () => {
@@ -306,6 +320,33 @@ suite('handleCreateTask', () => {
   });
 });
 
+suite('handleDeleteTask', () => {
+  test('deletes an existing task', async () => {
+    const adapter = createAdapter([makeTask('t:1'), makeTask('t:2')]);
+    const result = await handleDeleteTask(adapter, { taskId: 't:1' });
+    assert.strictEqual(result.isError, undefined);
+    const data = JSON.parse(result.content[0].text);
+    assert.strictEqual(data.deleted, true);
+    assert.strictEqual(data.taskId, 't:1');
+    assert.strictEqual(adapter.tasks.length, 1);
+    assert.strictEqual(adapter.tasks[0].id, 't:2');
+  });
+
+  test('returns error for missing taskId', async () => {
+    const adapter = createAdapter([makeTask('t:1')]);
+    const result = await handleDeleteTask(adapter, { taskId: '' });
+    assert.strictEqual(result.isError, true);
+    assert.ok(result.content[0].text.includes('taskId'));
+  });
+
+  test('returns error for unknown task', async () => {
+    const adapter = createAdapter([makeTask('t:1')]);
+    const result = await handleDeleteTask(adapter, { taskId: 't:999' });
+    assert.strictEqual(result.isError, true);
+    assert.ok(result.content[0].text.includes('t:999'));
+  });
+});
+
 suite('handleToolCall routing', () => {
   test('routes list_tasks correctly', async () => {
     const adapter = createAdapter([makeTask('t:1')]);
@@ -332,6 +373,13 @@ suite('handleToolCall routing', () => {
     const result = await handleToolCall(adapter, 'create_task', { title: 'Routed task' });
     assert.strictEqual(result.isError, undefined);
     assert.strictEqual(adapter.tasks.length, 1);
+  });
+
+  test('routes delete_task correctly', async () => {
+    const adapter = createAdapter([makeTask('t:1')]);
+    const result = await handleToolCall(adapter, 'delete_task', { taskId: 't:1' });
+    assert.strictEqual(result.isError, undefined);
+    assert.strictEqual(adapter.tasks.length, 0);
   });
 
   test('returns error for unknown tool', async () => {
