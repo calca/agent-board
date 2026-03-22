@@ -47,10 +47,17 @@ export class ModelSelector {
       'copilot.defaultMode',
       'cloud' as CopilotMode,
     );
-    return this.context.workspaceState.get<CopilotMode | string>(
+    const stored = this.context.workspaceState.get<CopilotMode | string>(
       ModelSelector.STATE_KEY,
       resolved,
     );
+
+    // Validate stored value against registry (the provider may have been removed)
+    if (this.genAiRegistry && !this.genAiRegistry.get(stored)) {
+      return resolved;
+    }
+
+    return stored;
   }
 
   dispose(): void {

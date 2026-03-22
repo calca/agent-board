@@ -366,6 +366,9 @@ async function sendTasksToPanel(panel: KanbanPanel, registry: ProviderRegistry):
   panel.updateTasks(allTasks);
 }
 
+/** IDs of GenAI providers that are always registered (VS Code integrated). */
+const GLOBAL_GENAI_PROVIDER_IDS = ['chat', 'cloud', 'copilot-cli'];
+
 /**
  * Register project-scoped GenAI providers based on `.agent-board/config.json`.
  *
@@ -383,7 +386,7 @@ function registerProjectGenAiProviders(genAiRegistry: GenAiProviderRegistry): vo
 
   for (const [id, entry] of Object.entries(providers)) {
     // Skip global providers — they are always registered above
-    if (['chat', 'cloud', 'copilot-cli'].includes(id)) {
+    if (GLOBAL_GENAI_PROVIDER_IDS.includes(id)) {
       continue;
     }
 
