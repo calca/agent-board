@@ -31,7 +31,7 @@ export {
  * (or VS Code settings).
  *
  * Sends generic VS Code notifications on automatic task state changes
- * (controlled via `notifications.taskStarted` / `notifications.taskCompleted`).
+ * (controlled via `notifications.taskActive` / `notifications.taskDone`).
  *
  * Supports two modes:
  * - **Start Squad**: one-shot launch of up to `maxSessions` copilot sessions.
@@ -208,7 +208,7 @@ export class SquadManager {
   }
 
   /** Resolve whether a generic notification should be shown. */
-  private shouldNotify(key: 'taskStarted' | 'taskCompleted'): boolean {
+  private shouldNotify(key: 'taskActive' | 'taskDone'): boolean {
     const projectCfg = ProjectConfig.getProjectConfig();
     return ProjectConfig.resolve(
       projectCfg?.notifications?.[key],
@@ -231,7 +231,7 @@ export class SquadManager {
     await this.moveTask(task, activeCol);
 
     // Notify on automatic state change → active
-    if (this.shouldNotify('taskStarted')) {
+    if (this.shouldNotify('taskActive')) {
       vscode.window.showInformationMessage(
         `Task "${task.title}" moved to ${activeCol}`,
       );
@@ -245,7 +245,7 @@ export class SquadManager {
       await this.moveTask(task, doneCol);
 
       // Notify on automatic state change → done
-      if (this.shouldNotify('taskCompleted')) {
+      if (this.shouldNotify('taskDone')) {
         vscode.window.showInformationMessage(
           `Task "${task.title}" moved to ${doneCol}`,
         );

@@ -120,12 +120,12 @@
       "type": "object",
       "description": "VS Code notification settings for automatic task state changes.",
       "properties": {
-        "taskStarted": {
+        "taskActive": {
           "type": "boolean",
           "default": true,
           "description": "Show a notification when a task is automatically moved to the active column."
         },
-        "taskCompleted": {
+        "taskDone": {
           "type": "boolean",
           "default": true,
           "description": "Show a notification when a task is automatically moved to the done column."

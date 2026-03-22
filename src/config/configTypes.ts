@@ -59,9 +59,9 @@ export interface ProjectConfigData {
   };
   notifications?: {
     /** Show a VS Code notification when a task is automatically moved to the active column. */
-    taskStarted?: boolean;
+    taskActive?: boolean;
     /** Show a VS Code notification when a task is automatically moved to the done column. */
-    taskCompleted?: boolean;
+    taskDone?: boolean;
   };
   pollInterval?: number;
   logLevel?: string;

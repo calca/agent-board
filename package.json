@@ -198,12 +198,12 @@
           "default": "review",
           "description": "Column tasks are moved to when the agent completes. Overridable in .agent-board/config.json."
         },
-        "agentBoard.notifications.taskStarted": {
+        "agentBoard.notifications.taskActive": {
           "type": "boolean",
           "default": true,
           "description": "Show a VS Code notification when a task is automatically moved to the active column. Overridable in .agent-board/config.json."
         },
-        "agentBoard.notifications.taskCompleted": {
+        "agentBoard.notifications.taskDone": {
           "type": "boolean",
           "default": true,
           "description": "Show a VS Code notification when a task is automatically moved to the done column. Overridable in .agent-board/config.json."

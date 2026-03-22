@@ -215,23 +215,23 @@ suite('ProjectConfigData squad/notifications', () => {
   test('notifications config with both flags', () => {
     const cfg = {
       notifications: {
-        taskStarted: true,
-        taskCompleted: false,
+        taskActive: true,
+        taskDone: false,
       },
     };
-    assert.strictEqual(cfg.notifications.taskStarted, true);
-    assert.strictEqual(cfg.notifications.taskCompleted, false);
+    assert.strictEqual(cfg.notifications.taskActive, true);
+    assert.strictEqual(cfg.notifications.taskDone, false);
   });
 
   test('full config with squad and notifications', () => {
     const cfg = {
       github: { owner: 'calca', repo: 'agent-board' },
       squad: { maxSessions: 8 },
-      notifications: { taskStarted: true, taskCompleted: true },
+      notifications: { taskActive: true, taskDone: true },
       pollInterval: 10000,
     };
     assert.strictEqual(cfg.squad.maxSessions, 8);
-    assert.strictEqual(cfg.notifications.taskStarted, true);
-    assert.strictEqual(cfg.notifications.taskCompleted, true);
+    assert.strictEqual(cfg.notifications.taskActive, true);
+    assert.strictEqual(cfg.notifications.taskDone, true);
   });
 });
