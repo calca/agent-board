@@ -1,5 +1,6 @@
 import * as vscode from 'vscode';
 import { Logger } from '../utils/logger';
+import { ProjectConfig } from '../config/ProjectConfig';
 
 /**
  * Copilot Local runner — sends prompts to a local Ollama endpoint.
@@ -10,8 +11,12 @@ export class LocalRunner {
   static async run(prompt: string): Promise<void> {
     const logger = Logger.getInstance();
     const endpoint = 'http://localhost:11434/api/generate';
-    const cfg = vscode.workspace.getConfiguration('agentBoard');
-    const model = cfg.get<string>('copilot.localModel', 'llama3');
+    const projectCfg = ProjectConfig.getProjectConfig();
+    const model = ProjectConfig.resolve(
+      projectCfg?.copilot?.localModel,
+      'copilot.localModel',
+      'llama3',
+    );
 
     const channel = vscode.window.createOutputChannel('Copilot Local');
     channel.show(true);

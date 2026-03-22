@@ -109,31 +109,15 @@
     "configuration": {
       "title": "Agent Board",
       "properties": {
-        "agentBoard.github.token": {
-          "type": "string",
-          "default": "",
-          "description": "GitHub personal access token for the GitHub task provider. For better security, prefer storing the token in VSCode SecretStorage.",
-          "markdownDescription": "GitHub personal access token for the GitHub task provider. For better security, prefer storing the token via the **Accounts** menu."
-        },
-        "agentBoard.github.owner": {
-          "type": "string",
-          "default": "",
-          "description": "GitHub repository owner (user or org) for the GitHub task provider."
-        },
-        "agentBoard.github.repo": {
-          "type": "string",
-          "default": "",
-          "description": "GitHub repository name for the GitHub task provider."
-        },
         "agentBoard.jsonProvider.path": {
           "type": "string",
-          "default": "",
-          "description": "Absolute or workspace-relative path to a JSON file containing tasks for the JSON provider."
+          "default": ".agent-board/tasks",
+          "description": "Workspace-relative or absolute path to a JSON file containing tasks for the JSON provider. Overridable in .agent-board/config.json."
         },
         "agentBoard.beadsProvider.executable": {
           "type": "string",
           "default": "beads",
-          "description": "Path to the Beads CLI executable."
+          "description": "Path to the Beads CLI executable. Overridable in .agent-board/config.json."
         },
         "agentBoard.copilot.defaultMode": {
           "type": "string",
@@ -144,7 +128,7 @@
             "background"
           ],
           "default": "chat",
-          "description": "Default Copilot mode when launching a task session.",
+          "description": "Default Copilot mode when launching a task session. Overridable in .agent-board/config.json.",
           "enumDescriptions": [
             "Open VS Code chat with task context pre-filled",
             "Use GitHub Copilot cloud model",
@@ -155,7 +139,7 @@
         "agentBoard.copilot.localModel": {
           "type": "string",
           "default": "llama3",
-          "description": "Ollama model name to use in local Copilot mode."
+          "description": "Ollama model name to use in local Copilot mode. Overridable in .agent-board/config.json."
         },
         "agentBoard.kanban.columns": {
           "type": "array",
@@ -168,13 +152,13 @@
             "review",
             "done"
           ],
-          "description": "Ordered list of Kanban column identifiers."
+          "description": "Ordered list of Kanban column identifiers. Overridable in .agent-board/config.json."
         },
         "agentBoard.pollInterval": {
           "type": "number",
           "default": 30000,
           "minimum": 5000,
-          "description": "Polling interval in milliseconds for providers that use polling (e.g. Beads)."
+          "description": "Polling interval in milliseconds for providers that use polling (e.g. Beads). Overridable in .agent-board/config.json."
         },
         "agentBoard.logLevel": {
           "type": "string",
@@ -185,7 +169,7 @@
             "ERROR"
           ],
           "default": "INFO",
-          "description": "Log level for the Task Kanban output channel."
+          "description": "Log level for the Agent Board output channel. Overridable in .agent-board/config.json."
         }
       }
     },
@@ -229,7 +213,13 @@
           "group": "inline"
         }
       ]
-    }
+    },
+    "jsonValidation": [
+      {
+        "fileMatch": ".agent-board/config.json",
+        "url": "./schemas/agent-board-config.schema.json"
+      }
+    ]
   },
   "scripts": {
     "vscode:prepublish": "npm run compile",
@@ -237,7 +227,7 @@
     "watch": "tsc -watch -p ./",
     "pretest": "npm run compile && npm run lint",
     "lint": "eslint src --ext ts",
-    "test": "mocha out/test/suite/taskStore.test.js out/test/suite/agentManager.test.js out/test/suite/providerRegistry.test.js out/test/suite/columnId.test.js out/test/suite/aggregatorProvider.test.js out/test/suite/schema.test.js out/test/suite/contextBuilder.test.js out/test/suite/messages.test.js --ui tdd --reporter spec"
+    "test": "mocha out/test/suite/taskStore.test.js out/test/suite/agentManager.test.js out/test/suite/providerRegistry.test.js out/test/suite/columnId.test.js out/test/suite/aggregatorProvider.test.js out/test/suite/schema.test.js out/test/suite/contextBuilder.test.js out/test/suite/messages.test.js out/test/suite/projectConfig.test.js out/test/suite/githubProvider.test.js --ui tdd --reporter spec"
   },
   "devDependencies": {
     "@types/mocha": "^10.0.6",

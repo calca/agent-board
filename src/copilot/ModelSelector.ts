@@ -1,5 +1,6 @@
 import * as vscode from 'vscode';
 import { CopilotMode } from '../types/Messages';
+import { ProjectConfig } from '../config/ProjectConfig';
 
 /**
  * Quick Pick for selecting the Copilot mode (cloud / local / background).
@@ -39,10 +40,15 @@ export class ModelSelector {
 
   /** Get the currently selected mode. */
   getMode(): CopilotMode {
-    const cfg = vscode.workspace.getConfiguration('agentBoard');
+    const projectCfg = ProjectConfig.getProjectConfig();
+    const resolved = ProjectConfig.resolve(
+      projectCfg?.copilot?.defaultMode as CopilotMode | undefined,
+      'copilot.defaultMode',
+      'cloud' as CopilotMode,
+    );
     return this.context.workspaceState.get<CopilotMode>(
       ModelSelector.STATE_KEY,
-      cfg.get<CopilotMode>('copilot.defaultMode', 'cloud'),
+      resolved,
     );
   }
 

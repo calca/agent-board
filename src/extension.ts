@@ -12,6 +12,7 @@ import { KanbanPanel } from './kanban/KanbanPanel';
 import { CopilotLauncher } from './copilot/CopilotLauncher';
 import { ModelSelector } from './copilot/ModelSelector';
 import { registerChatParticipant } from './copilot/ChatParticipant';
+import { GitHubProvider } from './providers/GitHubProvider';
 
 export function activate(context: vscode.ExtensionContext): void {
   const logger = Logger.getInstance();
@@ -21,6 +22,10 @@ export function activate(context: vscode.ExtensionContext): void {
 
   const providerRegistry = new ProviderRegistry();
   const providerPicker = new ProviderPicker(providerRegistry, context);
+
+  // Register the GitHub provider (uses VSCode SSO + .agent-board/config.json)
+  const githubProvider = new GitHubProvider(context);
+  providerRegistry.register(githubProvider);
 
   // ── Copilot infrastructure ─────────────────────────────────────────────
 

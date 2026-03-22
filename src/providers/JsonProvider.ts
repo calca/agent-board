@@ -4,6 +4,7 @@ import * as fs from 'fs';
 import { ITaskProvider } from './ITaskProvider';
 import { KanbanTask } from '../types/KanbanTask';
 import { ColumnId, COLUMN_IDS } from '../types/ColumnId';
+import { ProjectConfig } from '../config/ProjectConfig';
 
 /** Schema for a single task entry in the JSON file. */
 interface JsonTaskEntry {
@@ -71,8 +72,12 @@ export class JsonProvider implements ITaskProvider {
   // ── private ─────────────────────────────────────────────────────────
 
   private readConfig(): void {
-    const cfg = vscode.workspace.getConfiguration('agentBoard');
-    const raw = cfg.get<string>('jsonProvider.path', '');
+    const projectCfg = ProjectConfig.getProjectConfig();
+    const raw = ProjectConfig.resolve(
+      projectCfg?.jsonProvider?.path,
+      'jsonProvider.path',
+      '.agent-board/tasks',
+    );
     if (!raw) {
       this.filePath = '';
       return;

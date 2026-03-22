@@ -2,8 +2,9 @@ import * as vscode from 'vscode';
 import { ITaskProvider } from './ITaskProvider';
 import { KanbanTask } from '../types/KanbanTask';
 import { ColumnId } from '../types/ColumnId';
+import { ProjectConfig } from '../config/ProjectConfig';
 
-interface GitHubIssue {
+export interface GitHubIssue {
   number: number;
   title: string;
   body: string | null;
@@ -15,19 +16,13 @@ interface GitHubIssue {
   [key: string]: unknown;
 }
 
-interface GitHubApiOptions {
-  owner: string;
-  repo: string;
-  token: string;
-  perPage?: number;
-  cacheTtlMs?: number;
-}
-
 /**
  * Task provider backed by GitHub Issues (REST API).
  *
- * Auth is read from VSCode SecretStorage (preferred) or the
- * `agentBoard.github.token` setting as fallback.
+ * Auth uses the VSCode built-in GitHub SSO (`vscode.authentication`).
+ *
+ * Repository coordinates (`owner`/`repo`) are read from the per-project
+ * file `.agent-board/config.json`.
  */
 export class GitHubProvider implements ITaskProvider {
   readonly id = 'github';
@@ -58,8 +53,9 @@ export class GitHubProvider implements ITaskProvider {
   }
 
   async updateTask(task: KanbanTask): Promise<void> {
+    await this.ensureToken();
     if (!this.token) {
-      throw new Error('GitHub token not configured');
+      throw new Error('GitHub authentication required. Please sign in via the Accounts menu.');
     }
 
     const nativeId = task.id.replace(`${this.id}:`, '');
@@ -95,11 +91,29 @@ export class GitHubProvider implements ITaskProvider {
   // ── private ─────────────────────────────────────────────────────────
 
   private readConfig(): void {
-    const cfg = vscode.workspace.getConfiguration('agentBoard');
-    this.token = cfg.get<string>('github.token', '');
-    this.owner = cfg.get<string>('github.owner', '');
-    this.repo = cfg.get<string>('github.repo', '');
+    const ghCfg = ProjectConfig.getGitHubConfig();
+    this.owner = ghCfg.owner;
+    this.repo = ghCfg.repo;
     this.cacheTtlMs = 60_000;
+  }
+
+  /**
+   * Obtain a token via VSCode's built-in GitHub SSO.
+   */
+  private async ensureToken(): Promise<void> {
+    if (this.token) {
+      return;
+    }
+    try {
+      const session = await vscode.authentication.getSession('github', ['repo'], {
+        createIfNone: false,
+      });
+      if (session) {
+        this.token = session.accessToken;
+      }
+    } catch {
+      // SSO not available
+    }
   }
 
   private isCacheValid(): boolean {
@@ -107,6 +121,8 @@ export class GitHubProvider implements ITaskProvider {
   }
 
   private async fetchTasks(): Promise<KanbanTask[]> {
+    await this.ensureToken();
+
     if (!this.token || !this.owner || !this.repo) {
       return [];
     }

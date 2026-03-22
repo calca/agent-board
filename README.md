@@ -8,7 +8,9 @@
 
 - **Kanban Board** — drag-and-drop task management with configurable columns
 - **Extensible Providers** — load tasks from GitHub Issues, local JSON files, Beads CLI, or any custom source
-- **Copilot Integration** — launch Copilot sessions with full task context (cloud, local Ollama, or background mode)
+- **Copilot Integration** — launch Copilot sessions with full task context (chat, cloud, local Ollama, or background mode)
+- **Per-Project Configuration** — every setting can be overridden per project via `.agent-board/config.json`
+- **GitHub SSO** — authenticate via VS Code's built-in GitHub SSO (no PAT required)
 - **Tree Views** — sidebar tasks and agents views in the Activity Bar
 - **Native Theming** — respects VS Code themes (Dark+, Light+, High Contrast)
 
@@ -30,18 +32,46 @@ npm run compile
 # Press F5 in VS Code to launch the Extension Development Host
 ```
 
-## Configuration
+## Per-Project Configuration
 
-Open **File > Preferences > Settings** and search for `agentBoard`:
+Create a `.agent-board/config.json` file in the workspace root to override any VS Code setting per project. Values in this file take priority over VS Code settings.
+
+```jsonc
+// .agent-board/config.json
+{
+  "github": {
+    "owner": "calca",
+    "repo": "agent-board"
+  },
+  "jsonProvider": {
+    "path": ".agent-board/tasks"
+  },
+  "beadsProvider": {
+    "executable": "/usr/local/bin/beads"
+  },
+  "copilot": {
+    "defaultMode": "chat",
+    "localModel": "codellama"
+  },
+  "kanban": {
+    "columns": ["todo", "inprogress", "review", "done"]
+  },
+  "pollInterval": 15000,
+  "logLevel": "DEBUG"
+}
+```
+
+The file is validated with a JSON schema that provides autocomplete and inline documentation in VS Code.
+
+## VS Code Settings
+
+All settings can also be configured globally through **File > Preferences > Settings** (search for `agentBoard`). Per-project values in `.agent-board/config.json` take priority.
 
 | Setting | Default | Description |
 |---------|---------|-------------|
-| `agentBoard.github.token` | `""` | GitHub personal access token |
-| `agentBoard.github.owner` | `""` | GitHub repository owner (user or org) |
-| `agentBoard.github.repo` | `""` | GitHub repository name |
-| `agentBoard.jsonProvider.path` | `""` | Path to JSON tasks file |
+| `agentBoard.jsonProvider.path` | `".agent-board/tasks"` | Path to JSON tasks file |
 | `agentBoard.beadsProvider.executable` | `"beads"` | Path to Beads CLI |
-| `agentBoard.copilot.defaultMode` | `"cloud"` | Default Copilot mode: `cloud`, `local`, `background` |
+| `agentBoard.copilot.defaultMode` | `"chat"` | Default Copilot mode: `chat`, `cloud`, `local`, `background` |
 | `agentBoard.copilot.localModel` | `"llama3"` | Ollama model name for local mode |
 | `agentBoard.kanban.columns` | `["todo","inprogress","review","done"]` | Kanban column IDs |
 | `agentBoard.pollInterval` | `30000` | Polling interval (ms) for providers |
@@ -65,10 +95,10 @@ Open **File > Preferences > Settings** and search for `agentBoard`:
 ## Task Providers
 
 ### GitHub Issues
-Set `agentBoard.github.token` to a PAT with `repo` scope. Tasks are loaded from the current workspace repository.
+Authentication uses VS Code's built-in GitHub SSO — sign in via the **Accounts** menu. Repository coordinates (`owner`/`repo`) are configured in `.agent-board/config.json`.
 
 ### JSON File
-Set `agentBoard.jsonProvider.path` to a file path. Schema: [tasks.schema.json](schemas/tasks.schema.json)
+Tasks are stored at `.agent-board/tasks` by default (override via `jsonProvider.path` in the config file or VS Code settings). Schema: [tasks.schema.json](schemas/tasks.schema.json)
 
 ```json
 [
@@ -84,7 +114,7 @@ Set `agentBoard.jsonProvider.path` to a file path. Schema: [tasks.schema.json](s
 ```
 
 ### Beads CLI
-Set `agentBoard.beadsProvider.executable` to your Beads installation path.
+Configure `beadsProvider.executable` in `.agent-board/config.json` or VS Code settings.
 
 ### Custom Providers
 Register third-party providers via the extension API:
@@ -99,6 +129,7 @@ registry?.register(myCustomProvider);
 
 | Mode | Description |
 |------|-------------|
+| **Chat** | Opens VS Code native chat with task context pre-filled (default) |
 | **Cloud** | Uses GitHub Copilot via `vscode.lm` API |
 | **Local** | Sends prompts to Ollama at `localhost:11434` |
 | **Background** | Runs silently, saves results to `.kanban-notes/` |
@@ -107,9 +138,10 @@ registry?.register(myCustomProvider);
 
 ```
 Extension Host (Node.js)
+├── ProjectConfig → .agent-board/config.json (per-project overrides)
 ├── ProviderRegistry → ITaskProvider implementations
-│   ├── GitHubProvider (REST API + cache)
-│   ├── JsonProvider (FileSystemWatcher)
+│   ├── GitHubProvider (REST API + VSCode SSO + cache)
+│   ├── JsonProvider (FileSystemWatcher, default: .agent-board/tasks)
 │   ├── BeadsProvider (CLI + polling)
 │   └── AggregatorProvider (merge + dedup)
 ├── KanbanPanel → WebView (HTML/CSS/JS)

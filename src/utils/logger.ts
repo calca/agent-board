@@ -1,4 +1,5 @@
 import * as vscode from 'vscode';
+import { ProjectConfig } from '../config/ProjectConfig';
 
 export enum LogLevel {
   DEBUG = 0,
@@ -80,8 +81,12 @@ export class Logger {
   }
 
   private readLevel(): LogLevel {
-    const cfg = vscode.workspace.getConfiguration('agentBoard');
-    const raw = cfg.get<string>('logLevel', 'INFO').toUpperCase();
+    const projectCfg = ProjectConfig.getProjectConfig();
+    const raw = ProjectConfig.resolve(
+      projectCfg?.logLevel,
+      'logLevel',
+      'INFO',
+    ).toUpperCase();
     switch (raw) {
       case 'DEBUG': return LogLevel.DEBUG;
       case 'WARN': return LogLevel.WARN;
