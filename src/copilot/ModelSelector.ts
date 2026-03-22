@@ -1,70 +1,84 @@
 import * as vscode from 'vscode';
-import { CopilotMode } from '../types/Messages';
 import { ProjectConfig } from '../config/ProjectConfig';
+import { GenAiProviderRegistry } from './GenAiProviderRegistry';
 
 /**
- * Quick Pick for selecting the Copilot mode (cloud / local / background).
- * Persists selection in `workspaceState`. Shows current mode in status bar.
+ * Quick Pick for selecting the active GenAI provider.
+ * Persists selection in `workspaceState`. Shows current provider in status bar.
+ *
+ * Builds the picker dynamically from the `GenAiProviderRegistry`.
  */
 export class ModelSelector {
   private static readonly STATE_KEY = 'agentBoard.copilotMode';
   private readonly statusBarItem: vscode.StatusBarItem;
 
-  constructor(private readonly context: vscode.ExtensionContext) {
+  constructor(
+    private readonly context: vscode.ExtensionContext,
+    private readonly genAiRegistry: GenAiProviderRegistry,
+  ) {
     this.statusBarItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right, 50);
     this.statusBarItem.command = 'agentBoard.selectCopilotMode';
     this.updateStatusBar();
     this.statusBarItem.show();
   }
 
-  /** Show Quick Pick and return the selected mode. */
-  async pick(): Promise<CopilotMode | undefined> {
-    const items: Array<vscode.QuickPickItem & { mode: CopilotMode }> = [
-      { label: '$(comment-discussion) Chat', description: 'Open VS Code chat with task context', mode: 'chat' },
-      { label: '$(cloud) Cloud', description: 'GitHub Copilot cloud model', mode: 'cloud' },
-      { label: '$(server) Local', description: 'Local Ollama model', mode: 'local' },
-      { label: '$(file-text) Background', description: 'Run silently, save to file', mode: 'background' },
-    ];
+  /** Show Quick Pick and return the selected provider id. */
+  async pick(): Promise<string | undefined> {
+    const providers = this.genAiRegistry.getAll();
+    const items = providers.map(p => ({
+      label: `$(${p.icon}) ${p.displayName}`,
+      description: p.scope === 'global' ? 'VS Code integrated' : 'Project provider',
+      providerId: p.id,
+    }));
 
     const selected = await vscode.window.showQuickPick(items, {
-      placeHolder: 'Select Copilot mode',
+      placeHolder: 'Select GenAI provider',
     });
 
     if (selected) {
-      await this.context.workspaceState.update(ModelSelector.STATE_KEY, selected.mode);
+      await this.context.workspaceState.update(ModelSelector.STATE_KEY, selected.providerId);
       this.updateStatusBar();
     }
 
-    return selected?.mode;
+    return selected?.providerId;
   }
 
-  /** Get the currently selected mode. */
-  getMode(): CopilotMode {
+  /** Get the currently selected provider id. */
+  getMode(): string {
     const projectCfg = ProjectConfig.getProjectConfig();
     const resolved = ProjectConfig.resolve(
-      projectCfg?.copilot?.defaultMode as CopilotMode | undefined,
+      projectCfg?.copilot?.defaultMode,
       'copilot.defaultMode',
-      'cloud' as CopilotMode,
+      'cloud',
     );
-    return this.context.workspaceState.get<CopilotMode>(
+    const stored = this.context.workspaceState.get<string>(
       ModelSelector.STATE_KEY,
       resolved,
     );
+
+    // Validate stored value against registry (the provider may have been removed)
+    if (!this.genAiRegistry.get(stored)) {
+      return resolved;
+    }
+
+    return stored;
   }
 
   dispose(): void {
     this.statusBarItem.dispose();
   }
 
+  // ── Private helpers ───────────────────────────────────────────────────
+
   private updateStatusBar(): void {
     const mode = this.getMode();
-    const icons: Record<CopilotMode, string> = {
-      chat: '$(comment-discussion)',
-      cloud: '$(cloud)',
-      local: '$(server)',
-      background: '$(file-text)',
-    };
-    this.statusBarItem.text = `${icons[mode]} Copilot: ${mode}`;
-    this.statusBarItem.tooltip = 'Click to change Copilot mode';
+    const provider = this.genAiRegistry.get(mode);
+
+    if (provider) {
+      this.statusBarItem.text = `$(${provider.icon}) Copilot: ${provider.displayName}`;
+    } else {
+      this.statusBarItem.text = `$(beaker) Copilot: ${mode}`;
+    }
+    this.statusBarItem.tooltip = 'Click to change GenAI provider';
   }
 }

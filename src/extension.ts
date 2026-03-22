@@ -13,6 +13,13 @@ import { CopilotLauncher } from './copilot/CopilotLauncher';
 import { ModelSelector } from './copilot/ModelSelector';
 import { registerChatParticipant } from './copilot/ChatParticipant';
 import { GitHubProvider } from './providers/GitHubProvider';
+import { GenAiProviderRegistry } from './copilot/GenAiProviderRegistry';
+import { ChatGenAiProvider } from './copilot/providers/ChatGenAiProvider';
+import { CloudGenAiProvider } from './copilot/providers/CloudGenAiProvider';
+import { CopilotCliGenAiProvider } from './copilot/providers/CopilotCliGenAiProvider';
+import { OllamaGenAiProvider } from './copilot/providers/OllamaGenAiProvider';
+import { MistralGenAiProvider } from './copilot/providers/MistralGenAiProvider';
+import { ProjectConfig } from './config/ProjectConfig';
 
 export function activate(context: vscode.ExtensionContext): void {
   const logger = Logger.getInstance();
@@ -27,10 +34,22 @@ export function activate(context: vscode.ExtensionContext): void {
   const githubProvider = new GitHubProvider(context);
   providerRegistry.register(githubProvider);
 
+  // ── GenAI provider infrastructure ─────────────────────────────────────
+
+  const genAiRegistry = new GenAiProviderRegistry();
+
+  // Global providers (VS Code integrated) — always registered
+  genAiRegistry.register(new ChatGenAiProvider());
+  genAiRegistry.register(new CloudGenAiProvider());
+  genAiRegistry.register(new CopilotCliGenAiProvider());
+
+  // Project providers — registered only when enabled in config
+  registerProjectGenAiProviders(genAiRegistry);
+
   // ── Copilot infrastructure ─────────────────────────────────────────────
 
-  const copilotLauncher = new CopilotLauncher(providerRegistry, context);
-  const modelSelector = new ModelSelector(context);
+  const copilotLauncher = new CopilotLauncher(providerRegistry, context, genAiRegistry);
+  const modelSelector = new ModelSelector(context, genAiRegistry);
 
   // Register @taskai chat participant (gracefully skipped if API unavailable)
   const chatParticipant = registerChatParticipant(context, providerRegistry);
@@ -285,6 +304,7 @@ export function activate(context: vscode.ExtensionContext): void {
     launchCopilot,
     modelSelector,
     { dispose: () => providerRegistry.disposeAll() },
+    { dispose: () => genAiRegistry.disposeAll() },
     logger,
   );
 
@@ -344,4 +364,52 @@ async function sendTasksToPanel(panel: KanbanPanel, registry: ProviderRegistry):
     .flatMap(r => r.value);
 
   panel.updateTasks(allTasks);
+}
+
+/** IDs of GenAI providers that are always registered (VS Code integrated). */
+const GLOBAL_GENAI_PROVIDER_IDS = ['chat', 'cloud', 'copilot-cli'];
+
+/**
+ * Register project-scoped GenAI providers based on `.agent-board/config.json`.
+ *
+ * Global providers (chat, cloud, copilot-cli) are always registered.
+ * Project providers (ollama, mistral) are only registered when explicitly
+ * enabled in the project config.
+ */
+function registerProjectGenAiProviders(genAiRegistry: GenAiProviderRegistry): void {
+  const logger = Logger.getInstance();
+  const projectCfg = ProjectConfig.getProjectConfig();
+  const providers = projectCfg?.genAiProviders;
+  if (!providers) {
+    return;
+  }
+
+  for (const [id, entry] of Object.entries(providers)) {
+    // Skip global providers — they are always registered above
+    if (GLOBAL_GENAI_PROVIDER_IDS.includes(id)) {
+      continue;
+    }
+
+    if (!entry.enabled) {
+      continue;
+    }
+
+    try {
+      switch (id) {
+        case 'ollama':
+          genAiRegistry.register(new OllamaGenAiProvider(entry));
+          logger.info(`Registered project GenAI provider: ${id}`);
+          break;
+        case 'mistral':
+          genAiRegistry.register(new MistralGenAiProvider(entry));
+          logger.info(`Registered project GenAI provider: ${id}`);
+          break;
+        default:
+          logger.info(`Unknown GenAI provider "${id}" in config — skipped`);
+          break;
+      }
+    } catch (err) {
+      logger.error(`Failed to register GenAI provider "${id}":`, String(err));
+    }
+  }
 }
