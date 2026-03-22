@@ -65,6 +65,12 @@ export interface ProjectConfigData {
      * Tasks matching an earlier label are launched first.
      */
     priorityLabels?: string[];
+    /**
+     * Maximum time in milliseconds a session may run before being
+     * timed out and marked as failed (default 300 000 = 5 min).
+     * Set to 0 to disable timeout.
+     */
+    sessionTimeout?: number;
   };
   notifications?: {
     /** Show a VS Code notification when a task is automatically moved to the active column. */

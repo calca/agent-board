@@ -3,12 +3,14 @@ import {
   computeAvailableSlots,
   canRetry,
   sortByPriority,
+  isTimedOut,
   DEFAULT_MAX_SESSIONS,
   DEFAULT_SOURCE_COLUMN,
   DEFAULT_ACTIVE_COLUMN,
   DEFAULT_DONE_COLUMN,
   DEFAULT_AUTO_SQUAD_INTERVAL,
   DEFAULT_MAX_RETRIES,
+  DEFAULT_SESSION_TIMEOUT,
 } from '../../copilot/squadUtils';
 import { KanbanTask } from '../../types/KanbanTask';
 
@@ -65,6 +67,10 @@ suite('SquadManager constants', () => {
 
   test('DEFAULT_MAX_RETRIES is 0', () => {
     assert.strictEqual(DEFAULT_MAX_RETRIES, 0);
+  });
+
+  test('DEFAULT_SESSION_TIMEOUT is 300000', () => {
+    assert.strictEqual(DEFAULT_SESSION_TIMEOUT, 300_000);
   });
 });
 
@@ -254,11 +260,13 @@ suite('ProjectConfigData squad/notifications', () => {
         autoSquadInterval: 30000,
         maxRetries: 3,
         priorityLabels: ['critical', 'high', 'medium'],
+        sessionTimeout: 600000,
       },
     };
     assert.strictEqual(cfg.squad.autoSquadInterval, 30000);
     assert.strictEqual(cfg.squad.maxRetries, 3);
     assert.deepStrictEqual(cfg.squad.priorityLabels, ['critical', 'high', 'medium']);
+    assert.strictEqual(cfg.squad.sessionTimeout, 600000);
   });
 });
 
@@ -370,5 +378,41 @@ suite('sortByPriority', () => {
   test('empty task list returns empty', () => {
     const result = sortByPriority([], ['critical']);
     assert.deepStrictEqual(result, []);
+  });
+});
+
+suite('isTimedOut', () => {
+  test('returns false when timeout is 0 (disabled)', () => {
+    const startedAt = new Date(Date.now() - 600_000).toISOString();
+    assert.strictEqual(isTimedOut(startedAt, 0), false);
+  });
+
+  test('returns false when timeout is negative (disabled)', () => {
+    const startedAt = new Date(Date.now() - 600_000).toISOString();
+    assert.strictEqual(isTimedOut(startedAt, -1), false);
+  });
+
+  test('returns false when elapsed time is less than timeout', () => {
+    const now = new Date('2026-01-01T00:10:00Z');
+    const startedAt = '2026-01-01T00:05:00Z'; // 5 minutes ago
+    assert.strictEqual(isTimedOut(startedAt, 600_000, now), false); // 10 min timeout
+  });
+
+  test('returns true when elapsed time equals timeout', () => {
+    const now = new Date('2026-01-01T00:10:00Z');
+    const startedAt = '2026-01-01T00:05:00Z'; // 5 minutes ago
+    assert.strictEqual(isTimedOut(startedAt, 300_000, now), true); // 5 min timeout
+  });
+
+  test('returns true when elapsed time exceeds timeout', () => {
+    const now = new Date('2026-01-01T01:00:00Z');
+    const startedAt = '2026-01-01T00:00:00Z'; // 1 hour ago
+    assert.strictEqual(isTimedOut(startedAt, 300_000, now), true); // 5 min timeout
+  });
+
+  test('works with recently started session', () => {
+    const now = new Date('2026-01-01T00:00:01Z');
+    const startedAt = '2026-01-01T00:00:00Z'; // 1 second ago
+    assert.strictEqual(isTimedOut(startedAt, 300_000, now), false);
   });
 });

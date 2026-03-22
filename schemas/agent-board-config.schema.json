@@ -131,6 +131,12 @@
           "items": { "type": "string" },
           "default": [],
           "description": "Ordered list of labels used to prioritise tasks. Tasks matching an earlier label are launched first."
+        },
+        "sessionTimeout": {
+          "type": "number",
+          "minimum": 0,
+          "default": 300000,
+          "description": "Maximum time in milliseconds a session may run before being timed out. Default: 300000 (5 min). Set to 0 to disable."
         }
       },
       "additionalProperties": false

@@ -4,7 +4,7 @@ import { ProviderRegistry } from '../providers/ProviderRegistry';
 import { ContextBuilder } from './ContextBuilder';
 import { GenAiProviderRegistry } from './GenAiProviderRegistry';
 import { Logger } from '../utils/logger';
-import { createWorktree, WorktreeInfo } from './WorktreeManager';
+import { createWorktree, removeWorktree, WorktreeInfo } from './WorktreeManager';
 import { ProjectConfig } from '../config/ProjectConfig';
 
 /**
@@ -54,10 +54,31 @@ export class CopilotLauncher {
       this.logger.info(`CopilotLauncher: worktree ready at ${worktree.path} (branch ${worktree.branch})`);
     }
 
-    await provider.run(prompt, task);
+    try {
+      await provider.run(prompt, task);
+    } finally {
+      // Auto-cleanup worktree after session completes or fails
+      if (worktree) {
+        await this.tryRemoveWorktree(taskId);
+      }
+    }
   }
 
   // ── Private helpers ─────────────────────────────────────────────────
+
+  private async tryRemoveWorktree(taskId: string): Promise<void> {
+    const folders = vscode.workspace.workspaceFolders;
+    if (!folders || folders.length === 0) {
+      return;
+    }
+    const repoRoot = folders[0].uri.fsPath;
+    try {
+      await removeWorktree(repoRoot, taskId);
+      this.logger.info(`CopilotLauncher: worktree removed for task ${taskId}`);
+    } catch (err) {
+      this.logger.error('CopilotLauncher: worktree removal failed:', String(err));
+    }
+  }
 
   private isWorktreeEnabled(): boolean {
     const projectCfg = ProjectConfig.getProjectConfig();

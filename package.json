@@ -217,6 +217,12 @@
           "default": [],
           "description": "Ordered list of labels used to prioritise tasks. Tasks matching an earlier label are launched first. Overridable in .agent-board/config.json."
         },
+        "agentBoard.squad.sessionTimeout": {
+          "type": "number",
+          "default": 300000,
+          "minimum": 0,
+          "description": "Maximum time in milliseconds a session may run before being timed out. Set to 0 to disable. Overridable in .agent-board/config.json."
+        },
         "agentBoard.notifications.taskActive": {
           "type": "boolean",
           "default": true,

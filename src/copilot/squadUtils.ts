@@ -24,6 +24,9 @@ export const DEFAULT_AUTO_SQUAD_INTERVAL = 15_000;
 /** Default maximum retries for a failed session (0 = no retry). */
 export const DEFAULT_MAX_RETRIES = 0;
 
+/** Default session timeout in milliseconds (5 minutes). 0 = no timeout. */
+export const DEFAULT_SESSION_TIMEOUT = 300_000;
+
 /**
  * Compute how many new sessions can be launched.
  */
@@ -61,4 +64,19 @@ export function sortByPriority(tasks: KanbanTask[], priorityLabels: string[]): K
   };
 
   return [...tasks].sort((a, b) => priority(a) - priority(b));
+}
+
+/**
+ * Determine whether a session has exceeded the configured timeout.
+ *
+ * @param startedAt  ISO timestamp when the session started.
+ * @param timeoutMs  Maximum allowed duration in milliseconds. 0 means no timeout.
+ * @param now        Current time (injectable for testing).
+ */
+export function isTimedOut(startedAt: string, timeoutMs: number, now: Date = new Date()): boolean {
+  if (timeoutMs <= 0) {
+    return false;
+  }
+  const elapsed = now.getTime() - new Date(startedAt).getTime();
+  return elapsed >= timeoutMs;
 }
