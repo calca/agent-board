@@ -11,6 +11,7 @@ import { refreshTasksCommand } from './commands/refreshTasks';
 import { KanbanPanel } from './kanban/KanbanPanel';
 import { CopilotLauncher } from './copilot/CopilotLauncher';
 import { ModelSelector } from './copilot/ModelSelector';
+import { SquadManager } from './copilot/SquadManager';
 import { registerChatParticipant } from './copilot/ChatParticipant';
 import { GitHubProvider } from './providers/GitHubProvider';
 import { GenAiProviderRegistry } from './copilot/GenAiProviderRegistry';
@@ -50,6 +51,11 @@ export function activate(context: vscode.ExtensionContext): void {
 
   const copilotLauncher = new CopilotLauncher(providerRegistry, context, genAiRegistry);
   const modelSelector = new ModelSelector(context, genAiRegistry);
+  const squadManager = new SquadManager(
+    providerRegistry,
+    copilotLauncher,
+    () => modelSelector.getMode(),
+  );
 
   // Register @taskai chat participant (gracefully skipped if API unavailable)
   const chatParticipant = registerChatParticipant(context, providerRegistry);
@@ -187,8 +193,9 @@ export function activate(context: vscode.ExtensionContext): void {
     panel.onMessage(async (msg) => {
       switch (msg.type) {
         case 'ready':
-          // Send initial tasks
+          // Send initial tasks and squad status
           await sendTasksToPanel(panel, providerRegistry);
+          panel.updateSquadStatus(squadManager.getStatus());
           break;
         case 'refreshRequest':
           await refreshTasksCommand(providerRegistry);
@@ -210,6 +217,19 @@ export function activate(context: vscode.ExtensionContext): void {
         case 'openCopilot':
           await copilotLauncher.launch(msg.taskId, msg.mode);
           break;
+        case 'startSquad': {
+          const launched = await squadManager.startSquad();
+          vscode.window.showInformationMessage(`Squad: launched ${launched} session${launched === 1 ? '' : 's'}.`);
+          panel.updateSquadStatus(squadManager.getStatus());
+          await sendTasksToPanel(panel, providerRegistry);
+          break;
+        }
+        case 'toggleAutoSquad': {
+          const enabled = squadManager.toggleAutoSquad();
+          vscode.window.showInformationMessage(`Auto-squad ${enabled ? 'enabled' : 'disabled'}.`);
+          panel.updateSquadStatus(squadManager.getStatus());
+          break;
+        }
       }
     });
   });
@@ -227,6 +247,18 @@ export function activate(context: vscode.ExtensionContext): void {
     }
     // If no task is selected, just show info
     vscode.window.showInformationMessage(`Copilot mode set to "${mode}". Select a task from the Kanban board to launch.`);
+  });
+
+  const startSquad = vscode.commands.registerCommand('agentBoard.startSquad', async () => {
+    logger.info('startSquad command invoked');
+    const launched = await squadManager.startSquad();
+    vscode.window.showInformationMessage(`Squad: launched ${launched} session${launched === 1 ? '' : 's'}.`);
+  });
+
+  const toggleAutoSquad = vscode.commands.registerCommand('agentBoard.toggleAutoSquad', async () => {
+    logger.info('toggleAutoSquad command invoked');
+    const enabled = squadManager.toggleAutoSquad();
+    vscode.window.showInformationMessage(`Auto-squad ${enabled ? 'enabled' : 'disabled'}.`);
   });
 
   const runAgent = vscode.commands.registerCommand('agentBoard.runAgent', async (item?: AgentTreeItem) => {
@@ -302,7 +334,10 @@ export function activate(context: vscode.ExtensionContext): void {
     openKanban,
     selectProvider,
     launchCopilot,
+    startSquad,
+    toggleAutoSquad,
     modelSelector,
+    { dispose: () => squadManager.dispose() },
     { dispose: () => providerRegistry.disposeAll() },
     { dispose: () => genAiRegistry.disposeAll() },
     logger,

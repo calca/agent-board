@@ -97,6 +97,18 @@
         "title": "Launch Copilot for Task",
         "icon": "$(copilot)",
         "category": "Agent Board"
+      },
+      {
+        "command": "agentBoard.startSquad",
+        "title": "Start Squad Session",
+        "icon": "$(run-all)",
+        "category": "Agent Board"
+      },
+      {
+        "command": "agentBoard.toggleAutoSquad",
+        "title": "Toggle Auto Squad",
+        "icon": "$(sync)",
+        "category": "Agent Board"
       }
     ],
     "keybindings": [
@@ -180,6 +192,23 @@
           ],
           "default": "INFO",
           "description": "Log level for the Agent Board output channel. Overridable in .agent-board/config.json."
+        },
+        "agentBoard.squad.maxSessions": {
+          "type": "number",
+          "default": 10,
+          "minimum": 1,
+          "maximum": 50,
+          "description": "Maximum number of parallel agent sessions launched by the squad feature. Overridable in .agent-board/config.json."
+        },
+        "agentBoard.notifications.copilotStart": {
+          "type": "boolean",
+          "default": true,
+          "description": "Show a VS Code notification when a copilot session starts. Overridable in .agent-board/config.json."
+        },
+        "agentBoard.notifications.copilotFinish": {
+          "type": "boolean",
+          "default": true,
+          "description": "Show a VS Code notification when a copilot session finishes. Overridable in .agent-board/config.json."
         }
       }
     },
@@ -237,7 +266,7 @@
     "watch": "tsc -watch -p ./",
     "pretest": "npm run compile && npm run lint",
     "lint": "eslint src --ext ts",
-    "test": "mocha out/test/suite/taskStore.test.js out/test/suite/agentManager.test.js out/test/suite/providerRegistry.test.js out/test/suite/columnId.test.js out/test/suite/aggregatorProvider.test.js out/test/suite/schema.test.js out/test/suite/contextBuilder.test.js out/test/suite/messages.test.js out/test/suite/projectConfig.test.js out/test/suite/githubProvider.test.js out/test/suite/genAiProvider.test.js --ui tdd --reporter spec"
+    "test": "mocha out/test/suite/taskStore.test.js out/test/suite/agentManager.test.js out/test/suite/providerRegistry.test.js out/test/suite/columnId.test.js out/test/suite/aggregatorProvider.test.js out/test/suite/schema.test.js out/test/suite/contextBuilder.test.js out/test/suite/messages.test.js out/test/suite/projectConfig.test.js out/test/suite/githubProvider.test.js out/test/suite/genAiProvider.test.js out/test/suite/squadManager.test.js --ui tdd --reporter spec"
   },
   "devDependencies": {
     "@types/mocha": "^10.0.6",

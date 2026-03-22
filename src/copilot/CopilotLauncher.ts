@@ -3,6 +3,7 @@ import { KanbanTask } from '../types/KanbanTask';
 import { ProviderRegistry } from '../providers/ProviderRegistry';
 import { ContextBuilder } from './ContextBuilder';
 import { GenAiProviderRegistry } from './GenAiProviderRegistry';
+import { ProjectConfig } from '../config/ProjectConfig';
 import { Logger } from '../utils/logger';
 
 /**
@@ -11,6 +12,8 @@ import { Logger } from '../utils/logger';
  * Receives a `taskId` and a GenAI provider `id`, resolves the task
  * from the task registry, builds context via `ContextBuilder`, and
  * delegates to the matching `IGenAiProvider`.
+ *
+ * Sends VS Code notifications on start/finish when enabled in config.
  */
 export class CopilotLauncher {
   private readonly logger = Logger.getInstance();
@@ -36,8 +39,32 @@ export class CopilotLauncher {
       return;
     }
 
+    // Notify on start
+    if (this.shouldNotify('copilotStart')) {
+      vscode.window.showInformationMessage(
+        `Copilot started for "${task.title}" (provider: ${provider.displayName})`,
+      );
+    }
+
     const prompt = ContextBuilder.build(task);
-    await provider.run(prompt, task);
+
+    try {
+      await provider.run(prompt, task);
+
+      // Notify on finish
+      if (this.shouldNotify('copilotFinish')) {
+        vscode.window.showInformationMessage(
+          `Copilot finished for "${task.title}" (provider: ${provider.displayName})`,
+        );
+      }
+    } catch (err) {
+      if (this.shouldNotify('copilotFinish')) {
+        vscode.window.showErrorMessage(
+          `Copilot failed for "${task.title}": ${err}`,
+        );
+      }
+      throw err;
+    }
   }
 
   private async resolveTask(taskId: string): Promise<KanbanTask | undefined> {
@@ -48,5 +75,14 @@ export class CopilotLauncher {
     }
     const tasks = await provider.getTasks();
     return tasks.find(t => t.id === taskId);
+  }
+
+  private shouldNotify(key: 'copilotStart' | 'copilotFinish'): boolean {
+    const projectCfg = ProjectConfig.getProjectConfig();
+    return ProjectConfig.resolve(
+      projectCfg?.notifications?.[key],
+      `notifications.${key}`,
+      true,
+    );
   }
 }

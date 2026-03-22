@@ -40,6 +40,16 @@ export interface ProjectConfigData {
   kanban?: {
     columns?: string[];
   };
+  squad?: {
+    /** Maximum parallel agent sessions (default 10). */
+    maxSessions?: number;
+  };
+  notifications?: {
+    /** Show a VS Code notification when a copilot session starts. */
+    copilotStart?: boolean;
+    /** Show a VS Code notification when a copilot session finishes. */
+    copilotFinish?: boolean;
+  };
   pollInterval?: number;
   logLevel?: string;
 }
