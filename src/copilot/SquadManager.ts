@@ -277,7 +277,7 @@ export class SquadManager {
       // Auto-retry when configured
       const maxRetries = this.getMaxRetries();
       const attempt = this.retryCount.get(task.id) ?? 0;
-      if (canRetry(attempt + 1, maxRetries)) {
+      if (canRetry(attempt, maxRetries)) {
         this.retryCount.set(task.id, attempt + 1);
         this.logger.info(
           'SquadManager: retrying task "%s" (attempt %d/%d)',
