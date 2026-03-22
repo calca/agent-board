@@ -39,6 +39,7 @@ export type WebViewToHost =
   | { type: 'openCopilot'; taskId: string; providerId: string; agentSlug?: string }
   | { type: 'refreshRequest'; providerId?: string }
   | { type: 'ready' }
+  | { type: 'addTask' }
   | { type: 'startSquad'; agentSlug?: string }
   | { type: 'toggleAutoSquad'; agentSlug?: string }
   | { type: 'toggleMcp' };

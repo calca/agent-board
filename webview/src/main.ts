@@ -55,6 +55,7 @@ function render(): void {
         <span class="mcp-status__label">MCP ${mcpEnabled ? 'On' : 'Off'}</span>
         <button class="mcp-status__toggle" id="btn-mcp-toggle">${mcpEnabled ? 'Disable' : 'Enable'}</button>
       </div>
+      <button class="provider-bar__add" id="btn-add-task">＋ Add Task</button>
       <button class="provider-bar__refresh" id="btn-refresh">⟳ Refresh</button>
     </div>
     <div class="filters">
@@ -83,6 +84,9 @@ function render(): void {
 
   document.getElementById('btn-mcp-toggle')?.addEventListener('click', () => {
     vscode.postMessage({ type: 'toggleMcp' });
+  });
+  document.getElementById('btn-add-task')?.addEventListener('click', () => {
+    vscode.postMessage({ type: 'addTask' });
   });
 
   document.getElementById('search-input')?.addEventListener('input', (e: Event) => {

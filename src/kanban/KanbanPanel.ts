@@ -64,6 +64,11 @@ export class KanbanPanel {
     return KanbanPanel.instance;
   }
 
+  /** Return the active singleton instance, or undefined if no panel is open. */
+  static getInstance(): KanbanPanel | undefined {
+    return KanbanPanel.instance;
+  }
+
   /** Serializer for restoring the panel after reload. */
   static getSerializer(extensionUri: vscode.Uri): vscode.WebviewPanelSerializer {
     return {

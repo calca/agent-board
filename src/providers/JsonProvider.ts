@@ -6,7 +6,7 @@ import { KanbanTask } from '../types/KanbanTask';
 import { ColumnId, COLUMN_IDS } from '../types/ColumnId';
 import { ProjectConfig } from '../config/ProjectConfig';
 
-/** Schema for a single task entry in the JSON file. */
+/** Shape of a single task file on disk. */
 interface JsonTaskEntry {
   id: string;
   title: string;
@@ -20,22 +20,26 @@ interface JsonTaskEntry {
 }
 
 /**
- * Task provider backed by a local JSON file.
+ * Task provider backed by one JSON file per task under a directory.
  *
- * Watches the file with `vscode.workspace.createFileSystemWatcher`
- * and reloads automatically when it changes.
+ * Default directory: `.agent-board/tasks/`
+ * Each task is stored as `<nativeId>.json` within that directory.
+ * A `FileSystemWatcher` on `<dir>/**\/*.json` keeps the in-memory
+ * cache in sync with any external edits.
  */
 export class JsonProvider implements ITaskProvider {
   readonly id = 'json';
-  readonly displayName = 'JSON File';
-  readonly icon = 'file-code';
+  readonly displayName = 'Tasks';
+  readonly icon = 'tasklist';
 
   private readonly _onDidChangeTasks = new vscode.EventEmitter<KanbanTask[]>();
   readonly onDidChangeTasks = this._onDidChangeTasks.event;
 
   private watcher: vscode.FileSystemWatcher | undefined;
-  private filePath = '';
+  /** Absolute path to the tasks directory. Empty when no workspace is open. */
+  private tasksDir = '';
   private tasks: KanbanTask[] = [];
+  private loaded = false;
 
   constructor() {
     this.readConfig();
@@ -43,7 +47,7 @@ export class JsonProvider implements ITaskProvider {
   }
 
   async getTasks(): Promise<KanbanTask[]> {
-    if (this.tasks.length === 0) {
+    if (!this.loaded) {
       await this.loadFromDisk();
     }
     return this.tasks;
@@ -54,11 +58,43 @@ export class JsonProvider implements ITaskProvider {
     if (index !== -1) {
       this.tasks[index] = task;
     }
-    await this.saveToDisk();
+    await this.writeTaskFile(task);
+    this._onDidChangeTasks.fire(this.tasks);
+  }
+
+  async createTask(title: string, description?: string): Promise<KanbanTask> {
+    if (!this.loaded) {
+      await this.loadFromDisk();
+    }
+    const nativeId = `task-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+    const task: KanbanTask = {
+      id: `${this.id}:${nativeId}`,
+      title,
+      body: description ?? '',
+      status: 'todo',
+      labels: [],
+      providerId: this.id,
+      createdAt: new Date(),
+      meta: {},
+    };
+    this.tasks.push(task);
+    await this.writeTaskFile(task);
+    this._onDidChangeTasks.fire(this.tasks);
+    return task;
+  }
+
+  async deleteTaskById(compositeId: string): Promise<boolean> {
+    const index = this.tasks.findIndex(t => t.id === compositeId);
+    if (index === -1) { return false; }
+    const [task] = this.tasks.splice(index, 1);
+    this.deleteTaskFile(task);
+    this._onDidChangeTasks.fire(this.tasks);
+    return true;
   }
 
   async refresh(): Promise<void> {
     this.readConfig();
+    this.loaded = false;
     this.setupWatcher();
     await this.loadFromDisk();
     this._onDidChangeTasks.fire(this.tasks);
@@ -69,7 +105,7 @@ export class JsonProvider implements ITaskProvider {
     this._onDidChangeTasks.dispose();
   }
 
-  // ── private ─────────────────────────────────────────────────────────
+  // ── private ──────────────────────────────────────────────────────────
 
   private readConfig(): void {
     const projectCfg = ProjectConfig.getProjectConfig();
@@ -79,60 +115,77 @@ export class JsonProvider implements ITaskProvider {
       '.agent-board/tasks',
     );
     if (!raw) {
-      this.filePath = '';
+      this.tasksDir = '';
       return;
     }
-    if (path.isAbsolute(raw)) {
-      this.filePath = raw;
+    // Strip a trailing .json extension — the config used to point at a single file
+    const dirPath = raw.endsWith('.json') ? raw.slice(0, -5) : raw;
+    if (path.isAbsolute(dirPath)) {
+      this.tasksDir = dirPath;
     } else {
       const folders = vscode.workspace.workspaceFolders;
-      this.filePath = folders ? path.join(folders[0].uri.fsPath, raw) : raw;
+      this.tasksDir = folders ? path.join(folders[0].uri.fsPath, dirPath) : '';
     }
   }
 
   private setupWatcher(): void {
     this.watcher?.dispose();
-    if (!this.filePath) {
-      return;
-    }
-    this.watcher = vscode.workspace.createFileSystemWatcher(this.filePath);
+    if (!this.tasksDir) { return; }
+    // Watch all .json files inside the directory
+    const glob = path.join(this.tasksDir, '**', '*.json');
+    this.watcher = vscode.workspace.createFileSystemWatcher(glob);
     const reload = () => {
+      this.loaded = false;
       this.loadFromDisk().then(() => this._onDidChangeTasks.fire(this.tasks));
     };
     this.watcher.onDidChange(reload);
     this.watcher.onDidCreate(reload);
-    this.watcher.onDidDelete(() => {
-      this.tasks = [];
-      this._onDidChangeTasks.fire(this.tasks);
-    });
+    this.watcher.onDidDelete(reload);
   }
 
   private async loadFromDisk(): Promise<void> {
-    if (!this.filePath) {
+    this.loaded = true;
+    if (!this.tasksDir) {
       this.tasks = [];
       return;
     }
     try {
-      const raw = fs.readFileSync(this.filePath, 'utf-8');
-      const parsed = JSON.parse(raw);
-      const entries: JsonTaskEntry[] = Array.isArray(parsed)
-        ? parsed
-        : Array.isArray(parsed.tasks)
-          ? parsed.tasks
-          : [];
-      this.tasks = entries.map(e => this.mapEntry(e));
+      fs.mkdirSync(this.tasksDir, { recursive: true });
     } catch {
-      vscode.window.showErrorMessage(`JSON Provider: failed to read "${this.filePath}".`);
+      // ignore
+    }
+    try {
+      const files = fs.readdirSync(this.tasksDir).filter(f => f.endsWith('.json'));
+      this.tasks = files
+        .map(file => {
+          try {
+            const raw = fs.readFileSync(path.join(this.tasksDir, file), 'utf-8');
+            return this.mapEntry(JSON.parse(raw) as JsonTaskEntry);
+          } catch {
+            return null;
+          }
+        })
+        .filter((t): t is KanbanTask => t !== null)
+        .sort((a, b) => (a.createdAt?.getTime() ?? 0) - (b.createdAt?.getTime() ?? 0));
+    } catch {
       this.tasks = [];
     }
   }
 
-  private async saveToDisk(): Promise<void> {
-    if (!this.filePath) {
-      return;
-    }
-    const entries = this.tasks.map(t => this.toEntry(t));
-    fs.writeFileSync(this.filePath, JSON.stringify(entries, null, 2), 'utf-8');
+  private async writeTaskFile(task: KanbanTask): Promise<void> {
+    if (!this.tasksDir) { return; }
+    fs.mkdirSync(this.tasksDir, { recursive: true });
+    const nativeId = task.id.replace(`${this.id}:`, '');
+    const filePath = path.join(this.tasksDir, `${nativeId}.json`);
+    const entry = this.toEntry(task);
+    fs.writeFileSync(filePath, JSON.stringify(entry, null, 2), 'utf-8');
+  }
+
+  private deleteTaskFile(task: KanbanTask): void {
+    if (!this.tasksDir) { return; }
+    const nativeId = task.id.replace(`${this.id}:`, '');
+    const filePath = path.join(this.tasksDir, `${nativeId}.json`);
+    try { fs.unlinkSync(filePath); } catch { /* already gone */ }
   }
 
   private mapEntry(entry: JsonTaskEntry): KanbanTask {

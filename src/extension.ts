@@ -16,6 +16,8 @@ import { OllamaGenAiProvider } from './copilot/providers/OllamaGenAiProvider';
 import { SquadManager } from './copilot/SquadManager';
 import { KanbanPanel } from './kanban/KanbanPanel';
 import { GitHubProvider } from './providers/GitHubProvider';
+import { ITaskProvider } from './providers/ITaskProvider';
+import { JsonProvider } from './providers/JsonProvider';
 import { ProviderPicker } from './providers/ProviderPicker';
 import { ProviderRegistry } from './providers/ProviderRegistry';
 import { TaskStore } from './taskStore';
@@ -101,8 +103,12 @@ export function activate(context: vscode.ExtensionContext): void {
   const taskStore = new TaskStore(context);
   const agentManager = new AgentManager(context, taskStore);
 
+  // JSON-backed task provider — always registered, persists to .agent-board/tasks.json
+  const jsonProvider = new JsonProvider();
+  providerRegistry.register(jsonProvider);
+
   // Tree views
-  const tasksProvider = new TasksTreeProvider(taskStore);
+  const tasksProvider = new TasksTreeProvider(jsonProvider);
   const agentsProvider = new AgentsTreeProvider(agentManager);
 
   const tasksView = vscode.window.createTreeView('agentBoardTasks', {
@@ -118,13 +124,13 @@ export function activate(context: vscode.ExtensionContext): void {
   // Status bar item showing pending task count
   const statusBarItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 100);
   statusBarItem.command = 'agentBoard.addTask';
-  updateStatusBar(statusBarItem, taskStore);
+  void updateStatusBar(statusBarItem, jsonProvider);
   statusBarItem.show();
 
   function refresh(): void {
     tasksProvider.refresh();
     agentsProvider.refresh();
-    updateStatusBar(statusBarItem, taskStore);
+    void updateStatusBar(statusBarItem, jsonProvider);
   }
 
   // ── WebView panel serializer ───────────────────────────────────────────
@@ -160,13 +166,17 @@ export function activate(context: vscode.ExtensionContext): void {
       prompt: 'Task description (optional)',
       placeHolder: 'Add more details…',
     });
-    taskStore.addTask(title.trim(), description?.trim() || undefined);
+    await jsonProvider.createTask(title.trim(), description?.trim() || undefined);
     refresh();
+    const activePanel = KanbanPanel.getInstance();
+    if (activePanel) {
+      await sendTasksToPanel(activePanel, providerRegistry);
+    }
     vscode.window.showInformationMessage(`Task "${title}" added.`);
   });
 
   const editTask = vscode.commands.registerCommand('agentBoard.editTask', async (item?: TaskTreeItem) => {
-    const task = item?.task ?? (await pickTask(taskStore));
+    const task = item?.task ?? (await pickTask(jsonProvider));
     if (!task) {
       return;
     }
@@ -180,27 +190,24 @@ export function activate(context: vscode.ExtensionContext): void {
     }
     const newDesc = await vscode.window.showInputBox({
       prompt: 'Edit task description (optional)',
-      value: task.description ?? '',
+      value: task.body ?? '',
     });
-    taskStore.updateTask(task.id, {
-      title: newTitle.trim(),
-      description: newDesc?.trim() || undefined,
-    });
+    await jsonProvider.updateTask({ ...task, title: newTitle.trim(), body: newDesc?.trim() ?? '' });
     refresh();
   });
 
   const completeTask = vscode.commands.registerCommand('agentBoard.completeTask', async (item?: TaskTreeItem) => {
-    const task = item?.task ?? (await pickTask(taskStore, 'pending'));
+    const task = item?.task ?? (await pickTask(jsonProvider, true));
     if (!task) {
       return;
     }
-    taskStore.completeTask(task.id);
+    await jsonProvider.updateTask({ ...task, status: 'done' });
     refresh();
     vscode.window.showInformationMessage(`Task "${task.title}" marked as complete.`);
   });
 
   const deleteTask = vscode.commands.registerCommand('agentBoard.deleteTask', async (item?: TaskTreeItem) => {
-    const task = item?.task ?? (await pickTask(taskStore));
+    const task = item?.task ?? (await pickTask(jsonProvider));
     if (!task) {
       return;
     }
@@ -212,7 +219,7 @@ export function activate(context: vscode.ExtensionContext): void {
     if (confirm !== 'Delete') {
       return;
     }
-    taskStore.deleteTask(task.id);
+    await jsonProvider.deleteTaskById(task.id);
     refresh();
   });
 
@@ -289,6 +296,23 @@ export function activate(context: vscode.ExtensionContext): void {
           logger.info(`MCP server ${newMcpEnabled ? 'enabled' : 'disabled'} via board toggle`);
           break;
         }
+        case 'addTask': {
+          const title = await vscode.window.showInputBox({
+            prompt: 'Task title',
+            placeHolder: 'What needs to be done?',
+            validateInput: v => (v.trim() ? undefined : 'Title cannot be empty'),
+          });
+          if (!title) { break; }
+          const description = await vscode.window.showInputBox({
+            prompt: 'Task description (optional)',
+            placeHolder: 'Add more details…',
+          });
+          await jsonProvider.createTask(title.trim(), description?.trim() || undefined);
+          refresh();
+          await sendTasksToPanel(panel, providerRegistry);
+          vscode.window.showInformationMessage(`Task "${title}" added.`);
+          break;
+        }
       }
     });
   });
@@ -340,13 +364,13 @@ export function activate(context: vscode.ExtensionContext): void {
       return;
     }
 
-    const pendingTasks = taskStore.getTasksByStatus('pending');
+    const pendingTasks = (await jsonProvider.getTasks()).filter(t => t.status !== 'done');
     let taskId: string | undefined;
     if (pendingTasks.length > 0) {
       const pick = await vscode.window.showQuickPick(
         [
           { label: '(none)', description: 'Run without a linked task', id: undefined as string | undefined },
-          ...pendingTasks.map(t => ({ label: t.title, description: t.description ?? '', id: t.id })),
+          ...pendingTasks.map(t => ({ label: t.title, description: t.body ?? '', id: t.id })),
         ],
         { placeHolder: 'Link to a task (optional)' },
       );
@@ -414,20 +438,23 @@ export function deactivate(): void {
 
 // ── Helpers ─────────────────────────────────────────────────────────────────
 
-function updateStatusBar(item: vscode.StatusBarItem, taskStore: TaskStore): void {
-  const pending = taskStore.getTasksByStatus('pending').length;
-  item.text = pending > 0 ? `$(tasklist) ${pending} task${pending === 1 ? '' : 's'}` : '$(tasklist) Agent Board';
-  item.tooltip = pending > 0 ? `${pending} pending task${pending === 1 ? '' : 's'} – click to add` : 'Agent Board – click to add a task';
+function updateStatusBar(item: vscode.StatusBarItem, provider: ITaskProvider): Promise<void> {
+  return provider.getTasks().then(tasks => {
+    const pending = tasks.filter(t => t.status !== 'done').length;
+    item.text = pending > 0 ? `$(tasklist) ${pending} task${pending === 1 ? '' : 's'}` : '$(tasklist) Agent Board';
+    item.tooltip = pending > 0 ? `${pending} pending task${pending === 1 ? '' : 's'} – click to add` : 'Agent Board – click to add a task';
+  });
 }
 
-async function pickTask(taskStore: TaskStore, status?: 'pending' | 'completed') {
-  const tasks = status ? taskStore.getTasksByStatus(status) : taskStore.getTasks();
-  if (tasks.length === 0) {
+async function pickTask(provider: ITaskProvider, excludeDone = false) {
+  const tasks = await provider.getTasks();
+  const filtered = excludeDone ? tasks.filter(t => t.status !== 'done') : tasks;
+  if (filtered.length === 0) {
     vscode.window.showInformationMessage('No tasks found.');
     return undefined;
   }
   const pick = await vscode.window.showQuickPick(
-    tasks.map(t => ({ label: t.title, description: t.status, task: t })),
+    filtered.map(t => ({ label: t.title, description: t.status, task: t })),
     { placeHolder: 'Select a task' },
   );
   return pick?.task;

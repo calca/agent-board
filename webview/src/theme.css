@@ -61,6 +61,18 @@ html, body, #root {
   background: var(--vscode-button-hoverBackground);
 }
 
+.provider-bar__add {
+  cursor: pointer;
+  background: var(--vscode-button-background);
+  color: var(--vscode-button-foreground);
+  border: none;
+  padding: 4px 10px;
+  border-radius: 3px;
+}
+.provider-bar__add:hover {
+  background: var(--vscode-button-hoverBackground);
+}
+
 /* ── MCP Status ─────────────────────────────────────────────────────── */
 
 .mcp-status {
