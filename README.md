@@ -9,10 +9,13 @@
 - **Kanban Board** — drag-and-drop task management with configurable columns
 - **Extensible Providers** — load tasks from GitHub Issues, local JSON files, Beads CLI, or any custom source
 - **Copilot Integration** — launch Copilot sessions with full task context via extensible GenAI providers
+- **Agent Squad** — launch multiple parallel agent sessions, with auto-squad mode that continuously monitors and fills slots as sessions complete
+- **Squad Autonomy** — 10 configurable features: tunable polling, auto-retry, label-based priority, session timeout, worktree cleanup, concurrency guard, graceful shutdown, cooldown, label exclusion, assignee filtering
 - **Git Worktree Support** — providers that support it (e.g. Copilot CLI) automatically create an isolated git worktree per task
 - **Per-Project Configuration** — every setting can be overridden per project via `.agent-board/config.json`
 - **GitHub SSO** — authenticate via VS Code's built-in GitHub SSO (no PAT required)
 - **Tree Views** — sidebar tasks and agents views in the Activity Bar
+- **Notifications** — configurable VS Code notifications for automatic task state changes
 - **Native Theming** — respects VS Code themes (Dark+, Light+, High Contrast)
 
 ## Installation
@@ -60,6 +63,23 @@ Create a `.agent-board/config.json` file in the workspace root to override any V
   "kanban": {
     "columns": ["todo", "inprogress", "review", "done"]
   },
+  "squad": {
+    "maxSessions": 10,
+    "sourceColumn": "todo",
+    "activeColumn": "inprogress",
+    "doneColumn": "review",
+    "autoSquadInterval": 15000,
+    "maxRetries": 2,
+    "priorityLabels": ["critical", "high", "medium"],
+    "sessionTimeout": 300000,
+    "cooldownMs": 2000,
+    "excludeLabels": ["blocked", "manual"],
+    "assigneeFilter": ""
+  },
+  "notifications": {
+    "taskActive": true,
+    "taskDone": true
+  },
   "pollInterval": 15000,
   "logLevel": "DEBUG"
 }
@@ -77,6 +97,19 @@ All settings can also be configured globally through **File > Preferences > Sett
 | `agentBoard.beadsProvider.executable` | `"beads"` | Path to Beads CLI |
 | `agentBoard.worktree.enabled` | `true` | Create an isolated git worktree for providers that support it |
 | `agentBoard.kanban.columns` | `["todo","inprogress","review","done"]` | Kanban column IDs |
+| `agentBoard.squad.maxSessions` | `10` | Maximum parallel agent sessions |
+| `agentBoard.squad.sourceColumn` | `"todo"` | Column from which the squad picks tasks |
+| `agentBoard.squad.activeColumn` | `"inprogress"` | Column tasks move to when agent starts |
+| `agentBoard.squad.doneColumn` | `"review"` | Column tasks move to when agent completes |
+| `agentBoard.squad.autoSquadInterval` | `15000` | Auto-squad polling interval (ms) |
+| `agentBoard.squad.maxRetries` | `0` | Max retries for failed sessions (0 = no retry) |
+| `agentBoard.squad.priorityLabels` | `[]` | Ordered labels for task priority |
+| `agentBoard.squad.sessionTimeout` | `300000` | Session timeout (ms), 0 = disabled |
+| `agentBoard.squad.cooldownMs` | `0` | Delay between consecutive launches (ms) |
+| `agentBoard.squad.excludeLabels` | `[]` | Labels that exclude tasks from the squad |
+| `agentBoard.squad.assigneeFilter` | `""` | Assignee filter: `""` all, `"*"` assigned, `"unassigned"`, or username |
+| `agentBoard.notifications.taskActive` | `true` | Notify when task moves to active column |
+| `agentBoard.notifications.taskDone` | `true` | Notify when task moves to done column |
 | `agentBoard.pollInterval` | `30000` | Polling interval (ms) for providers |
 | `agentBoard.logLevel` | `"INFO"` | Log level: `DEBUG`, `INFO`, `WARN`, `ERROR` |
 
@@ -196,6 +229,62 @@ const genAiRegistry = agentBoard?.exports?.genAiRegistry;
 genAiRegistry?.register(myCustomGenAiProvider);
 ```
 
+## Agent Squad
+
+The **squad** feature launches multiple parallel GenAI sessions, one per task. It supports two modes:
+
+- **Start Squad** — one-shot launch of up to `maxSessions` parallel agent sessions for tasks in the source column.
+- **Auto Squad** — continuously monitors and fills available slots as sessions complete, on a configurable polling interval.
+
+Tasks flow through three configurable columns:
+1. **Source** (`squad.sourceColumn`, default `"todo"`) — tasks to be processed
+2. **Active** (`squad.activeColumn`, default `"inprogress"`) — tasks currently being worked on
+3. **Done** (`squad.doneColumn`, default `"review"`) — completed tasks
+
+### Squad Autonomy Features
+
+| Feature | Config Key | Default | Description |
+|---------|-----------|---------|-------------|
+| **Poll interval** | `squad.autoSquadInterval` | `15000` | How often auto-squad checks for new tasks (ms) |
+| **Retry** | `squad.maxRetries` | `0` | Max retries for failed sessions (0 = no retry). Failed tasks move back to the source column. |
+| **Priority** | `squad.priorityLabels` | `[]` | Ordered label list (e.g. `["critical", "high"]`). Tasks matching earlier labels launch first. |
+| **Timeout** | `squad.sessionTimeout` | `300000` | Max session duration (ms). Prevents hung tasks from blocking the squad. 0 = no timeout. |
+| **Cooldown** | `squad.cooldownMs` | `0` | Delay between consecutive launches (ms). Prevents rate-limiting the GenAI provider. |
+| **Exclude labels** | `squad.excludeLabels` | `[]` | Skip tasks with these labels (e.g. `["blocked", "manual"]`). Case-insensitive. |
+| **Assignee filter** | `squad.assigneeFilter` | `""` | `""` = all tasks, `"*"` = only assigned, `"unassigned"` = only unassigned, or exact username. |
+| **Worktree cleanup** | *(automatic)* | — | Worktrees are removed in `try/finally` after each session completes or fails. |
+| **Concurrency guard** | *(automatic)* | — | Prevents overlapping launch cycles from over-scheduling past `maxSessions`. |
+| **Graceful shutdown** | *(automatic)* | — | On extension stop, active sessions are moved back to the source column with `gracefulShutdown` metadata. |
+
+#### Example configuration
+
+```jsonc
+// .agent-board/config.json
+{
+  "squad": {
+    "maxSessions": 5,
+    "maxRetries": 2,
+    "autoSquadInterval": 30000,
+    "priorityLabels": ["critical", "high", "medium"],
+    "sessionTimeout": 600000,
+    "cooldownMs": 2000,
+    "excludeLabels": ["blocked", "manual"],
+    "assigneeFilter": "alice"
+  }
+}
+```
+
+### Notifications
+
+VS Code notifications are shown when the squad automatically moves tasks between columns:
+
+| Config Key | Default | Description |
+|-----------|---------|-------------|
+| `notifications.taskActive` | `true` | Notify when a task is moved to the active column |
+| `notifications.taskDone` | `true` | Notify when a task is moved to the done column |
+
+Failure notifications are always shown, regardless of configuration.
+
 ## Architecture
 
 ```
@@ -212,6 +301,8 @@ Extension Host (Node.js)
 │   ├── CopilotCliGenAiProvider (global — background + file save, worktree)
 │   ├── OllamaGenAiProvider (project — local HTTP)
 │   └── MistralGenAiProvider (project — Mistral API)
+├── SquadManager → parallel sessions, auto-squad, retry, priority, timeout
+│   └── squadUtils.ts (pure helpers: computeAvailableSlots, canRetry, sortByPriority, isTimedOut, shouldExclude, matchesAssignee)
 ├── CopilotLauncher → ContextBuilder + GenAiProviderRegistry + WorktreeManager
 ├── WorktreeManager → git worktree create / remove
 ├── KanbanPanel → WebView (HTML/CSS/JS)
