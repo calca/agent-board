@@ -138,6 +138,17 @@ export function activate(context: vscode.ExtensionContext): void {
   // ── Commands ───────────────────────────────────────────────────────────
 
   const addTask = vscode.commands.registerCommand('agentBoard.addTask', async () => {
+    if (!vscode.workspace.workspaceFolders || vscode.workspace.workspaceFolders.length === 0) {
+      vscode.window.showWarningMessage(
+        'Agent Board: please open a folder or workspace before adding tasks.',
+        'Open Folder'
+      ).then(selection => {
+        if (selection === 'Open Folder') {
+          vscode.commands.executeCommand('vscode.openFolder');
+        }
+      });
+      return;
+    }
     const title = await vscode.window.showInputBox({
       prompt: 'Task title',
       placeHolder: 'What needs to be done?',
@@ -215,6 +226,17 @@ export function activate(context: vscode.ExtensionContext): void {
 
   const openKanban = vscode.commands.registerCommand('agentBoard.openKanban', async () => {
     logger.info('openKanban command invoked');
+    if (!vscode.workspace.workspaceFolders || vscode.workspace.workspaceFolders.length === 0) {
+      vscode.window.showInformationMessage(
+        'Agent Board requires an open folder or workspace. Please open a folder to use the Kanban board.',
+        'Open Folder'
+      ).then(selection => {
+        if (selection === 'Open Folder') {
+          vscode.commands.executeCommand('vscode.openFolder');
+        }
+      });
+      return;
+    }
     const panel = KanbanPanel.createOrShow(context.extensionUri);
 
     // Wire WebView messages
