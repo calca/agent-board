@@ -29,7 +29,8 @@ export type HostToWebView =
   | { type: 'providerStatus'; providerId: string; status: 'ok' | 'error' | 'loading'; message?: string }
   | { type: 'themeChange'; kind: 'dark' | 'light' | 'hc' }
   | { type: 'squadStatus'; status: SquadStatus }
-  | { type: 'agentsAvailable'; agents: AgentOption[] };
+  | { type: 'agentsAvailable'; agents: AgentOption[] }
+  | { type: 'mcpStatus'; enabled: boolean };
 
 // ── WebView → Host ──────────────────────────────────────────────────────────
 
@@ -39,4 +40,5 @@ export type WebViewToHost =
   | { type: 'refreshRequest'; providerId?: string }
   | { type: 'ready' }
   | { type: 'startSquad'; agentSlug?: string }
-  | { type: 'toggleAutoSquad'; agentSlug?: string };
+  | { type: 'toggleAutoSquad'; agentSlug?: string }
+  | { type: 'toggleMcp' };

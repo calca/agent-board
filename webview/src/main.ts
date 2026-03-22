@@ -31,6 +31,7 @@ let selectedTask: KanbanTask | null = null;
 let searchText = '';
 let availableAgents: AgentOption[] = [];
 let selectedAgentSlug = '';
+let mcpEnabled = false;
 
 // ── Render ─────────────────────────────────────────────────────────────
 
@@ -49,6 +50,11 @@ function render(): void {
   root.innerHTML = `
     <div class="provider-bar">
       <span class="provider-bar__name">Kanban Board</span>
+      <div class="mcp-status">
+        <span class="mcp-status__dot mcp-status__dot--${mcpEnabled ? 'on' : 'off'}"></span>
+        <span class="mcp-status__label">MCP ${mcpEnabled ? 'On' : 'Off'}</span>
+        <button class="mcp-status__toggle" id="btn-mcp-toggle">${mcpEnabled ? 'Disable' : 'Enable'}</button>
+      </div>
       <button class="provider-bar__refresh" id="btn-refresh">⟳ Refresh</button>
     </div>
     <div class="filters">
@@ -73,6 +79,10 @@ function render(): void {
   // Event listeners
   document.getElementById('btn-refresh')?.addEventListener('click', () => {
     vscode.postMessage({ type: 'refreshRequest' });
+  });
+
+  document.getElementById('btn-mcp-toggle')?.addEventListener('click', () => {
+    vscode.postMessage({ type: 'toggleMcp' });
   });
 
   document.getElementById('search-input')?.addEventListener('input', (e: Event) => {
@@ -203,6 +213,10 @@ window.addEventListener('message', (event: MessageEvent) => {
       if (selectedAgentSlug && !availableAgents.some(a => a.slug === selectedAgentSlug)) {
         selectedAgentSlug = '';
       }
+      render();
+      break;
+    case 'mcpStatus':
+      mcpEnabled = msg.enabled ?? false;
       render();
       break;
     case 'themeChange':

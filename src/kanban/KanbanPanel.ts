@@ -103,6 +103,11 @@ export class KanbanPanel {
     this.postMessage({ type: 'agentsAvailable', agents });
   }
 
+  /** Push the current MCP server status to the WebView. */
+  updateMcpStatus(enabled: boolean): void {
+    this.postMessage({ type: 'mcpStatus', enabled });
+  }
+
   dispose(): void {
     KanbanPanel.instance = undefined;
     this.panel.dispose();
