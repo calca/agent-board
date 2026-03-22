@@ -112,6 +112,48 @@
           "type": "string",
           "default": "review",
           "description": "Column tasks are moved to when the agent completes. Default: review."
+        },
+        "autoSquadInterval": {
+          "type": "number",
+          "minimum": 5000,
+          "default": 15000,
+          "description": "Auto-squad polling interval in milliseconds. Default: 15000."
+        },
+        "maxRetries": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 10,
+          "default": 0,
+          "description": "Maximum retries for a failed squad session. Default: 0 (no retry)."
+        },
+        "priorityLabels": {
+          "type": "array",
+          "items": { "type": "string" },
+          "default": [],
+          "description": "Ordered list of labels used to prioritise tasks. Tasks matching an earlier label are launched first."
+        },
+        "sessionTimeout": {
+          "type": "number",
+          "minimum": 0,
+          "default": 300000,
+          "description": "Maximum time in milliseconds a session may run before being timed out. Default: 300000 (5 min). Set to 0 to disable."
+        },
+        "cooldownMs": {
+          "type": "number",
+          "minimum": 0,
+          "default": 0,
+          "description": "Delay in milliseconds between consecutive session launches. Prevents rate-limiting. Default: 0 (no cooldown)."
+        },
+        "excludeLabels": {
+          "type": "array",
+          "items": { "type": "string" },
+          "default": [],
+          "description": "Labels that cause a task to be skipped by the squad (case-insensitive). e.g. [\"blocked\", \"manual\"]."
+        },
+        "assigneeFilter": {
+          "type": "string",
+          "default": "",
+          "description": "Only launch tasks matching this assignee. Empty = all tasks, \"*\" = any assignee, \"unassigned\" = no assignee, or an exact username."
         }
       },
       "additionalProperties": false

@@ -11,7 +11,15 @@ import {
   DEFAULT_SOURCE_COLUMN,
   DEFAULT_ACTIVE_COLUMN,
   DEFAULT_DONE_COLUMN,
+  DEFAULT_AUTO_SQUAD_INTERVAL,
+  DEFAULT_MAX_RETRIES,
+  DEFAULT_SESSION_TIMEOUT,
+  DEFAULT_COOLDOWN_MS,
   computeAvailableSlots,
+  canRetry,
+  sortByPriority,
+  shouldExclude,
+  matchesAssignee,
 } from './squadUtils';
 
 export {
@@ -19,7 +27,15 @@ export {
   DEFAULT_SOURCE_COLUMN,
   DEFAULT_ACTIVE_COLUMN,
   DEFAULT_DONE_COLUMN,
+  DEFAULT_AUTO_SQUAD_INTERVAL,
+  DEFAULT_MAX_RETRIES,
+  DEFAULT_SESSION_TIMEOUT,
+  DEFAULT_COOLDOWN_MS,
   computeAvailableSlots,
+  canRetry,
+  sortByPriority,
+  shouldExclude,
+  matchesAssignee,
 } from './squadUtils';
 
 /**
@@ -40,8 +56,12 @@ export {
  */
 export class SquadManager {
   private activeSessions = new Map<string, CopilotSessionInfo>();
+  /** Tracks retry attempts per task id. */
+  private retryCount = new Map<string, number>();
   private autoSquadEnabled = false;
   private autoSquadTimer: ReturnType<typeof setInterval> | undefined;
+  /** Concurrency guard — prevents overlapping startSquad() calls. */
+  private launching = false;
 
   private readonly logger = Logger.getInstance();
 
@@ -59,6 +79,20 @@ export class SquadManager {
 
   /** One-shot: launch copilot sessions for available tasks up to maxSessions. */
   async startSquad(): Promise<number> {
+    // Concurrency guard: skip if a launch cycle is already running
+    if (this.launching) {
+      this.logger.info('SquadManager: launch cycle already in progress — skipping');
+      return 0;
+    }
+    this.launching = true;
+    try {
+      return await this.doStartSquad();
+    } finally {
+      this.launching = false;
+    }
+  }
+
+  private async doStartSquad(): Promise<number> {
     const max = this.getMaxSessions();
     const available = max - this.activeSessions.size;
     if (available <= 0) {
@@ -70,8 +104,13 @@ export class SquadManager {
     const toRun = tasks.slice(0, available);
 
     this.logger.info('SquadManager: starting squad — %d tasks to launch', toRun.length);
+    const cooldownMs = this.getCooldownMs();
     let launched = 0;
     for (const task of toRun) {
+      // Apply cooldown between consecutive launches (skip before the first)
+      if (launched > 0 && cooldownMs > 0) {
+        await this.delay(cooldownMs);
+      }
       await this.launchSession(task);
       launched++;
     }
@@ -88,7 +127,8 @@ export class SquadManager {
       this.logger.info('SquadManager: auto-squad ENABLED');
       // Immediately try to fill slots, then poll
       void this.startSquad();
-      this.autoSquadTimer = setInterval(() => void this.startSquad(), 15_000);
+      const interval = this.getAutoSquadInterval();
+      this.autoSquadTimer = setInterval(() => void this.startSquad(), interval);
     } else {
       this.logger.info('SquadManager: auto-squad DISABLED');
       if (this.autoSquadTimer) {
@@ -142,6 +182,39 @@ export class SquadManager {
       clearInterval(this.autoSquadTimer);
       this.autoSquadTimer = undefined;
     }
+
+    // Graceful shutdown: move in-progress tasks back to the source column
+    // so they aren't stuck in the active column after the extension stops.
+    if (this.activeSessions.size > 0) {
+      const sourceCol = this.getSourceColumn();
+      this.logger.info(
+        'SquadManager: graceful shutdown — moving %d active tasks back to %s',
+        this.activeSessions.size,
+        sourceCol,
+      );
+      for (const [taskId, session] of this.activeSessions) {
+        session.state = 'failed';
+        session.finishedAt = new Date().toISOString();
+        // Best-effort: move task back (fire-and-forget — we're shutting down).
+        // We only update the status field; updateTask implementations should
+        // treat this as a column move (the task's full data is already persisted).
+        const [providerId] = taskId.split(':');
+        const provider = this.providerRegistry.get(providerId);
+        if (provider) {
+          void provider.updateTask({
+            id: taskId,
+            title: taskId,
+            body: '',
+            status: sourceCol,
+            labels: [],
+            providerId,
+            meta: { gracefulShutdown: true },
+          });
+        }
+      }
+      this.activeSessions.clear();
+    }
+
     this.onStatusChangeEmitter.dispose();
   }
 
@@ -193,9 +266,19 @@ export class SquadManager {
       .flatMap(r => r.value);
 
     // Only tasks in the configured source column that don't already have an active session
-    return allTasks.filter(
-      t => t.status === sourceCol && !this.activeSessions.has(t.id),
+    const excludeLabels = this.getExcludeLabels();
+    const assigneeFilter = this.getAssigneeFilter();
+    const eligible = allTasks.filter(
+      t =>
+        t.status === sourceCol &&
+        !this.activeSessions.has(t.id) &&
+        !shouldExclude(t.labels, excludeLabels) &&
+        matchesAssignee(t.assignee, assigneeFilter),
     );
+
+    // Sort by label-based priority when configured
+    const priorityLabels = this.getPriorityLabels();
+    return sortByPriority(eligible, priorityLabels);
   }
 
   /** Move a task to the given column via its provider. */
@@ -238,7 +321,25 @@ export class SquadManager {
     }
 
     try {
-      await this.copilotLauncher.launch(task.id, providerId);
+      const launchPromise = this.copilotLauncher.launch(task.id, providerId);
+      const timeoutMs = this.getSessionTimeout();
+
+      // Race the launch against the timeout (if configured)
+      if (timeoutMs > 0) {
+        let timer: ReturnType<typeof setTimeout> | undefined;
+        const timeoutPromise = new Promise<never>((_, reject) => {
+          timer = setTimeout(() => reject(new Error('Session timed out')), timeoutMs);
+        });
+        try {
+          await Promise.race([launchPromise, timeoutPromise]);
+        } finally {
+          if (timer !== undefined) {
+            clearTimeout(timer);
+          }
+        }
+      } else {
+        await launchPromise;
+      }
 
       // Move task to "done" column (e.g. review)
       const doneCol = this.getDoneColumn();
@@ -258,7 +359,90 @@ export class SquadManager {
         `Task "${task.title}" failed`,
       );
       this.failSession(task.id);
+
+      // Auto-retry when configured
+      const maxRetries = this.getMaxRetries();
+      const attempt = this.retryCount.get(task.id) ?? 0;
+      if (canRetry(attempt, maxRetries)) {
+        this.retryCount.set(task.id, attempt + 1);
+        this.logger.info(
+          'SquadManager: retrying task "%s" (attempt %d/%d)',
+          task.title,
+          attempt + 1,
+          maxRetries,
+        );
+        // Move back to source column so the next poll picks it up
+        await this.moveTask(task, this.getSourceColumn());
+      }
     }
+  }
+
+  private getAutoSquadInterval(): number {
+    const projectCfg = ProjectConfig.getProjectConfig();
+    return ProjectConfig.resolve(
+      projectCfg?.squad?.autoSquadInterval,
+      'squad.autoSquadInterval',
+      DEFAULT_AUTO_SQUAD_INTERVAL,
+    );
+  }
+
+  private getMaxRetries(): number {
+    const projectCfg = ProjectConfig.getProjectConfig();
+    return ProjectConfig.resolve(
+      projectCfg?.squad?.maxRetries,
+      'squad.maxRetries',
+      DEFAULT_MAX_RETRIES,
+    );
+  }
+
+  private getPriorityLabels(): string[] {
+    const projectCfg = ProjectConfig.getProjectConfig();
+    return ProjectConfig.resolve(
+      projectCfg?.squad?.priorityLabels,
+      'squad.priorityLabels',
+      [] as string[],
+    );
+  }
+
+  private getSessionTimeout(): number {
+    const projectCfg = ProjectConfig.getProjectConfig();
+    return ProjectConfig.resolve(
+      projectCfg?.squad?.sessionTimeout,
+      'squad.sessionTimeout',
+      DEFAULT_SESSION_TIMEOUT,
+    );
+  }
+
+  private getCooldownMs(): number {
+    const projectCfg = ProjectConfig.getProjectConfig();
+    return ProjectConfig.resolve(
+      projectCfg?.squad?.cooldownMs,
+      'squad.cooldownMs',
+      DEFAULT_COOLDOWN_MS,
+    );
+  }
+
+  private getExcludeLabels(): string[] {
+    const projectCfg = ProjectConfig.getProjectConfig();
+    return ProjectConfig.resolve(
+      projectCfg?.squad?.excludeLabels,
+      'squad.excludeLabels',
+      [] as string[],
+    );
+  }
+
+  private getAssigneeFilter(): string {
+    const projectCfg = ProjectConfig.getProjectConfig();
+    return ProjectConfig.resolve(
+      projectCfg?.squad?.assigneeFilter,
+      'squad.assigneeFilter',
+      '',
+    );
+  }
+
+  /** Simple async delay (injectable via subclass for testing). */
+  private delay(ms: number): Promise<void> {
+    return new Promise(resolve => setTimeout(resolve, ms));
   }
 
   private fireStatusChange(): void {

@@ -198,6 +198,48 @@
           "default": "review",
           "description": "Column tasks are moved to when the agent completes. Overridable in .agent-board/config.json."
         },
+        "agentBoard.squad.autoSquadInterval": {
+          "type": "number",
+          "default": 15000,
+          "minimum": 5000,
+          "description": "Auto-squad polling interval in milliseconds. Overridable in .agent-board/config.json."
+        },
+        "agentBoard.squad.maxRetries": {
+          "type": "number",
+          "default": 0,
+          "minimum": 0,
+          "maximum": 10,
+          "description": "Maximum retries for a failed squad session. Overridable in .agent-board/config.json."
+        },
+        "agentBoard.squad.priorityLabels": {
+          "type": "array",
+          "items": { "type": "string" },
+          "default": [],
+          "description": "Ordered list of labels used to prioritise tasks. Tasks matching an earlier label are launched first. Overridable in .agent-board/config.json."
+        },
+        "agentBoard.squad.sessionTimeout": {
+          "type": "number",
+          "default": 300000,
+          "minimum": 0,
+          "description": "Maximum time in milliseconds a session may run before being timed out. Set to 0 to disable. Overridable in .agent-board/config.json."
+        },
+        "agentBoard.squad.cooldownMs": {
+          "type": "number",
+          "default": 0,
+          "minimum": 0,
+          "description": "Delay in milliseconds between consecutive session launches. Prevents rate-limiting. Overridable in .agent-board/config.json."
+        },
+        "agentBoard.squad.excludeLabels": {
+          "type": "array",
+          "items": { "type": "string" },
+          "default": [],
+          "description": "Labels that cause a task to be skipped by the squad. Case-insensitive. Overridable in .agent-board/config.json."
+        },
+        "agentBoard.squad.assigneeFilter": {
+          "type": "string",
+          "default": "",
+          "description": "Only launch tasks matching this assignee. Empty = all, '*' = any assignee, 'unassigned' = no assignee, or exact username. Overridable in .agent-board/config.json."
+        },
         "agentBoard.notifications.taskActive": {
           "type": "boolean",
           "default": true,
