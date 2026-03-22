@@ -177,8 +177,6 @@ These providers are enabled and configured per project in `.agent-board/config.j
 Register third-party GenAI providers via the extension API:
 
 ```typescript
-import { IGenAiProvider } from 'agent-board';
-
 const agentBoard = vscode.extensions.getExtension('agent-board');
 const genAiRegistry = agentBoard?.exports?.genAiRegistry;
 genAiRegistry?.register(myCustomGenAiProvider);
