@@ -8,8 +8,6 @@ export interface Column {
   label: string;
 }
 
-export type CopilotMode = 'cloud' | 'local' | 'background' | 'chat';
-
 /** Snapshot of the squad manager state sent to the WebView. */
 export interface SquadStatus {
   /** Number of copilot sessions currently running. */
@@ -30,7 +28,7 @@ export type HostToWebView =
 
 export type WebViewToHost =
   | { type: 'taskMoved'; taskId: string; toCol: ColumnId; index: number }
-  | { type: 'openCopilot'; taskId: string; mode: CopilotMode }
+  | { type: 'openCopilot'; taskId: string; providerId: string }
   | { type: 'refreshRequest'; providerId?: string }
   | { type: 'ready' }
   | { type: 'startSquad' }

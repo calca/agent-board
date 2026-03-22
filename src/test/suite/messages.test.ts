@@ -41,10 +41,10 @@ suite('Message Protocol Types', () => {
     const msg = {
       type: 'openCopilot' as const,
       taskId: 'json:42',
-      mode: 'cloud' as const,
+      providerId: 'cloud',
     };
     assert.strictEqual(msg.type, 'openCopilot');
-    assert.strictEqual(msg.mode, 'cloud');
+    assert.strictEqual(msg.providerId, 'cloud');
   });
 
   test('WebViewToHost ready message has correct type', () => {
