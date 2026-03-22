@@ -18,6 +18,7 @@
 - **Tree Views** — sidebar tasks and agents views in the Activity Bar
 - **Notifications** — configurable VS Code notifications for automatic task state changes
 - **Native Theming** — respects VS Code themes (Dark+, Light+, High Contrast)
+- **MCP Server** — stdio-based Model Context Protocol server for agent integration (list, get, create, update tasks)
 
 ## Installation
 
@@ -376,6 +377,58 @@ Extension Host (Node.js)
 │   └── theme.css (--vscode-* variables)
 ├── ChatParticipant (@taskai)
 └── Logger (Output channel)
+```
+
+## MCP Server (Agent Integration)
+
+Agent Board ships with a **stdio-based MCP server** that lets external agents interact with tasks programmatically using the [Model Context Protocol](https://modelcontextprotocol.io) over JSON-RPC 2.0.
+
+### Available Tools
+
+| Tool | Required | Optional | Description |
+|------|----------|----------|-------------|
+| `list_tasks` | — | `column` | List tasks, optionally filtered by Kanban column |
+| `get_task` | `taskId` | — | Get full details of a single task |
+| `update_task` | `taskId` | `column`, `title`, `body`, `labels`, `assignee` | Update or move a task |
+| `create_task` | `title` | `body`, `column`, `labels`, `assignee` | Create a new task |
+
+### Configuration
+
+Enable the MCP server in `.agent-board/config.json`:
+
+```jsonc
+{
+  "mcp": {
+    "enabled": true,
+    "tasksPath": ".agent-board/tasks"   // optional, defaults to jsonProvider path
+  }
+}
+```
+
+### Usage
+
+```bash
+# Start the server (reads from .agent-board/tasks by default)
+npm run mcp
+
+# Or specify a custom task file
+node out/mcp/mcpServer.js --tasks path/to/tasks.json
+```
+
+Pipe JSON-RPC messages over stdin/stdout:
+
+```bash
+# List all tasks in the "todo" column
+echo '{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"list_tasks","arguments":{"column":"todo"}}}' \
+  | node out/mcp/mcpServer.js
+
+# Create a new task
+echo '{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"create_task","arguments":{"title":"Fix login bug","labels":["bug"],"column":"todo"}}}' \
+  | node out/mcp/mcpServer.js
+
+# Move a task to "inprogress"
+echo '{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"update_task","arguments":{"taskId":"json:1","column":"inprogress"}}}' \
+  | node out/mcp/mcpServer.js
 ```
 
 ## Development

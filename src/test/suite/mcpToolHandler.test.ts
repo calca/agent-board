@@ -5,6 +5,7 @@ import {
   handleListTasks,
   handleGetTask,
   handleUpdateTask,
+  handleCreateTask,
   handleToolCall,
   successResult,
   errorResult,
@@ -39,15 +40,21 @@ function createAdapter(tasks: KanbanTask[]): McpTaskAdapter & { tasks: KanbanTas
         store[idx] = task;
       }
     },
+    async createTask(task: KanbanTask) {
+      const newId = `test:${store.length + 1}`;
+      const created: KanbanTask = { ...task, id: newId };
+      store.push(created);
+      return created;
+    },
   };
 }
 
 // ── Tests ───────────────────────────────────────────────────────────
 
 suite('MCP_TOOLS catalogue', () => {
-  test('exposes list_tasks, get_task, update_task', () => {
+  test('exposes list_tasks, get_task, update_task, create_task', () => {
     const names = MCP_TOOLS.map(t => t.name);
-    assert.deepStrictEqual(names, ['list_tasks', 'get_task', 'update_task']);
+    assert.deepStrictEqual(names, ['list_tasks', 'get_task', 'update_task', 'create_task']);
   });
 
   test('every tool has a description and inputSchema', () => {
@@ -65,6 +72,11 @@ suite('MCP_TOOLS catalogue', () => {
   test('update_task requires taskId', () => {
     const tool = MCP_TOOLS.find(t => t.name === 'update_task')!;
     assert.deepStrictEqual(tool.inputSchema.required, ['taskId']);
+  });
+
+  test('create_task requires title', () => {
+    const tool = MCP_TOOLS.find(t => t.name === 'create_task')!;
+    assert.deepStrictEqual(tool.inputSchema.required, ['title']);
   });
 
   test('list_tasks has no required params', () => {
@@ -236,6 +248,64 @@ suite('handleUpdateTask', () => {
   });
 });
 
+suite('handleCreateTask', () => {
+  test('creates a task with title only', async () => {
+    const adapter = createAdapter([]);
+    const result = await handleCreateTask(adapter, { title: 'New task' });
+    assert.strictEqual(result.isError, undefined);
+    assert.strictEqual(adapter.tasks.length, 1);
+    assert.strictEqual(adapter.tasks[0].title, 'New task');
+    assert.strictEqual(adapter.tasks[0].status, 'todo');
+    assert.strictEqual(adapter.tasks[0].body, '');
+  });
+
+  test('creates a task with all fields', async () => {
+    const adapter = createAdapter([]);
+    const result = await handleCreateTask(adapter, {
+      title: 'Full task',
+      body: 'A detailed description',
+      column: 'inprogress',
+      labels: ['bug', 'p1'],
+      assignee: 'alice',
+    });
+    assert.strictEqual(result.isError, undefined);
+    assert.strictEqual(adapter.tasks[0].title, 'Full task');
+    assert.strictEqual(adapter.tasks[0].body, 'A detailed description');
+    assert.strictEqual(adapter.tasks[0].status, 'inprogress');
+    assert.deepStrictEqual(adapter.tasks[0].labels, ['bug', 'p1']);
+    assert.strictEqual(adapter.tasks[0].assignee, 'alice');
+  });
+
+  test('returns the created task id in the result', async () => {
+    const adapter = createAdapter([]);
+    const result = await handleCreateTask(adapter, { title: 'My task' });
+    const data = JSON.parse(result.content[0].text);
+    assert.ok(data.id, 'created task should have an id');
+    assert.strictEqual(data.title, 'My task');
+    assert.strictEqual(data.status, 'todo');
+  });
+
+  test('returns error for missing title', async () => {
+    const adapter = createAdapter([]);
+    const result = await handleCreateTask(adapter, { title: '' });
+    assert.strictEqual(result.isError, true);
+    assert.ok(result.content[0].text.includes('title'));
+  });
+
+  test('returns error for invalid column', async () => {
+    const adapter = createAdapter([]);
+    const result = await handleCreateTask(adapter, { title: 'X', column: 'bad' });
+    assert.strictEqual(result.isError, true);
+    assert.ok(result.content[0].text.includes('Invalid column'));
+  });
+
+  test('defaults column to todo when omitted', async () => {
+    const adapter = createAdapter([]);
+    await handleCreateTask(adapter, { title: 'Default col' });
+    assert.strictEqual(adapter.tasks[0].status, 'todo');
+  });
+});
+
 suite('handleToolCall routing', () => {
   test('routes list_tasks correctly', async () => {
     const adapter = createAdapter([makeTask('t:1')]);
@@ -255,6 +325,13 @@ suite('handleToolCall routing', () => {
     const adapter = createAdapter([makeTask('t:1')]);
     const result = await handleToolCall(adapter, 'update_task', { taskId: 't:1', column: 'done' });
     assert.strictEqual(result.isError, undefined);
+  });
+
+  test('routes create_task correctly', async () => {
+    const adapter = createAdapter([]);
+    const result = await handleToolCall(adapter, 'create_task', { title: 'Routed task' });
+    assert.strictEqual(result.isError, undefined);
+    assert.strictEqual(adapter.tasks.length, 1);
   });
 
   test('returns error for unknown tool', async () => {

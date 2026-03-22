@@ -82,3 +82,11 @@ export interface UpdateTaskArgs {
   labels?: string[];
   assignee?: string;
 }
+
+export interface CreateTaskArgs {
+  title: string;
+  body?: string;
+  column?: string;
+  labels?: string[];
+  assignee?: string;
+}

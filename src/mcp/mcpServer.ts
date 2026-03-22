@@ -110,6 +110,18 @@ function createFileAdapter(filePath: string): McpTaskAdapter {
       }
       writeTasks(filePath, tasks);
     },
+    async createTask(task: KanbanTask) {
+      const tasks = readTasks(filePath);
+      const maxId = tasks.reduce((max, t) => {
+        const num = parseInt(t.id.replace(/^json:/, ''), 10);
+        return isNaN(num) ? max : Math.max(max, num);
+      }, 0);
+      const newId = `json:${maxId + 1}`;
+      const created: KanbanTask = { ...task, id: newId };
+      tasks.push(created);
+      writeTasks(filePath, tasks);
+      return created;
+    },
   };
 }
 

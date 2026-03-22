@@ -14,6 +14,7 @@ import {
   ListTasksArgs,
   GetTaskArgs,
   UpdateTaskArgs,
+  CreateTaskArgs,
 } from './mcpTypes';
 
 // ── Tool catalogue ──────────────────────────────────────────────────
@@ -87,6 +88,40 @@ export const MCP_TOOLS: McpToolDefinition[] = [
       required: ['taskId'],
     },
   },
+  {
+    name: 'create_task',
+    description:
+      'Create a new task on the Agent Board.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        title: {
+          type: 'string',
+          description: 'Title of the new task.',
+        },
+        body: {
+          type: 'string',
+          description: 'Body / description of the task (Markdown supported).',
+        },
+        column: {
+          type: 'string',
+          description:
+            'Column to place the task in (default: todo).',
+          enum: [...COLUMN_IDS],
+        },
+        labels: {
+          type: 'string',
+          description:
+            'JSON array of label strings (e.g. ["bug","urgent"]).',
+        },
+        assignee: {
+          type: 'string',
+          description: 'Assignee username.',
+        },
+      },
+      required: ['title'],
+    },
+  },
 ];
 
 // ── Adapter interface (decouples from VS Code providers) ────────────
@@ -101,6 +136,7 @@ export const MCP_TOOLS: McpToolDefinition[] = [
 export interface McpTaskAdapter {
   getTasks(): Promise<KanbanTask[]>;
   updateTask(task: KanbanTask): Promise<void>;
+  createTask(task: KanbanTask): Promise<KanbanTask>;
 }
 
 // ── Handler ─────────────────────────────────────────────────────────
@@ -227,6 +263,48 @@ export async function handleUpdateTask(
 }
 
 /**
+ * Handle a `create_task` tool call.
+ */
+export async function handleCreateTask(
+  adapter: McpTaskAdapter,
+  args: CreateTaskArgs,
+): Promise<McpToolResult> {
+  if (!args.title) {
+    return errorResult('Missing required parameter: title');
+  }
+
+  // Validate column if provided
+  const column = args.column ?? 'todo';
+  if (!(COLUMN_IDS as readonly string[]).includes(column)) {
+    return errorResult(
+      `Invalid column "${column}". Must be one of: ${COLUMN_IDS.join(', ')}`,
+    );
+  }
+
+  const task: KanbanTask = {
+    id: '',
+    title: args.title,
+    body: args.body ?? '',
+    status: column as ColumnId,
+    labels: args.labels ?? [],
+    assignee: args.assignee,
+    providerId: 'json',
+    createdAt: new Date(),
+    meta: {},
+  };
+
+  const created = await adapter.createTask(task);
+
+  return successResult({
+    id: created.id,
+    title: created.title,
+    status: created.status,
+    labels: created.labels,
+    assignee: created.assignee,
+  });
+}
+
+/**
  * Route a tool call by name.  Returns an error result for unknown tools.
  */
 export async function handleToolCall(
@@ -241,6 +319,8 @@ export async function handleToolCall(
       return handleGetTask(adapter, args as unknown as GetTaskArgs);
     case 'update_task':
       return handleUpdateTask(adapter, args as unknown as UpdateTaskArgs);
+    case 'create_task':
+      return handleCreateTask(adapter, args as unknown as CreateTaskArgs);
     default:
       return errorResult(`Unknown tool: ${toolName}`);
   }
