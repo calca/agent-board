@@ -53,6 +53,10 @@ Create a `.agent-board/config.json` file in the workspace root to override any V
     "defaultMode": "chat",
     "localModel": "codellama"
   },
+  "genAiProviders": {
+    "ollama": { "enabled": true, "model": "codellama" },
+    "mistral": { "enabled": true, "model": "mistral-small-latest" }
+  },
   "kanban": {
     "columns": ["todo", "inprogress", "review", "done"]
   },
@@ -126,13 +130,59 @@ registry?.register(myCustomProvider);
 ```
 
 ## Copilot Modes
-
 | Mode | Description |
 |------|-------------|
 | **Chat** | Opens VS Code native chat with task context pre-filled (default) |
 | **Cloud** | Uses GitHub Copilot via `vscode.lm` API |
 | **Local** | Sends prompts to Ollama at `localhost:11434` |
 | **Background** | Runs silently, saves results to `.kanban-notes/` |
+
+## GenAI Providers
+
+The Copilot integration uses an extensible provider architecture (`IGenAiProvider`). Each provider implements `id`, `displayName`, `icon`, `scope`, `isAvailable()`, `run()`, and `dispose()`.
+
+### Global Providers (VS Code integrated)
+
+These providers integrate with VS Code APIs and are always registered. Their configuration comes from VS Code settings and can be overridden per project.
+
+| Provider | Description |
+|----------|-------------|
+| **Chat** (`chat`) | Opens VS Code native chat with task context pre-filled |
+| **Cloud** (`cloud`) | Uses GitHub Copilot cloud model via `vscode.lm` API |
+| **Copilot CLI** (`copilot-cli`) | Runs silently via `vscode.lm`, saves result to `.kanban-notes/` |
+
+### Project Providers
+
+These providers are enabled and configured per project in `.agent-board/config.json` under `genAiProviders`.
+
+| Provider | Description |
+|----------|-------------|
+| **Ollama** (`ollama`) | Local Ollama model (default: `llama3`, endpoint: `localhost:11434`) |
+| **Mistral** (`mistral`) | Mistral API (default model: `mistral-small-latest`, key via `MISTRAL_API_KEY` env var) |
+
+#### Example configuration
+
+```jsonc
+// .agent-board/config.json
+{
+  "genAiProviders": {
+    "ollama": { "enabled": true, "model": "codellama", "endpoint": "http://localhost:11434/api/generate" },
+    "mistral": { "enabled": true, "model": "mistral-small-latest" }
+  }
+}
+```
+
+### Custom GenAI Providers
+
+Register third-party GenAI providers via the extension API:
+
+```typescript
+import { IGenAiProvider } from 'agent-board';
+
+const agentBoard = vscode.extensions.getExtension('agent-board');
+const genAiRegistry = agentBoard?.exports?.genAiRegistry;
+genAiRegistry?.register(myCustomGenAiProvider);
+```
 
 ## Architecture
 
@@ -144,13 +194,17 @@ Extension Host (Node.js)
 │   ├── JsonProvider (FileSystemWatcher, default: .agent-board/tasks)
 │   ├── BeadsProvider (CLI + polling)
 │   └── AggregatorProvider (merge + dedup)
+├── GenAiProviderRegistry → IGenAiProvider implementations
+│   ├── ChatGenAiProvider (global — VS Code chat)
+│   ├── CloudGenAiProvider (global — vscode.lm API)
+│   ├── CopilotCliGenAiProvider (global — background + file save)
+│   ├── OllamaGenAiProvider (project — local HTTP)
+│   └── MistralGenAiProvider (project — Mistral API)
+├── CopilotLauncher → ContextBuilder + GenAiProviderRegistry
 ├── KanbanPanel → WebView (HTML/CSS/JS)
 │   ├── MessageBridge (typed postMessage)
 │   └── theme.css (--vscode-* variables)
-├── CopilotLauncher
-│   ├── ContextBuilder
-│   ├── CloudRunner / LocalRunner / BackgroundRunner
-│   └── ChatParticipant (@taskai)
+├── ChatParticipant (@taskai)
 └── Logger (Output channel)
 ```
 
