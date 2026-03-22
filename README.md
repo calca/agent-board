@@ -6,7 +6,7 @@
 
 ## Features
 
-- **Kanban Board** — drag-and-drop task management with configurable columns
+- **Kanban Board** — drag-and-drop task management with fully configurable columns
 - **Extensible Providers** — load tasks from GitHub Issues, local JSON files, Beads CLI, or any custom source
 - **Copilot Integration** — launch Copilot sessions with full task context via extensible GenAI providers
 - **Agent Selection** — discover agents from `.github/agents/` and select one when launching a single task or from a dropdown near squad buttons
@@ -18,7 +18,7 @@
 - **Tree Views** — sidebar tasks and agents views in the Activity Bar
 - **Notifications** — configurable VS Code notifications for automatic task state changes
 - **Native Theming** — respects VS Code themes (Dark+, Light+, High Contrast)
-- **MCP Server** — stdio-based Model Context Protocol server for agent integration (list, get, create, update tasks)
+- **MCP Server** — stdio-based Model Context Protocol server for full CRUD agent integration (list, get, create, update, delete tasks)
 
 ## Installation
 
@@ -64,7 +64,7 @@ Create a `.agent-board/config.json` file in the workspace root to override any V
     "mistral": { "enabled": true, "model": "mistral-small-latest" }
   },
   "kanban": {
-    "columns": ["todo", "inprogress", "review", "done"]
+    "columns": ["backlog", "todo", "inprogress", "review", "done"]
   },
   "squad": {
     "maxSessions": 10,
@@ -90,6 +90,21 @@ Create a `.agent-board/config.json` file in the workspace root to override any V
 
 The file is validated with a JSON schema that provides autocomplete and inline documentation in VS Code.
 
+### Flexible Columns
+
+Column identifiers are arbitrary strings. The built-in defaults are `todo`, `inprogress`, `review`, and `done`, but you can define any column names:
+
+```jsonc
+{
+  "kanban": { "columns": ["backlog", "ready", "doing", "qa", "shipped"] },
+  "squad": {
+    "sourceColumn": "ready",
+    "activeColumn": "doing",
+    "doneColumn": "qa"
+  }
+}
+```
+
 ## VS Code Settings
 
 All settings can also be configured globally through **File > Preferences > Settings** (search for `agentBoard`). Per-project values in `.agent-board/config.json` take priority.
@@ -101,7 +116,7 @@ All settings can also be configured globally through **File > Preferences > Sett
 | `agentBoard.worktree.enabled` | `true` | Create an isolated git worktree for providers that support it |
 | `agentBoard.copilotCli.yolo` | `false` | Enable `/yolo` mode — auto-approve all changes without confirmation |
 | `agentBoard.copilotCli.fleet` | `false` | Enable `/fleet` mode — optimise prompt for parallel fleet execution |
-| `agentBoard.kanban.columns` | `["todo","inprogress","review","done"]` | Kanban column IDs |
+| `agentBoard.kanban.columns` | `["todo","inprogress","review","done"]` | Kanban column IDs (any string values) |
 | `agentBoard.squad.maxSessions` | `10` | Maximum parallel agent sessions |
 | `agentBoard.squad.sourceColumn` | `"todo"` | Column from which the squad picks tasks |
 | `agentBoard.squad.activeColumn` | `"inprogress"` | Column tasks move to when agent starts |
@@ -368,14 +383,16 @@ Extension Host (Node.js)
 │   ├── OllamaGenAiProvider (project — local HTTP)
 │   └── MistralGenAiProvider (project — Mistral API)
 ├── AgentDiscovery → .github/agents/*.md (agent instructions)
-├── SquadManager → parallel sessions, auto-squad, retry, priority, timeout, agent selection
-│   └── squadUtils.ts (pure helpers: computeAvailableSlots, canRetry, sortByPriority, isTimedOut, shouldExclude, matchesAssignee)
+├── SquadManager → parallel sessions, auto-squad, SquadConfig
+│   └── squadUtils.ts (pure helpers: resolveSquadConfig, computeAvailableSlots, canRetry, sortByPriority, isTimedOut, shouldExclude, matchesAssignee)
 ├── CopilotLauncher → ContextBuilder + GenAiProviderRegistry + WorktreeManager + AgentDiscovery
 ├── WorktreeManager → git worktree create / remove
 ├── KanbanPanel → WebView (HTML/CSS/JS)
 │   ├── MessageBridge (typed postMessage)
 │   └── theme.css (--vscode-* variables)
 ├── ChatParticipant (@taskai)
+├── MCP Server → stdio JSON-RPC 2.0 (list, get, create, update, delete tasks)
+├── formatError → standardised error formatting utility
 └── Logger (Output channel)
 ```
 
@@ -391,6 +408,7 @@ Agent Board ships with a **stdio-based MCP server** that lets external agents in
 | `get_task` | `taskId` | — | Get full details of a single task |
 | `update_task` | `taskId` | `column`, `title`, `body`, `labels`, `assignee` | Update or move a task |
 | `create_task` | `title` | `body`, `column`, `labels`, `assignee` | Create a new task |
+| `delete_task` | `taskId` | — | Delete a task by its id |
 
 ### Configuration
 
@@ -429,7 +447,20 @@ echo '{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"create_tas
 # Move a task to "inprogress"
 echo '{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"update_task","arguments":{"taskId":"json:1","column":"inprogress"}}}' \
   | node out/mcp/mcpServer.js
+
+# Delete a task
+echo '{"jsonrpc":"2.0","id":4,"method":"tools/call","params":{"name":"delete_task","arguments":{"taskId":"json:1"}}}' \
+  | node out/mcp/mcpServer.js
 ```
+
+## Breaking Changes
+
+This release includes the following breaking changes (backward compatibility was explicitly not maintained):
+
+- **`ColumnId` is now `string`** — previously a union type `'todo' | 'inprogress' | 'review' | 'done'`. Column names are now fully flexible. Use `DEFAULT_COLUMN_IDS` for the built-in set.
+- **`COLUMN_IDS` / `COLUMN_LABELS` deprecated** — use `DEFAULT_COLUMN_IDS` and `DEFAULT_COLUMN_LABELS` instead.
+- **`McpTaskAdapter` requires `deleteTask()`** — implementations must add `deleteTask(taskId: string): Promise<boolean>`.
+- **`SquadManager` internal refactor** — the 8 individual config getter methods have been replaced by a single `resolveSquadConfig()` call. External consumers of `SquadManager` are not affected.
 
 ## Development
 
@@ -437,7 +468,7 @@ echo '{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"update_tas
 npm run compile    # TypeScript compilation
 npm run watch      # Watch mode
 npm run lint       # ESLint
-npm test           # Unit tests (Mocha)
+npm test           # Unit tests (Mocha — 270 tests)
 node esbuild.config.js  # Bundle for distribution
 ```
 
