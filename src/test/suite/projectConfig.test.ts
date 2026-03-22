@@ -81,6 +81,10 @@ suite('ProjectConfigData (full shape)', () => {
       jsonProvider: { path: '.agent-board/tasks' },
       beadsProvider: { executable: '/usr/local/bin/beads' },
       copilot: { defaultMode: 'local', localModel: 'codellama' },
+      genAiProviders: {
+        ollama: { enabled: true, model: 'llama3', endpoint: 'http://localhost:11434/api/generate' },
+        mistral: { enabled: true, model: 'mistral-small-latest' },
+      },
       kanban: { columns: ['backlog', 'todo', 'done'] },
       pollInterval: 10000,
       logLevel: 'DEBUG',
@@ -91,6 +95,10 @@ suite('ProjectConfigData (full shape)', () => {
     assert.strictEqual(cfg.beadsProvider?.executable, '/usr/local/bin/beads');
     assert.strictEqual(cfg.copilot?.defaultMode, 'local');
     assert.strictEqual(cfg.copilot?.localModel, 'codellama');
+    assert.strictEqual(cfg.genAiProviders?.ollama?.enabled, true);
+    assert.strictEqual(cfg.genAiProviders?.ollama?.model, 'llama3');
+    assert.strictEqual(cfg.genAiProviders?.mistral?.enabled, true);
+    assert.strictEqual(cfg.genAiProviders?.mistral?.model, 'mistral-small-latest');
     assert.deepStrictEqual(cfg.kanban?.columns, ['backlog', 'todo', 'done']);
     assert.strictEqual(cfg.pollInterval, 10000);
     assert.strictEqual(cfg.logLevel, 'DEBUG');
@@ -101,7 +109,21 @@ suite('ProjectConfigData (full shape)', () => {
     assert.strictEqual(cfg.github, undefined);
     assert.strictEqual(cfg.jsonProvider, undefined);
     assert.strictEqual(cfg.copilot, undefined);
+    assert.strictEqual(cfg.genAiProviders, undefined);
     assert.strictEqual(cfg.pollInterval, undefined);
     assert.strictEqual(cfg.logLevel, undefined);
+  });
+
+  test('genAiProviders entries are independently optional', () => {
+    const cfg: ProjectConfigData = {
+      genAiProviders: {
+        ollama: { enabled: true },
+        mistral: { model: 'mistral-tiny' },
+      },
+    };
+    assert.strictEqual(cfg.genAiProviders?.ollama?.enabled, true);
+    assert.strictEqual(cfg.genAiProviders?.ollama?.model, undefined);
+    assert.strictEqual(cfg.genAiProviders?.mistral?.enabled, undefined);
+    assert.strictEqual(cfg.genAiProviders?.mistral?.model, 'mistral-tiny');
   });
 });

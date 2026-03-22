@@ -1,4 +1,14 @@
 /**
+ * Per-provider configuration for a GenAI provider stored in
+ * `genAiProviders.<id>` inside `.agent-board/config.json`.
+ */
+export interface GenAiProviderConfigEntry {
+  enabled?: boolean;
+  model?: string;
+  endpoint?: string;
+}
+
+/**
  * Shape of `.agent-board/config.json` in the workspace root.
  *
  * Every VS Code setting under `agentBoard.*` can be overridden here.
@@ -19,6 +29,14 @@ export interface ProjectConfigData {
     defaultMode?: string;
     localModel?: string;
   };
+  /**
+   * Per-provider GenAI configuration.
+   *
+   * Global providers (chat, cloud, copilot-cli) have VS Code settings
+   * and can be overridden here.  Project providers (ollama, mistral) are
+   * enabled and configured **only** here.
+   */
+  genAiProviders?: Record<string, GenAiProviderConfigEntry>;
   kanban?: {
     columns?: string[];
   };
