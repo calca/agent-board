@@ -8,10 +8,21 @@ export interface Column {
   label: string;
 }
 
+/** Snapshot of the squad manager state sent to the WebView. */
+export interface SquadStatus {
+  /** Number of copilot sessions currently running. */
+  activeCount: number;
+  /** Maximum parallel sessions allowed. */
+  maxSessions: number;
+  /** Whether auto-squad mode is enabled. */
+  autoSquadEnabled: boolean;
+}
+
 export type HostToWebView =
   | { type: 'tasksUpdate'; tasks: KanbanTask[]; columns: Column[] }
   | { type: 'providerStatus'; providerId: string; status: 'ok' | 'error' | 'loading'; message?: string }
-  | { type: 'themeChange'; kind: 'dark' | 'light' | 'hc' };
+  | { type: 'themeChange'; kind: 'dark' | 'light' | 'hc' }
+  | { type: 'squadStatus'; status: SquadStatus };
 
 // ── WebView → Host ──────────────────────────────────────────────────────────
 
@@ -19,4 +30,6 @@ export type WebViewToHost =
   | { type: 'taskMoved'; taskId: string; toCol: ColumnId; index: number }
   | { type: 'openCopilot'; taskId: string; providerId: string }
   | { type: 'refreshRequest'; providerId?: string }
-  | { type: 'ready' };
+  | { type: 'ready' }
+  | { type: 'startSquad' }
+  | { type: 'toggleAutoSquad' };

@@ -43,29 +43,22 @@ export class CopilotLauncher {
     }
 
     // ── Worktree support ──────────────────────────────────────────────
-    // Worktrees are created once and persist so the user (or agent) can
-    // inspect the isolated branch after the provider finishes.
     let worktree: WorktreeInfo | undefined;
     if (provider.supportsWorktree && this.isWorktreeEnabled()) {
       worktree = await this.tryCreateWorktree(taskId);
     }
 
     const prompt = ContextBuilder.build(task);
-    await provider.run(prompt, task);
 
     if (worktree) {
       this.logger.info(`CopilotLauncher: worktree ready at ${worktree.path} (branch ${worktree.branch})`);
     }
+
+    await provider.run(prompt, task);
   }
 
   // ── Private helpers ─────────────────────────────────────────────────
 
-  /**
-   * Determine whether worktree creation is enabled.
-   *
-   * Resolution order: `.agent-board/config.json` → VS Code setting
-   * `agentBoard.worktree.enabled` → default `true`.
-   */
   private isWorktreeEnabled(): boolean {
     const projectCfg = ProjectConfig.getProjectConfig();
     const fileValue = projectCfg?.worktree?.enabled;
@@ -78,11 +71,6 @@ export class CopilotLauncher {
     return settingValue ?? true;
   }
 
-  /**
-   * Attempt to create a worktree for the given task.
-   * Returns `undefined` (and shows an info message) when the workspace
-   * is not a git repository.
-   */
   private async tryCreateWorktree(taskId: string): Promise<WorktreeInfo | undefined> {
     const folders = vscode.workspace.workspaceFolders;
     if (!folders || folders.length === 0) {

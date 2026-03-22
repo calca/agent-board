@@ -11,6 +11,7 @@ import { refreshTasksCommand } from './commands/refreshTasks';
 import { KanbanPanel } from './kanban/KanbanPanel';
 import { CopilotLauncher } from './copilot/CopilotLauncher';
 import { ModelSelector } from './copilot/ModelSelector';
+import { SquadManager } from './copilot/SquadManager';
 import { registerChatParticipant } from './copilot/ChatParticipant';
 import { GitHubProvider } from './providers/GitHubProvider';
 import { GenAiProviderRegistry } from './copilot/GenAiProviderRegistry';
@@ -50,6 +51,11 @@ export function activate(context: vscode.ExtensionContext): void {
 
   const copilotLauncher = new CopilotLauncher(providerRegistry, context, genAiRegistry);
   const modelSelector = new ModelSelector(context, genAiRegistry);
+  const squadManager = new SquadManager(
+    providerRegistry,
+    copilotLauncher,
+    () => modelSelector.getProviderId(),
+  );
 
   // Register @taskai chat participant (gracefully skipped if API unavailable)
   const chatParticipant = registerChatParticipant(context, providerRegistry);
@@ -187,8 +193,9 @@ export function activate(context: vscode.ExtensionContext): void {
     panel.onMessage(async (msg) => {
       switch (msg.type) {
         case 'ready':
-          // Send initial tasks
+          // Send initial tasks and squad status
           await sendTasksToPanel(panel, providerRegistry);
+          panel.updateSquadStatus(squadManager.getStatus());
           break;
         case 'refreshRequest':
           await refreshTasksCommand(providerRegistry);
@@ -210,6 +217,17 @@ export function activate(context: vscode.ExtensionContext): void {
         case 'openCopilot':
           await copilotLauncher.launch(msg.taskId, msg.providerId);
           break;
+        case 'startSquad': {
+          await handleStartSquad(squadManager);
+          panel.updateSquadStatus(squadManager.getStatus());
+          await sendTasksToPanel(panel, providerRegistry);
+          break;
+        }
+        case 'toggleAutoSquad': {
+          handleToggleAutoSquad(squadManager);
+          panel.updateSquadStatus(squadManager.getStatus());
+          break;
+        }
       }
     });
   });
@@ -226,6 +244,16 @@ export function activate(context: vscode.ExtensionContext): void {
       return;
     }
     vscode.window.showInformationMessage(`GenAI provider set to "${mode}". Select a task from the Kanban board to launch.`);
+  });
+
+  const startSquad = vscode.commands.registerCommand('agentBoard.startSquad', async () => {
+    logger.info('startSquad command invoked');
+    await handleStartSquad(squadManager);
+  });
+
+  const toggleAutoSquad = vscode.commands.registerCommand('agentBoard.toggleAutoSquad', async () => {
+    logger.info('toggleAutoSquad command invoked');
+    handleToggleAutoSquad(squadManager);
   });
 
   const runAgent = vscode.commands.registerCommand('agentBoard.runAgent', async (item?: AgentTreeItem) => {
@@ -301,7 +329,10 @@ export function activate(context: vscode.ExtensionContext): void {
     openKanban,
     selectProvider,
     launchCopilot,
+    startSquad,
+    toggleAutoSquad,
     modelSelector,
+    { dispose: () => squadManager.dispose() },
     { dispose: () => providerRegistry.disposeAll() },
     { dispose: () => genAiRegistry.disposeAll() },
     logger,
@@ -367,6 +398,26 @@ async function sendTasksToPanel(panel: KanbanPanel, registry: ProviderRegistry):
 
 /** IDs of GenAI providers that are always registered (VS Code integrated). */
 const GLOBAL_GENAI_PROVIDER_IDS = ['chat', 'cloud', 'copilot-cli'];
+
+/**
+ * Handle starting a squad session — shared between command and WebView handler.
+ */
+async function handleStartSquad(squadManager: SquadManager): Promise<void> {
+  const launched = await squadManager.startSquad();
+  vscode.window.showInformationMessage(
+    `Squad: launched ${launched} session${launched === 1 ? '' : 's'}.`,
+  );
+}
+
+/**
+ * Handle toggling auto-squad — shared between command and WebView handler.
+ */
+function handleToggleAutoSquad(squadManager: SquadManager): void {
+  const enabled = squadManager.toggleAutoSquad();
+  vscode.window.showInformationMessage(
+    `Auto-squad ${enabled ? 'enabled' : 'disabled'}.`,
+  );
+}
 
 /**
  * Register project-scoped GenAI providers based on `.agent-board/config.json`.

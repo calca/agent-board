@@ -87,6 +87,52 @@
       },
       "additionalProperties": false
     },
+    "squad": {
+      "type": "object",
+      "description": "Agent squad settings.",
+      "properties": {
+        "maxSessions": {
+          "type": "number",
+          "minimum": 1,
+          "maximum": 50,
+          "default": 10,
+          "description": "Maximum number of parallel agent sessions launched by the squad feature."
+        },
+        "sourceColumn": {
+          "type": "string",
+          "default": "todo",
+          "description": "Column from which the squad picks tasks to launch. Default: todo."
+        },
+        "activeColumn": {
+          "type": "string",
+          "default": "inprogress",
+          "description": "Column tasks are moved to when the agent starts working. Default: inprogress."
+        },
+        "doneColumn": {
+          "type": "string",
+          "default": "review",
+          "description": "Column tasks are moved to when the agent completes. Default: review."
+        }
+      },
+      "additionalProperties": false
+    },
+    "notifications": {
+      "type": "object",
+      "description": "VS Code notification settings for automatic task state changes.",
+      "properties": {
+        "taskActive": {
+          "type": "boolean",
+          "default": true,
+          "description": "Show a notification when a task is automatically moved to the active column."
+        },
+        "taskDone": {
+          "type": "boolean",
+          "default": true,
+          "description": "Show a notification when a task is automatically moved to the done column."
+        }
+      },
+      "additionalProperties": false
+    },
     "pollInterval": {
       "type": "number",
       "minimum": 5000,

@@ -1,4 +1,4 @@
-import { KanbanTask } from '../types/KanbanTask';
+import { KanbanTask, CopilotSessionInfo } from '../types/KanbanTask';
 
 /**
  * Scope of a GenAI provider.
@@ -50,6 +50,11 @@ export interface IGenAiProvider {
   isAvailable(): Promise<boolean>;
   /** Execute the provider with the given prompt (and optional task for context). */
   run(prompt: string, task?: KanbanTask): Promise<void>;
+  /**
+   * Return provider-specific session links/shortcuts for a task.
+   * Optional — providers that don't support session tracking can omit this.
+   */
+  getSessionInfo?(task: KanbanTask): CopilotSessionInfo | undefined;
   /** Clean up resources. */
   dispose(): void;
 }
