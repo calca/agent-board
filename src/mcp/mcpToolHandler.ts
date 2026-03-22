@@ -76,9 +76,10 @@ export const MCP_TOOLS: McpToolDefinition[] = [
           description: 'New body / description for the task.',
         },
         labels: {
-          type: 'string',
+          type: 'array',
           description:
-            'JSON array of label strings to set on the task (e.g. ["bug","urgent"]).',
+            'Label strings to set on the task (e.g. ["bug","urgent"]).',
+          items: { type: 'string' },
         },
         assignee: {
           type: 'string',
@@ -110,9 +111,10 @@ export const MCP_TOOLS: McpToolDefinition[] = [
           enum: [...COLUMN_IDS],
         },
         labels: {
-          type: 'string',
+          type: 'array',
           description:
-            'JSON array of label strings (e.g. ["bug","urgent"]).',
+            'Label strings (e.g. ["bug","urgent"]).',
+          items: { type: 'string' },
         },
         assignee: {
           type: 'string',
