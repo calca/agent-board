@@ -1,5 +1,11 @@
 import * as assert from 'assert';
-import { computeAvailableSlots, DEFAULT_MAX_SESSIONS } from '../../copilot/squadUtils';
+import {
+  computeAvailableSlots,
+  DEFAULT_MAX_SESSIONS,
+  DEFAULT_SOURCE_COLUMN,
+  DEFAULT_ACTIVE_COLUMN,
+  DEFAULT_DONE_COLUMN,
+} from '../../copilot/squadUtils';
 import { KanbanTask } from '../../types/KanbanTask';
 
 suite('SquadManager (computeAvailableSlots)', () => {
@@ -35,6 +41,18 @@ suite('SquadManager (computeAvailableSlots)', () => {
 suite('SquadManager constants', () => {
   test('DEFAULT_MAX_SESSIONS is 10', () => {
     assert.strictEqual(DEFAULT_MAX_SESSIONS, 10);
+  });
+
+  test('DEFAULT_SOURCE_COLUMN is todo', () => {
+    assert.strictEqual(DEFAULT_SOURCE_COLUMN, 'todo');
+  });
+
+  test('DEFAULT_ACTIVE_COLUMN is inprogress', () => {
+    assert.strictEqual(DEFAULT_ACTIVE_COLUMN, 'inprogress');
+  });
+
+  test('DEFAULT_DONE_COLUMN is review', () => {
+    assert.strictEqual(DEFAULT_DONE_COLUMN, 'review');
   });
 });
 
@@ -173,6 +191,20 @@ suite('ProjectConfigData squad/notifications', () => {
   test('squad config with maxSessions', () => {
     const cfg = { squad: { maxSessions: 5 } };
     assert.strictEqual(cfg.squad.maxSessions, 5);
+  });
+
+  test('squad config with column overrides', () => {
+    const cfg = {
+      squad: {
+        maxSessions: 5,
+        sourceColumn: 'backlog',
+        activeColumn: 'doing',
+        doneColumn: 'done',
+      },
+    };
+    assert.strictEqual(cfg.squad.sourceColumn, 'backlog');
+    assert.strictEqual(cfg.squad.activeColumn, 'doing');
+    assert.strictEqual(cfg.squad.doneColumn, 'done');
   });
 
   test('notifications config is optional', () => {

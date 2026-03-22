@@ -50,6 +50,12 @@ export interface ProjectConfigData {
   squad?: {
     /** Maximum parallel agent sessions (default 10). */
     maxSessions?: number;
+    /** Column from which the squad picks tasks to launch (default "todo"). */
+    sourceColumn?: string;
+    /** Column tasks are moved to when the agent starts working (default "inprogress"). */
+    activeColumn?: string;
+    /** Column tasks are moved to when the agent completes (default "review"). */
+    doneColumn?: string;
   };
   notifications?: {
     /** Show a VS Code notification when a copilot session starts. */

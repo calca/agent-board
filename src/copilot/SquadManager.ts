@@ -1,17 +1,34 @@
 import * as vscode from 'vscode';
 import { KanbanTask, CopilotSessionInfo } from '../types/KanbanTask';
+import { ColumnId } from '../types/ColumnId';
 import { SquadStatus } from '../types/Messages';
 import { ProviderRegistry } from '../providers/ProviderRegistry';
 import { CopilotLauncher } from './CopilotLauncher';
 import { ProjectConfig } from '../config/ProjectConfig';
 import { Logger } from '../utils/logger';
-import { DEFAULT_MAX_SESSIONS, computeAvailableSlots } from './squadUtils';
+import {
+  DEFAULT_MAX_SESSIONS,
+  DEFAULT_SOURCE_COLUMN,
+  DEFAULT_ACTIVE_COLUMN,
+  DEFAULT_DONE_COLUMN,
+  computeAvailableSlots,
+} from './squadUtils';
 
-export { DEFAULT_MAX_SESSIONS, computeAvailableSlots } from './squadUtils';
+export {
+  DEFAULT_MAX_SESSIONS,
+  DEFAULT_SOURCE_COLUMN,
+  DEFAULT_ACTIVE_COLUMN,
+  DEFAULT_DONE_COLUMN,
+  computeAvailableSlots,
+} from './squadUtils';
 
 /**
  * Manages "squad" sessions — parallel copilot launches across
- * multiple tasks that are in the "todo" column.
+ * multiple tasks.
+ *
+ * Column mapping is fully configurable via `squad.sourceColumn`,
+ * `squad.activeColumn`, and `squad.doneColumn` in the project config
+ * (or VS Code settings).
  *
  * Supports two modes:
  * - **Start Squad**: one-shot launch of up to `maxSessions` copilot sessions.
@@ -136,7 +153,35 @@ export class SquadManager {
     );
   }
 
+  private getSourceColumn(): ColumnId {
+    const projectCfg = ProjectConfig.getProjectConfig();
+    return ProjectConfig.resolve(
+      projectCfg?.squad?.sourceColumn,
+      'squad.sourceColumn',
+      DEFAULT_SOURCE_COLUMN,
+    ) as ColumnId;
+  }
+
+  private getActiveColumn(): ColumnId {
+    const projectCfg = ProjectConfig.getProjectConfig();
+    return ProjectConfig.resolve(
+      projectCfg?.squad?.activeColumn,
+      'squad.activeColumn',
+      DEFAULT_ACTIVE_COLUMN,
+    ) as ColumnId;
+  }
+
+  private getDoneColumn(): ColumnId {
+    const projectCfg = ProjectConfig.getProjectConfig();
+    return ProjectConfig.resolve(
+      projectCfg?.squad?.doneColumn,
+      'squad.doneColumn',
+      DEFAULT_DONE_COLUMN,
+    ) as ColumnId;
+  }
+
   private async getEligibleTasks(): Promise<KanbanTask[]> {
+    const sourceCol = this.getSourceColumn();
     const providers = this.providerRegistry.getAll();
     const allTasks = (
       await Promise.allSettled(providers.map(p => p.getTasks()))
@@ -144,10 +189,19 @@ export class SquadManager {
       .filter((r): r is PromiseFulfilledResult<KanbanTask[]> => r.status === 'fulfilled')
       .flatMap(r => r.value);
 
-    // Only tasks in "todo" that don't already have an active session
+    // Only tasks in the configured source column that don't already have an active session
     return allTasks.filter(
-      t => t.status === 'todo' && !this.activeSessions.has(t.id),
+      t => t.status === sourceCol && !this.activeSessions.has(t.id),
     );
+  }
+
+  /** Move a task to the given column via its provider. */
+  private async moveTask(task: KanbanTask, toColumn: ColumnId): Promise<void> {
+    const [providerId] = task.id.split(':');
+    const provider = this.providerRegistry.get(providerId);
+    if (provider) {
+      await provider.updateTask({ ...task, status: toColumn });
+    }
   }
 
   private async launchSession(task: KanbanTask): Promise<void> {
@@ -159,8 +213,17 @@ export class SquadManager {
     };
     this.activeSessions.set(task.id, session);
 
+    // Move task to "active" column (e.g. inprogress)
+    const activeCol = this.getActiveColumn();
+    await this.moveTask(task, activeCol);
+
     try {
       await this.copilotLauncher.launch(task.id, providerId);
+
+      // Move task to "done" column (e.g. review)
+      const doneCol = this.getDoneColumn();
+      await this.moveTask(task, doneCol);
+
       this.completeSession(task.id);
     } catch {
       this.failSession(task.id);

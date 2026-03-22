@@ -183,6 +183,21 @@
           "maximum": 50,
           "description": "Maximum number of parallel agent sessions launched by the squad feature. Overridable in .agent-board/config.json."
         },
+        "agentBoard.squad.sourceColumn": {
+          "type": "string",
+          "default": "todo",
+          "description": "Column from which the squad picks tasks to launch. Overridable in .agent-board/config.json."
+        },
+        "agentBoard.squad.activeColumn": {
+          "type": "string",
+          "default": "inprogress",
+          "description": "Column tasks are moved to when the agent starts working. Overridable in .agent-board/config.json."
+        },
+        "agentBoard.squad.doneColumn": {
+          "type": "string",
+          "default": "review",
+          "description": "Column tasks are moved to when the agent completes. Overridable in .agent-board/config.json."
+        },
         "agentBoard.notifications.copilotStart": {
           "type": "boolean",
           "default": true,

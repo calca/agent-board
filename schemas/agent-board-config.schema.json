@@ -97,6 +97,21 @@
           "maximum": 50,
           "default": 10,
           "description": "Maximum number of parallel agent sessions launched by the squad feature."
+        },
+        "sourceColumn": {
+          "type": "string",
+          "default": "todo",
+          "description": "Column from which the squad picks tasks to launch. Default: todo."
+        },
+        "activeColumn": {
+          "type": "string",
+          "default": "inprogress",
+          "description": "Column tasks are moved to when the agent starts working. Default: inprogress."
+        },
+        "doneColumn": {
+          "type": "string",
+          "default": "review",
+          "description": "Column tasks are moved to when the agent completes. Default: review."
         }
       },
       "additionalProperties": false
