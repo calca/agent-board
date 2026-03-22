@@ -1,13 +1,16 @@
 import * as vscode from 'vscode';
 import * as path from 'path';
 import * as fs from 'fs';
-import { ProjectConfigData, extractGitHubConfig } from './configTypes';
+import { ProjectConfigData, extractGitHubConfig, resolveConfigValue } from './configTypes';
 
-export { ProjectConfigData, extractGitHubConfig };
+export { ProjectConfigData, extractGitHubConfig, resolveConfigValue };
 
 /**
  * Reads per-project configuration from `.agent-board/config.json`
  * in the first workspace folder.
+ *
+ * Every VS Code setting under `agentBoard.*` can be overridden in the
+ * project file.  Values in the file take priority over VS Code settings.
  */
 export class ProjectConfig {
   static readonly CONFIG_DIR = '.agent-board';
@@ -19,6 +22,20 @@ export class ProjectConfig {
   static getGitHubConfig(): { owner: string; repo: string } {
     const file = ProjectConfig.readConfigFile();
     return extractGitHubConfig(file);
+  }
+
+  /**
+   * Resolve a single setting: project file value → VS Code setting → default.
+   */
+  static resolve<T>(fileValue: T | undefined, settingKey: string, defaultValue: T): T {
+    const cfg = vscode.workspace.getConfiguration('agentBoard');
+    const settingVal = cfg.get<T>(settingKey, defaultValue);
+    return resolveConfigValue(fileValue, settingVal);
+  }
+
+  /** Read the raw project config (or `undefined` if missing). */
+  static getProjectConfig(): ProjectConfigData | undefined {
+    return ProjectConfig.readConfigFile();
   }
 
   /**

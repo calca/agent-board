@@ -3,6 +3,7 @@ import { execFile } from 'child_process';
 import { ITaskProvider } from './ITaskProvider';
 import { KanbanTask } from '../types/KanbanTask';
 import { ColumnId } from '../types/ColumnId';
+import { ProjectConfig } from '../config/ProjectConfig';
 
 interface BeadsIssue {
   id: string | number;
@@ -65,9 +66,17 @@ export class BeadsProvider implements ITaskProvider {
   // ── private ─────────────────────────────────────────────────────────
 
   private readConfig(): void {
-    const cfg = vscode.workspace.getConfiguration('agentBoard');
-    this.executable = cfg.get<string>('beadsProvider.executable', 'beads');
-    this.pollIntervalMs = cfg.get<number>('pollInterval', 30_000);
+    const projectCfg = ProjectConfig.getProjectConfig();
+    this.executable = ProjectConfig.resolve(
+      projectCfg?.beadsProvider?.executable,
+      'beadsProvider.executable',
+      'beads',
+    );
+    this.pollIntervalMs = ProjectConfig.resolve(
+      projectCfg?.pollInterval,
+      'pollInterval',
+      30_000,
+    );
   }
 
   private startPolling(): void {

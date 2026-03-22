@@ -1,7 +1,7 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "Agent Board Project Config",
-  "description": "Per-project configuration for Agent Board. Place this file at .agent-board/config.json in the workspace root.",
+  "description": "Per-project configuration for Agent Board. Place this file at .agent-board/config.json in the workspace root. All VS Code settings can be overridden here.",
   "type": "object",
   "properties": {
     "github": {
@@ -18,7 +18,67 @@
         }
       },
       "additionalProperties": false
+    },
+    "jsonProvider": {
+      "type": "object",
+      "description": "JSON task provider settings.",
+      "properties": {
+        "path": {
+          "type": "string",
+          "description": "Workspace-relative or absolute path to the JSON tasks file. Default: .agent-board/tasks"
+        }
+      },
+      "additionalProperties": false
+    },
+    "beadsProvider": {
+      "type": "object",
+      "description": "Beads CLI provider settings.",
+      "properties": {
+        "executable": {
+          "type": "string",
+          "description": "Path to the Beads CLI executable."
+        }
+      },
+      "additionalProperties": false
+    },
+    "copilot": {
+      "type": "object",
+      "description": "Copilot integration settings.",
+      "properties": {
+        "defaultMode": {
+          "type": "string",
+          "enum": ["chat", "cloud", "local", "background"],
+          "description": "Default Copilot mode when launching a task session."
+        },
+        "localModel": {
+          "type": "string",
+          "description": "Ollama model name for local Copilot mode."
+        }
+      },
+      "additionalProperties": false
+    },
+    "kanban": {
+      "type": "object",
+      "description": "Kanban board settings.",
+      "properties": {
+        "columns": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Ordered list of Kanban column identifiers."
+        }
+      },
+      "additionalProperties": false
+    },
+    "pollInterval": {
+      "type": "number",
+      "minimum": 5000,
+      "description": "Polling interval in milliseconds for providers that use polling."
+    },
+    "logLevel": {
+      "type": "string",
+      "enum": ["DEBUG", "INFO", "WARN", "ERROR"],
+      "description": "Log level for the Agent Board output channel."
     }
   },
-  "additionalProperties": true
+  "additionalProperties": false
 }

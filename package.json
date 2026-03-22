@@ -111,13 +111,13 @@
       "properties": {
         "agentBoard.jsonProvider.path": {
           "type": "string",
-          "default": "",
-          "description": "Absolute or workspace-relative path to a JSON file containing tasks for the JSON provider."
+          "default": ".agent-board/tasks",
+          "description": "Workspace-relative or absolute path to a JSON file containing tasks for the JSON provider. Overridable in .agent-board/config.json."
         },
         "agentBoard.beadsProvider.executable": {
           "type": "string",
           "default": "beads",
-          "description": "Path to the Beads CLI executable."
+          "description": "Path to the Beads CLI executable. Overridable in .agent-board/config.json."
         },
         "agentBoard.copilot.defaultMode": {
           "type": "string",
@@ -128,7 +128,7 @@
             "background"
           ],
           "default": "chat",
-          "description": "Default Copilot mode when launching a task session.",
+          "description": "Default Copilot mode when launching a task session. Overridable in .agent-board/config.json.",
           "enumDescriptions": [
             "Open VS Code chat with task context pre-filled",
             "Use GitHub Copilot cloud model",
@@ -139,7 +139,7 @@
         "agentBoard.copilot.localModel": {
           "type": "string",
           "default": "llama3",
-          "description": "Ollama model name to use in local Copilot mode."
+          "description": "Ollama model name to use in local Copilot mode. Overridable in .agent-board/config.json."
         },
         "agentBoard.kanban.columns": {
           "type": "array",
@@ -152,13 +152,13 @@
             "review",
             "done"
           ],
-          "description": "Ordered list of Kanban column identifiers."
+          "description": "Ordered list of Kanban column identifiers. Overridable in .agent-board/config.json."
         },
         "agentBoard.pollInterval": {
           "type": "number",
           "default": 30000,
           "minimum": 5000,
-          "description": "Polling interval in milliseconds for providers that use polling (e.g. Beads)."
+          "description": "Polling interval in milliseconds for providers that use polling (e.g. Beads). Overridable in .agent-board/config.json."
         },
         "agentBoard.logLevel": {
           "type": "string",
@@ -169,7 +169,7 @@
             "ERROR"
           ],
           "default": "INFO",
-          "description": "Log level for the Task Kanban output channel."
+          "description": "Log level for the Agent Board output channel. Overridable in .agent-board/config.json."
         }
       }
     },
