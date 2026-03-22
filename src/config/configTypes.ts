@@ -58,10 +58,10 @@ export interface ProjectConfigData {
     doneColumn?: string;
   };
   notifications?: {
-    /** Show a VS Code notification when a copilot session starts. */
-    copilotStart?: boolean;
-    /** Show a VS Code notification when a copilot session finishes. */
-    copilotFinish?: boolean;
+    /** Show a VS Code notification when a task is automatically moved to the active column. */
+    taskStarted?: boolean;
+    /** Show a VS Code notification when a task is automatically moved to the done column. */
+    taskCompleted?: boolean;
   };
   pollInterval?: number;
   logLevel?: string;

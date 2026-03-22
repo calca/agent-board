@@ -30,6 +30,9 @@ export {
  * `squad.activeColumn`, and `squad.doneColumn` in the project config
  * (or VS Code settings).
  *
+ * Sends generic VS Code notifications on automatic task state changes
+ * (controlled via `notifications.taskStarted` / `notifications.taskCompleted`).
+ *
  * Supports two modes:
  * - **Start Squad**: one-shot launch of up to `maxSessions` copilot sessions.
  * - **Auto Squad**: continuously monitors and launches new sessions as
@@ -204,6 +207,16 @@ export class SquadManager {
     }
   }
 
+  /** Resolve whether a generic notification should be shown. */
+  private shouldNotify(key: 'taskStarted' | 'taskCompleted'): boolean {
+    const projectCfg = ProjectConfig.getProjectConfig();
+    return ProjectConfig.resolve(
+      projectCfg?.notifications?.[key],
+      `notifications.${key}`,
+      true,
+    );
+  }
+
   private async launchSession(task: KanbanTask): Promise<void> {
     const providerId = this.genAiProviderId();
     const session: CopilotSessionInfo = {
@@ -217,6 +230,13 @@ export class SquadManager {
     const activeCol = this.getActiveColumn();
     await this.moveTask(task, activeCol);
 
+    // Notify on automatic state change → active
+    if (this.shouldNotify('taskStarted')) {
+      vscode.window.showInformationMessage(
+        `Task "${task.title}" moved to ${activeCol}`,
+      );
+    }
+
     try {
       await this.copilotLauncher.launch(task.id, providerId);
 
@@ -224,8 +244,21 @@ export class SquadManager {
       const doneCol = this.getDoneColumn();
       await this.moveTask(task, doneCol);
 
+      // Notify on automatic state change → done
+      if (this.shouldNotify('taskCompleted')) {
+        vscode.window.showInformationMessage(
+          `Task "${task.title}" moved to ${doneCol}`,
+        );
+      }
+
       this.completeSession(task.id);
     } catch {
+      // Notify on failure
+      if (this.shouldNotify('taskCompleted')) {
+        vscode.window.showErrorMessage(
+          `Task "${task.title}" failed`,
+        );
+      }
       this.failSession(task.id);
     }
   }

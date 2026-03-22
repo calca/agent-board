@@ -118,17 +118,17 @@
     },
     "notifications": {
       "type": "object",
-      "description": "VS Code notification settings.",
+      "description": "VS Code notification settings for automatic task state changes.",
       "properties": {
-        "copilotStart": {
+        "taskStarted": {
           "type": "boolean",
           "default": true,
-          "description": "Show a notification when a copilot session starts."
+          "description": "Show a notification when a task is automatically moved to the active column."
         },
-        "copilotFinish": {
+        "taskCompleted": {
           "type": "boolean",
           "default": true,
-          "description": "Show a notification when a copilot session finishes."
+          "description": "Show a notification when a task is automatically moved to the done column."
         }
       },
       "additionalProperties": false

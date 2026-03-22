@@ -17,8 +17,6 @@ import { ProjectConfig } from '../config/ProjectConfig';
  * When the selected provider declares `supportsWorktree` and worktree
  * creation is enabled (default), a git worktree is created before the
  * provider runs so it can operate on an isolated branch.
- *
- * Sends VS Code notifications on start/finish when enabled in config.
  */
 export class CopilotLauncher {
   private readonly logger = Logger.getInstance();
@@ -50,35 +48,12 @@ export class CopilotLauncher {
       worktree = await this.tryCreateWorktree(taskId);
     }
 
-    // Notify on start
-    if (this.shouldNotify('copilotStart')) {
-      vscode.window.showInformationMessage(
-        `Copilot started for "${task.title}" (provider: ${provider.displayName})`,
-      );
-    }
-
     const prompt = ContextBuilder.build(task);
 
-    try {
-      await provider.run(prompt, task);
+    await provider.run(prompt, task);
 
-      if (worktree) {
-        this.logger.info(`CopilotLauncher: worktree ready at ${worktree.path} (branch ${worktree.branch})`);
-      }
-
-      // Notify on finish
-      if (this.shouldNotify('copilotFinish')) {
-        vscode.window.showInformationMessage(
-          `Copilot finished for "${task.title}" (provider: ${provider.displayName})`,
-        );
-      }
-    } catch (err) {
-      if (this.shouldNotify('copilotFinish')) {
-        vscode.window.showErrorMessage(
-          `Copilot failed for "${task.title}": ${err}`,
-        );
-      }
-      throw err;
+    if (worktree) {
+      this.logger.info(`CopilotLauncher: worktree ready at ${worktree.path} (branch ${worktree.branch})`);
     }
   }
 
@@ -126,14 +101,5 @@ export class CopilotLauncher {
     }
     const tasks = await provider.getTasks();
     return tasks.find(t => t.id === taskId);
-  }
-
-  private shouldNotify(key: 'copilotStart' | 'copilotFinish'): boolean {
-    const projectCfg = ProjectConfig.getProjectConfig();
-    return ProjectConfig.resolve(
-      projectCfg?.notifications?.[key],
-      `notifications.${key}`,
-      true,
-    );
   }
 }
