@@ -6,6 +6,7 @@ import { GenAiProviderRegistry } from './GenAiProviderRegistry';
 import { Logger } from '../utils/logger';
 import { createWorktree, removeWorktree, WorktreeInfo } from './WorktreeManager';
 import { ProjectConfig } from '../config/ProjectConfig';
+import { readAgentInstructions, AgentInfo } from './agentDiscovery';
 
 /**
  * Entry point for launching a GenAI session with task context.
@@ -18,6 +19,9 @@ import { ProjectConfig } from '../config/ProjectConfig';
  * creation is enabled (default), a git worktree is created before the
  * provider runs so it can operate on an isolated branch.
  */
+export const AGENT_PROMPT_PREFIX = (name: string, instructions: string): string =>
+  `## Agent: ${name}\n\n${instructions}\n\n---\n\n`;
+
 export class CopilotLauncher {
   private readonly logger = Logger.getInstance();
 
@@ -25,10 +29,16 @@ export class CopilotLauncher {
     private readonly registry: ProviderRegistry,
     private readonly context: vscode.ExtensionContext,
     private readonly genAiRegistry: GenAiProviderRegistry,
+    private agents: AgentInfo[] = [],
   ) {}
 
-  async launch(taskId: string, providerId: string): Promise<void> {
-    this.logger.info(`CopilotLauncher: launching provider "${providerId}" for task ${taskId}`);
+  /** Update the cached list of discovered agents. */
+  setAgents(agents: AgentInfo[]): void {
+    this.agents = agents;
+  }
+
+  async launch(taskId: string, providerId: string, agentSlug?: string): Promise<void> {
+    this.logger.info(`CopilotLauncher: launching provider "${providerId}" for task ${taskId}${agentSlug ? ` with agent "${agentSlug}"` : ''}`);
 
     const provider = this.genAiRegistry.get(providerId);
     if (!provider) {
@@ -48,7 +58,18 @@ export class CopilotLauncher {
       worktree = await this.tryCreateWorktree(taskId);
     }
 
-    const prompt = ContextBuilder.build(task);
+    let prompt = ContextBuilder.build(task);
+
+    // ── Agent instructions ────────────────────────────────────────────
+    if (agentSlug) {
+      const agentInfo = this.agents.find(a => a.slug === agentSlug);
+      if (agentInfo) {
+        const instructions = readAgentInstructions(agentInfo.filePath);
+        if (instructions) {
+          prompt = AGENT_PROMPT_PREFIX(agentInfo.displayName, instructions) + prompt;
+        }
+      }
+    }
 
     if (worktree) {
       this.logger.info(`CopilotLauncher: worktree ready at ${worktree.path} (branch ${worktree.branch})`);

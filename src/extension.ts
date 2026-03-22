@@ -21,6 +21,8 @@ import { CopilotCliGenAiProvider } from './copilot/providers/CopilotCliGenAiProv
 import { OllamaGenAiProvider } from './copilot/providers/OllamaGenAiProvider';
 import { MistralGenAiProvider } from './copilot/providers/MistralGenAiProvider';
 import { ProjectConfig } from './config/ProjectConfig';
+import { discoverAgents, AgentInfo } from './copilot/agentDiscovery';
+import { AgentOption } from './types/Messages';
 
 export function activate(context: vscode.ExtensionContext): void {
   const logger = Logger.getInstance();
@@ -56,6 +58,23 @@ export function activate(context: vscode.ExtensionContext): void {
     copilotLauncher,
     () => modelSelector.getProviderId(),
   );
+
+  // ── Agent discovery ────────────────────────────────────────────────────
+
+  let discoveredAgents: AgentInfo[] = [];
+  const agentOptions = (): AgentOption[] =>
+    discoveredAgents.map(a => ({ slug: a.slug, displayName: a.displayName }));
+
+  function refreshAgents(): void {
+    const folders = vscode.workspace.workspaceFolders;
+    if (folders && folders.length > 0) {
+      discoveredAgents = discoverAgents(folders[0].uri.fsPath);
+      copilotLauncher.setAgents(discoveredAgents);
+      logger.info('Agent discovery: found %d agent(s)', discoveredAgents.length);
+    }
+  }
+
+  refreshAgents();
 
   // Register @taskai chat participant (gracefully skipped if API unavailable)
   const chatParticipant = registerChatParticipant(context, providerRegistry);
@@ -193,13 +212,16 @@ export function activate(context: vscode.ExtensionContext): void {
     panel.onMessage(async (msg) => {
       switch (msg.type) {
         case 'ready':
-          // Send initial tasks and squad status
+          // Send initial tasks, squad status, and available agents
           await sendTasksToPanel(panel, providerRegistry);
           panel.updateSquadStatus(squadManager.getStatus());
+          panel.updateAgents(agentOptions());
           break;
         case 'refreshRequest':
           await refreshTasksCommand(providerRegistry);
           await sendTasksToPanel(panel, providerRegistry);
+          refreshAgents();
+          panel.updateAgents(agentOptions());
           break;
         case 'taskMoved': {
           const [providerId] = msg.taskId.split(':');
@@ -215,16 +237,16 @@ export function activate(context: vscode.ExtensionContext): void {
           break;
         }
         case 'openCopilot':
-          await copilotLauncher.launch(msg.taskId, msg.providerId);
+          await copilotLauncher.launch(msg.taskId, msg.providerId, msg.agentSlug);
           break;
         case 'startSquad': {
-          await handleStartSquad(squadManager);
+          await handleStartSquad(squadManager, msg.agentSlug);
           panel.updateSquadStatus(squadManager.getStatus());
           await sendTasksToPanel(panel, providerRegistry);
           break;
         }
         case 'toggleAutoSquad': {
-          handleToggleAutoSquad(squadManager);
+          handleToggleAutoSquad(squadManager, msg.agentSlug);
           panel.updateSquadStatus(squadManager.getStatus());
           break;
         }
@@ -248,12 +270,14 @@ export function activate(context: vscode.ExtensionContext): void {
 
   const startSquad = vscode.commands.registerCommand('agentBoard.startSquad', async () => {
     logger.info('startSquad command invoked');
-    await handleStartSquad(squadManager);
+    const agentSlug = await pickAgent(discoveredAgents);
+    await handleStartSquad(squadManager, agentSlug);
   });
 
   const toggleAutoSquad = vscode.commands.registerCommand('agentBoard.toggleAutoSquad', async () => {
     logger.info('toggleAutoSquad command invoked');
-    handleToggleAutoSquad(squadManager);
+    const agentSlug = await pickAgent(discoveredAgents);
+    handleToggleAutoSquad(squadManager, agentSlug);
   });
 
   const runAgent = vscode.commands.registerCommand('agentBoard.runAgent', async (item?: AgentTreeItem) => {
@@ -402,8 +426,8 @@ const GLOBAL_GENAI_PROVIDER_IDS = ['chat', 'cloud', 'copilot-cli'];
 /**
  * Handle starting a squad session — shared between command and WebView handler.
  */
-async function handleStartSquad(squadManager: SquadManager): Promise<void> {
-  const launched = await squadManager.startSquad();
+async function handleStartSquad(squadManager: SquadManager, agentSlug?: string): Promise<void> {
+  const launched = await squadManager.startSquad(agentSlug);
   vscode.window.showInformationMessage(
     `Squad: launched ${launched} session${launched === 1 ? '' : 's'}.`,
   );
@@ -412,11 +436,36 @@ async function handleStartSquad(squadManager: SquadManager): Promise<void> {
 /**
  * Handle toggling auto-squad — shared between command and WebView handler.
  */
-function handleToggleAutoSquad(squadManager: SquadManager): void {
-  const enabled = squadManager.toggleAutoSquad();
+function handleToggleAutoSquad(squadManager: SquadManager, agentSlug?: string): void {
+  const enabled = squadManager.toggleAutoSquad(agentSlug);
   vscode.window.showInformationMessage(
     `Auto-squad ${enabled ? 'enabled' : 'disabled'}.`,
   );
+}
+
+/**
+ * Show a Quick Pick for selecting an agent when invoked from the command palette.
+ * Returns `undefined` if no agents are available or the user cancels.
+ */
+async function pickAgent(agents: AgentInfo[]): Promise<string | undefined> {
+  if (agents.length === 0) {
+    return undefined;
+  }
+
+  const items = [
+    { label: '$(dash) None', description: 'No agent', slug: undefined as string | undefined },
+    ...agents.map(a => ({
+      label: `$(hubot) ${a.displayName}`,
+      description: a.slug,
+      slug: a.slug as string | undefined,
+    })),
+  ];
+
+  const selected = await vscode.window.showQuickPick(items, {
+    placeHolder: 'Select an agent (optional)',
+  });
+
+  return selected?.slug;
 }
 
 /**
