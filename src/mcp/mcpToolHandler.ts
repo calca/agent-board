@@ -15,6 +15,7 @@ import {
   GetTaskArgs,
   UpdateTaskArgs,
   CreateTaskArgs,
+  DeleteTaskArgs,
 } from './mcpTypes';
 
 // ── Tool catalogue ──────────────────────────────────────────────────
@@ -124,6 +125,21 @@ export const MCP_TOOLS: McpToolDefinition[] = [
       required: ['title'],
     },
   },
+  {
+    name: 'delete_task',
+    description:
+      'Delete a task from the Agent Board by its id.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        taskId: {
+          type: 'string',
+          description: 'Composite task id (e.g. "github:42").',
+        },
+      },
+      required: ['taskId'],
+    },
+  },
 ];
 
 // ── Adapter interface (decouples from VS Code providers) ────────────
@@ -139,6 +155,7 @@ export interface McpTaskAdapter {
   getTasks(): Promise<KanbanTask[]>;
   updateTask(task: KanbanTask): Promise<void>;
   createTask(task: KanbanTask): Promise<KanbanTask>;
+  deleteTask(taskId: string): Promise<boolean>;
 }
 
 // ── Handler ─────────────────────────────────────────────────────────
@@ -307,6 +324,25 @@ export async function handleCreateTask(
 }
 
 /**
+ * Handle a `delete_task` tool call.
+ */
+export async function handleDeleteTask(
+  adapter: McpTaskAdapter,
+  args: DeleteTaskArgs,
+): Promise<McpToolResult> {
+  if (!args.taskId) {
+    return errorResult('Missing required parameter: taskId');
+  }
+
+  const deleted = await adapter.deleteTask(args.taskId);
+  if (!deleted) {
+    return errorResult(`Task not found: ${args.taskId}`);
+  }
+
+  return successResult({ deleted: true, taskId: args.taskId });
+}
+
+/**
  * Route a tool call by name.  Returns an error result for unknown tools.
  */
 export async function handleToolCall(
@@ -323,6 +359,8 @@ export async function handleToolCall(
       return handleUpdateTask(adapter, args as unknown as UpdateTaskArgs);
     case 'create_task':
       return handleCreateTask(adapter, args as unknown as CreateTaskArgs);
+    case 'delete_task':
+      return handleDeleteTask(adapter, args as unknown as DeleteTaskArgs);
     default:
       return errorResult(`Unknown tool: ${toolName}`);
   }

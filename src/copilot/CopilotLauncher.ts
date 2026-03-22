@@ -7,6 +7,7 @@ import { Logger } from '../utils/logger';
 import { createWorktree, removeWorktree, WorktreeInfo } from './WorktreeManager';
 import { ProjectConfig } from '../config/ProjectConfig';
 import { readAgentInstructions, AgentInfo } from './agentDiscovery';
+import { formatError } from '../utils/errorUtils';
 
 /**
  * Entry point for launching a GenAI session with task context.
@@ -97,7 +98,7 @@ export class CopilotLauncher {
       await removeWorktree(repoRoot, taskId);
       this.logger.info(`CopilotLauncher: worktree removed for task ${taskId}`);
     } catch (err) {
-      this.logger.error('CopilotLauncher: worktree removal failed:', String(err));
+      this.logger.error('CopilotLauncher: worktree removal failed:', formatError(err));
     }
   }
 
@@ -129,8 +130,8 @@ export class CopilotLauncher {
       }
       return info;
     } catch (err) {
-      this.logger.error('CopilotLauncher: worktree creation failed:', String(err));
-      vscode.window.showWarningMessage(`Worktree creation failed: ${err}`);
+      this.logger.error('CopilotLauncher: worktree creation failed:', formatError(err));
+      vscode.window.showWarningMessage(`Worktree creation failed: ${formatError(err)}`);
       return undefined;
     }
   }

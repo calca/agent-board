@@ -122,6 +122,16 @@ function createFileAdapter(filePath: string): McpTaskAdapter {
       writeTasks(filePath, tasks);
       return created;
     },
+    async deleteTask(taskId: string) {
+      const tasks = readTasks(filePath);
+      const idx = tasks.findIndex(t => t.id === taskId);
+      if (idx === -1) {
+        return false;
+      }
+      tasks.splice(idx, 1);
+      writeTasks(filePath, tasks);
+      return true;
+    },
   };
 }
 

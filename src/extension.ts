@@ -23,6 +23,7 @@ import { MistralGenAiProvider } from './copilot/providers/MistralGenAiProvider';
 import { ProjectConfig } from './config/ProjectConfig';
 import { discoverAgents, AgentInfo } from './copilot/agentDiscovery';
 import { AgentOption } from './types/Messages';
+import { formatError } from './utils/errorUtils';
 
 export function activate(context: vscode.ExtensionContext): void {
   const logger = Logger.getInstance();
@@ -525,7 +526,7 @@ function registerProjectGenAiProviders(genAiRegistry: GenAiProviderRegistry): vo
           break;
       }
     } catch (err) {
-      logger.error(`Failed to register GenAI provider "${id}":`, String(err));
+      logger.error(`Failed to register GenAI provider "${id}":`, formatError(err));
     }
   }
 }

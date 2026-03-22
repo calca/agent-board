@@ -91,3 +91,7 @@ export interface CreateTaskArgs {
   labels?: string[];
   assignee?: string;
 }
+
+export interface DeleteTaskArgs {
+  taskId: string;
+}
