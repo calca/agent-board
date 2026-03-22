@@ -30,6 +30,17 @@ export interface ProjectConfigData {
     localModel?: string;
   };
   /**
+   * Git worktree settings.
+   *
+   * When enabled, providers that declare `supportsWorktree` will run
+   * inside an isolated git worktree created under
+   * `.agent-board/worktrees/<taskId>`.
+   */
+  worktree?: {
+    /** Whether worktree creation is enabled.  Defaults to `true`. */
+    enabled?: boolean;
+  };
+  /**
    * Per-provider GenAI configuration.
    *
    * Global providers (chat, cloud, copilot-cli) have VS Code settings

@@ -151,6 +151,11 @@
           "default": "llama3",
           "description": "Ollama model name to use in local Copilot mode. Overridable in .agent-board/config.json."
         },
+        "agentBoard.worktree.enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Create an isolated git worktree for providers that support it (e.g. Copilot CLI). Overridable in .agent-board/config.json."
+        },
         "agentBoard.kanban.columns": {
           "type": "array",
           "items": {
@@ -237,7 +242,7 @@
     "watch": "tsc -watch -p ./",
     "pretest": "npm run compile && npm run lint",
     "lint": "eslint src --ext ts",
-    "test": "mocha out/test/suite/taskStore.test.js out/test/suite/agentManager.test.js out/test/suite/providerRegistry.test.js out/test/suite/columnId.test.js out/test/suite/aggregatorProvider.test.js out/test/suite/schema.test.js out/test/suite/contextBuilder.test.js out/test/suite/messages.test.js out/test/suite/projectConfig.test.js out/test/suite/githubProvider.test.js out/test/suite/genAiProvider.test.js --ui tdd --reporter spec"
+    "test": "mocha out/test/suite/taskStore.test.js out/test/suite/agentManager.test.js out/test/suite/providerRegistry.test.js out/test/suite/columnId.test.js out/test/suite/aggregatorProvider.test.js out/test/suite/schema.test.js out/test/suite/contextBuilder.test.js out/test/suite/messages.test.js out/test/suite/projectConfig.test.js out/test/suite/githubProvider.test.js out/test/suite/genAiProvider.test.js out/test/suite/worktreeManager.test.js --ui tdd --reporter spec"
   },
   "devDependencies": {
     "@types/mocha": "^10.0.6",

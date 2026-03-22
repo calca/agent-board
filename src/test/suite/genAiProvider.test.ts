@@ -131,4 +131,25 @@ suite('IGenAiProvider interface shape', () => {
     const p = makeGenAiProvider('ollama', 'Ollama', 'project');
     assert.strictEqual(p.scope, 'project');
   });
+
+  test('supportsWorktree defaults to undefined when not set', () => {
+    const p = makeGenAiProvider('chat', 'Chat', 'global');
+    assert.strictEqual(p.supportsWorktree, undefined);
+  });
+
+  test('supportsWorktree can be set to true', () => {
+    const p: IGenAiProvider = {
+      ...makeGenAiProvider('cli', 'CLI', 'global'),
+      supportsWorktree: true,
+    };
+    assert.strictEqual(p.supportsWorktree, true);
+  });
+
+  test('supportsWorktree can be set to false', () => {
+    const p: IGenAiProvider = {
+      ...makeGenAiProvider('chat', 'Chat', 'global'),
+      supportsWorktree: false,
+    };
+    assert.strictEqual(p.supportsWorktree, false);
+  });
 });

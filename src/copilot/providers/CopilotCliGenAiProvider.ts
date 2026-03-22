@@ -19,6 +19,7 @@ export class CopilotCliGenAiProvider implements IGenAiProvider {
   readonly displayName = 'Copilot CLI';
   readonly icon = 'terminal';
   readonly scope: GenAiProviderScope = 'global';
+  readonly supportsWorktree = true;
 
   async isAvailable(): Promise<boolean> {
     return !!(vscode.lm && typeof vscode.lm.selectChatModels === 'function');

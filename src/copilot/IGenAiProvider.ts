@@ -35,6 +35,16 @@ export interface IGenAiProvider {
   readonly icon: string;
   /** Whether this is a VS Code–integrated (`global`) or per-project (`project`) provider. */
   readonly scope: GenAiProviderScope;
+  /**
+   * Whether this provider supports running inside a git worktree.
+   *
+   * When `true` **and** the user has not disabled worktree creation,
+   * `CopilotLauncher` will create a temporary worktree before calling
+   * `run()` and clean it up afterwards.
+   *
+   * Defaults to `false` when not set.
+   */
+  readonly supportsWorktree?: boolean;
 
   /** Check whether the provider can be used in the current environment. */
   isAvailable(): Promise<boolean>;

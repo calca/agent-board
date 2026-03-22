@@ -57,6 +57,18 @@
       },
       "additionalProperties": false
     },
+    "worktree": {
+      "type": "object",
+      "description": "Git worktree settings. When enabled, providers that support worktree will create an isolated worktree for each task.",
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Whether to create a git worktree for providers that support it. Default: true."
+        }
+      },
+      "additionalProperties": false
+    },
     "genAiProviders": {
       "type": "object",
       "description": "Per-provider GenAI configuration. Global providers (chat, cloud, copilot-cli) can be overridden here. Project providers (ollama, mistral) are enabled and configured only here.",
