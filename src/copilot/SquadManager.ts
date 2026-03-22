@@ -11,7 +11,11 @@ import {
   DEFAULT_SOURCE_COLUMN,
   DEFAULT_ACTIVE_COLUMN,
   DEFAULT_DONE_COLUMN,
+  DEFAULT_AUTO_SQUAD_INTERVAL,
+  DEFAULT_MAX_RETRIES,
   computeAvailableSlots,
+  canRetry,
+  sortByPriority,
 } from './squadUtils';
 
 export {
@@ -19,7 +23,11 @@ export {
   DEFAULT_SOURCE_COLUMN,
   DEFAULT_ACTIVE_COLUMN,
   DEFAULT_DONE_COLUMN,
+  DEFAULT_AUTO_SQUAD_INTERVAL,
+  DEFAULT_MAX_RETRIES,
   computeAvailableSlots,
+  canRetry,
+  sortByPriority,
 } from './squadUtils';
 
 /**
@@ -40,6 +48,8 @@ export {
  */
 export class SquadManager {
   private activeSessions = new Map<string, CopilotSessionInfo>();
+  /** Tracks retry attempts per task id. */
+  private retryCount = new Map<string, number>();
   private autoSquadEnabled = false;
   private autoSquadTimer: ReturnType<typeof setInterval> | undefined;
 
@@ -88,7 +98,8 @@ export class SquadManager {
       this.logger.info('SquadManager: auto-squad ENABLED');
       // Immediately try to fill slots, then poll
       void this.startSquad();
-      this.autoSquadTimer = setInterval(() => void this.startSquad(), 15_000);
+      const interval = this.getAutoSquadInterval();
+      this.autoSquadTimer = setInterval(() => void this.startSquad(), interval);
     } else {
       this.logger.info('SquadManager: auto-squad DISABLED');
       if (this.autoSquadTimer) {
@@ -193,9 +204,13 @@ export class SquadManager {
       .flatMap(r => r.value);
 
     // Only tasks in the configured source column that don't already have an active session
-    return allTasks.filter(
+    const eligible = allTasks.filter(
       t => t.status === sourceCol && !this.activeSessions.has(t.id),
     );
+
+    // Sort by label-based priority when configured
+    const priorityLabels = this.getPriorityLabels();
+    return sortByPriority(eligible, priorityLabels);
   }
 
   /** Move a task to the given column via its provider. */
@@ -258,7 +273,49 @@ export class SquadManager {
         `Task "${task.title}" failed`,
       );
       this.failSession(task.id);
+
+      // Auto-retry when configured
+      const maxRetries = this.getMaxRetries();
+      const attempt = this.retryCount.get(task.id) ?? 0;
+      if (canRetry(attempt + 1, maxRetries)) {
+        this.retryCount.set(task.id, attempt + 1);
+        this.logger.info(
+          'SquadManager: retrying task "%s" (attempt %d/%d)',
+          task.title,
+          attempt + 1,
+          maxRetries,
+        );
+        // Move back to source column so the next poll picks it up
+        await this.moveTask(task, this.getSourceColumn());
+      }
     }
+  }
+
+  private getAutoSquadInterval(): number {
+    const projectCfg = ProjectConfig.getProjectConfig();
+    return ProjectConfig.resolve(
+      projectCfg?.squad?.autoSquadInterval,
+      'squad.autoSquadInterval',
+      DEFAULT_AUTO_SQUAD_INTERVAL,
+    );
+  }
+
+  private getMaxRetries(): number {
+    const projectCfg = ProjectConfig.getProjectConfig();
+    return ProjectConfig.resolve(
+      projectCfg?.squad?.maxRetries,
+      'squad.maxRetries',
+      DEFAULT_MAX_RETRIES,
+    );
+  }
+
+  private getPriorityLabels(): string[] {
+    const projectCfg = ProjectConfig.getProjectConfig();
+    return ProjectConfig.resolve(
+      projectCfg?.squad?.priorityLabels,
+      'squad.priorityLabels',
+      [] as string[],
+    );
   }
 
   private fireStatusChange(): void {

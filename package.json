@@ -198,6 +198,25 @@
           "default": "review",
           "description": "Column tasks are moved to when the agent completes. Overridable in .agent-board/config.json."
         },
+        "agentBoard.squad.autoSquadInterval": {
+          "type": "number",
+          "default": 15000,
+          "minimum": 5000,
+          "description": "Auto-squad polling interval in milliseconds. Overridable in .agent-board/config.json."
+        },
+        "agentBoard.squad.maxRetries": {
+          "type": "number",
+          "default": 0,
+          "minimum": 0,
+          "maximum": 10,
+          "description": "Maximum retries for a failed squad session. Overridable in .agent-board/config.json."
+        },
+        "agentBoard.squad.priorityLabels": {
+          "type": "array",
+          "items": { "type": "string" },
+          "default": [],
+          "description": "Ordered list of labels used to prioritise tasks. Tasks matching an earlier label are launched first. Overridable in .agent-board/config.json."
+        },
         "agentBoard.notifications.taskActive": {
           "type": "boolean",
           "default": true,

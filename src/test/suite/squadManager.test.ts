@@ -1,10 +1,14 @@
 import * as assert from 'assert';
 import {
   computeAvailableSlots,
+  canRetry,
+  sortByPriority,
   DEFAULT_MAX_SESSIONS,
   DEFAULT_SOURCE_COLUMN,
   DEFAULT_ACTIVE_COLUMN,
   DEFAULT_DONE_COLUMN,
+  DEFAULT_AUTO_SQUAD_INTERVAL,
+  DEFAULT_MAX_RETRIES,
 } from '../../copilot/squadUtils';
 import { KanbanTask } from '../../types/KanbanTask';
 
@@ -53,6 +57,14 @@ suite('SquadManager constants', () => {
 
   test('DEFAULT_DONE_COLUMN is review', () => {
     assert.strictEqual(DEFAULT_DONE_COLUMN, 'review');
+  });
+
+  test('DEFAULT_AUTO_SQUAD_INTERVAL is 15000', () => {
+    assert.strictEqual(DEFAULT_AUTO_SQUAD_INTERVAL, 15_000);
+  });
+
+  test('DEFAULT_MAX_RETRIES is 0', () => {
+    assert.strictEqual(DEFAULT_MAX_RETRIES, 0);
   });
 });
 
@@ -233,5 +245,130 @@ suite('ProjectConfigData squad/notifications', () => {
     assert.strictEqual(cfg.squad.maxSessions, 8);
     assert.strictEqual(cfg.notifications.taskActive, true);
     assert.strictEqual(cfg.notifications.taskDone, true);
+  });
+
+  test('squad config with new autonomy settings', () => {
+    const cfg = {
+      squad: {
+        maxSessions: 5,
+        autoSquadInterval: 30000,
+        maxRetries: 3,
+        priorityLabels: ['critical', 'high', 'medium'],
+      },
+    };
+    assert.strictEqual(cfg.squad.autoSquadInterval, 30000);
+    assert.strictEqual(cfg.squad.maxRetries, 3);
+    assert.deepStrictEqual(cfg.squad.priorityLabels, ['critical', 'high', 'medium']);
+  });
+});
+
+suite('canRetry', () => {
+  test('returns false when maxRetries is 0', () => {
+    assert.strictEqual(canRetry(0, 0), false);
+  });
+
+  test('returns false when maxRetries is 0 regardless of attempt', () => {
+    assert.strictEqual(canRetry(5, 0), false);
+  });
+
+  test('returns true when attempt is below maxRetries', () => {
+    assert.strictEqual(canRetry(1, 3), true);
+  });
+
+  test('returns true for first attempt with maxRetries > 0', () => {
+    assert.strictEqual(canRetry(0, 1), true);
+  });
+
+  test('returns false when attempt equals maxRetries', () => {
+    assert.strictEqual(canRetry(3, 3), false);
+  });
+
+  test('returns false when attempt exceeds maxRetries', () => {
+    assert.strictEqual(canRetry(5, 3), false);
+  });
+
+  test('returns true for maxRetries of 1 and attempt 0', () => {
+    assert.strictEqual(canRetry(0, 1), true);
+  });
+
+  test('returns false for maxRetries of 1 and attempt 1', () => {
+    assert.strictEqual(canRetry(1, 1), false);
+  });
+});
+
+suite('sortByPriority', () => {
+  function makeTask(id: string, labels: string[]): KanbanTask {
+    return {
+      id,
+      title: `Task ${id}`,
+      body: '',
+      status: 'todo',
+      labels,
+      providerId: 'test',
+      meta: {},
+    };
+  }
+
+  test('returns tasks unchanged when priorityLabels is empty', () => {
+    const tasks = [makeTask('1', ['bug']), makeTask('2', ['feature'])];
+    const result = sortByPriority(tasks, []);
+    assert.deepStrictEqual(result.map(t => t.id), ['1', '2']);
+  });
+
+  test('sorts tasks by matching priority label', () => {
+    const tasks = [
+      makeTask('1', ['low']),
+      makeTask('2', ['critical']),
+      makeTask('3', ['high']),
+    ];
+    const result = sortByPriority(tasks, ['critical', 'high', 'low']);
+    assert.deepStrictEqual(result.map(t => t.id), ['2', '3', '1']);
+  });
+
+  test('tasks without matching labels sort last', () => {
+    const tasks = [
+      makeTask('1', ['unrelated']),
+      makeTask('2', ['critical']),
+      makeTask('3', []),
+    ];
+    const result = sortByPriority(tasks, ['critical', 'high']);
+    assert.deepStrictEqual(result.map(t => t.id), ['2', '1', '3']);
+  });
+
+  test('preserves relative order of same-priority tasks', () => {
+    const tasks = [
+      makeTask('1', ['high']),
+      makeTask('2', ['high']),
+      makeTask('3', ['high']),
+    ];
+    const result = sortByPriority(tasks, ['critical', 'high']);
+    assert.deepStrictEqual(result.map(t => t.id), ['1', '2', '3']);
+  });
+
+  test('case-insensitive label matching', () => {
+    const tasks = [
+      makeTask('1', ['LOW']),
+      makeTask('2', ['Critical']),
+    ];
+    const result = sortByPriority(tasks, ['critical', 'low']);
+    assert.deepStrictEqual(result.map(t => t.id), ['2', '1']);
+  });
+
+  test('does not mutate the original array', () => {
+    const tasks = [makeTask('1', ['low']), makeTask('2', ['high'])];
+    const original = [...tasks];
+    sortByPriority(tasks, ['high', 'low']);
+    assert.deepStrictEqual(tasks.map(t => t.id), original.map(t => t.id));
+  });
+
+  test('single task returns as-is', () => {
+    const tasks = [makeTask('1', ['bug'])];
+    const result = sortByPriority(tasks, ['critical']);
+    assert.deepStrictEqual(result.map(t => t.id), ['1']);
+  });
+
+  test('empty task list returns empty', () => {
+    const result = sortByPriority([], ['critical']);
+    assert.deepStrictEqual(result, []);
   });
 });

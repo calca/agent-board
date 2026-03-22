@@ -56,6 +56,15 @@ export interface ProjectConfigData {
     activeColumn?: string;
     /** Column tasks are moved to when the agent completes (default "review"). */
     doneColumn?: string;
+    /** Auto-squad polling interval in milliseconds (default 15 000). */
+    autoSquadInterval?: number;
+    /** Maximum retries for a failed session (default 0 = no retry). */
+    maxRetries?: number;
+    /**
+     * Ordered list of label strings used to prioritise tasks.
+     * Tasks matching an earlier label are launched first.
+     */
+    priorityLabels?: string[];
   };
   notifications?: {
     /** Show a VS Code notification when a task is automatically moved to the active column. */
