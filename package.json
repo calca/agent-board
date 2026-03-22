@@ -129,28 +129,6 @@
           "default": "beads",
           "description": "Path to the Beads CLI executable. Overridable in .agent-board/config.json."
         },
-        "agentBoard.copilot.defaultMode": {
-          "type": "string",
-          "enum": [
-            "chat",
-            "cloud",
-            "local",
-            "background"
-          ],
-          "default": "chat",
-          "description": "Default Copilot mode when launching a task session. Overridable in .agent-board/config.json.",
-          "enumDescriptions": [
-            "Open VS Code chat with task context pre-filled",
-            "Use GitHub Copilot cloud model",
-            "Use a local Ollama model",
-            "Run in background and save result to a file"
-          ]
-        },
-        "agentBoard.copilot.localModel": {
-          "type": "string",
-          "default": "llama3",
-          "description": "Ollama model name to use in local Copilot mode. Overridable in .agent-board/config.json."
-        },
         "agentBoard.worktree.enabled": {
           "type": "boolean",
           "default": true,

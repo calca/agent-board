@@ -1,5 +1,4 @@
 import * as vscode from 'vscode';
-import { ProjectConfig } from '../config/ProjectConfig';
 import { GenAiProviderRegistry } from './GenAiProviderRegistry';
 
 /**
@@ -9,7 +8,7 @@ import { GenAiProviderRegistry } from './GenAiProviderRegistry';
  * Builds the picker dynamically from the `GenAiProviderRegistry`.
  */
 export class ModelSelector {
-  private static readonly STATE_KEY = 'agentBoard.copilotMode';
+  private static readonly STATE_KEY = 'agentBoard.selectedProviderId';
   private readonly statusBarItem: vscode.StatusBarItem;
 
   constructor(
@@ -44,21 +43,16 @@ export class ModelSelector {
   }
 
   /** Get the currently selected provider id. */
-  getMode(): string {
-    const projectCfg = ProjectConfig.getProjectConfig();
-    const resolved = ProjectConfig.resolve(
-      projectCfg?.copilot?.defaultMode,
-      'copilot.defaultMode',
-      'cloud',
-    );
+  getProviderId(): string {
+    const defaultId = this.genAiRegistry.getAll()[0]?.id ?? 'chat';
     const stored = this.context.workspaceState.get<string>(
       ModelSelector.STATE_KEY,
-      resolved,
+      defaultId,
     );
 
     // Validate stored value against registry (the provider may have been removed)
     if (!this.genAiRegistry.get(stored)) {
-      return resolved;
+      return defaultId;
     }
 
     return stored;
@@ -71,13 +65,13 @@ export class ModelSelector {
   // ── Private helpers ───────────────────────────────────────────────────
 
   private updateStatusBar(): void {
-    const mode = this.getMode();
-    const provider = this.genAiRegistry.get(mode);
+    const providerId = this.getProviderId();
+    const provider = this.genAiRegistry.get(providerId);
 
     if (provider) {
       this.statusBarItem.text = `$(${provider.icon}) Copilot: ${provider.displayName}`;
     } else {
-      this.statusBarItem.text = `$(beaker) Copilot: ${mode}`;
+      this.statusBarItem.text = `$(beaker) Copilot: ${providerId}`;
     }
     this.statusBarItem.tooltip = 'Click to change GenAI provider';
   }

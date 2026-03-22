@@ -208,7 +208,7 @@ export function activate(context: vscode.ExtensionContext): void {
           break;
         }
         case 'openCopilot':
-          await copilotLauncher.launch(msg.taskId, msg.mode);
+          await copilotLauncher.launch(msg.taskId, msg.providerId);
           break;
       }
     });
@@ -225,8 +225,7 @@ export function activate(context: vscode.ExtensionContext): void {
     if (!mode) {
       return;
     }
-    // If no task is selected, just show info
-    vscode.window.showInformationMessage(`Copilot mode set to "${mode}". Select a task from the Kanban board to launch.`);
+    vscode.window.showInformationMessage(`GenAI provider set to "${mode}". Select a task from the Kanban board to launch.`);
   });
 
   const runAgent = vscode.commands.registerCommand('agentBoard.runAgent', async (item?: AgentTreeItem) => {

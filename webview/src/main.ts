@@ -80,7 +80,7 @@ function render(): void {
 
   document.getElementById('detail-copilot')?.addEventListener('click', () => {
     if (selectedTask) {
-      vscode.postMessage({ type: 'openCopilot', taskId: selectedTask.id, mode: 'cloud' });
+      vscode.postMessage({ type: 'openCopilot', taskId: selectedTask.id, providerId: 'cloud' });
     }
   });
 

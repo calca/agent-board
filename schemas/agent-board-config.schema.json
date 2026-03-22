@@ -41,22 +41,6 @@
       },
       "additionalProperties": false
     },
-    "copilot": {
-      "type": "object",
-      "description": "Copilot integration settings.",
-      "properties": {
-        "defaultMode": {
-          "type": "string",
-          "enum": ["chat", "cloud", "local", "background"],
-          "description": "Default Copilot mode when launching a task session."
-        },
-        "localModel": {
-          "type": "string",
-          "description": "Ollama model name for local Copilot mode."
-        }
-      },
-      "additionalProperties": false
-    },
     "worktree": {
       "type": "object",
       "description": "Git worktree settings. When enabled, providers that support worktree will create an isolated worktree for each task.",

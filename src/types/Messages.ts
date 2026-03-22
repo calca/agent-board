@@ -8,8 +8,6 @@ export interface Column {
   label: string;
 }
 
-export type CopilotMode = 'cloud' | 'local' | 'background' | 'chat';
-
 export type HostToWebView =
   | { type: 'tasksUpdate'; tasks: KanbanTask[]; columns: Column[] }
   | { type: 'providerStatus'; providerId: string; status: 'ok' | 'error' | 'loading'; message?: string }
@@ -19,6 +17,6 @@ export type HostToWebView =
 
 export type WebViewToHost =
   | { type: 'taskMoved'; taskId: string; toCol: ColumnId; index: number }
-  | { type: 'openCopilot'; taskId: string; mode: CopilotMode }
+  | { type: 'openCopilot'; taskId: string; providerId: string }
   | { type: 'refreshRequest'; providerId?: string }
   | { type: 'ready' };

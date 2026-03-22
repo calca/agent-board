@@ -25,10 +25,6 @@ export interface ProjectConfigData {
   beadsProvider?: {
     executable?: string;
   };
-  copilot?: {
-    defaultMode?: string;
-    localModel?: string;
-  };
   /**
    * Git worktree settings.
    *

@@ -8,7 +8,7 @@
 
 - **Kanban Board** — drag-and-drop task management with configurable columns
 - **Extensible Providers** — load tasks from GitHub Issues, local JSON files, Beads CLI, or any custom source
-- **Copilot Integration** — launch Copilot sessions with full task context (chat, cloud, local Ollama, or background mode)
+- **Copilot Integration** — launch Copilot sessions with full task context via extensible GenAI providers
 - **Git Worktree Support** — providers that support it (e.g. Copilot CLI) automatically create an isolated git worktree per task
 - **Per-Project Configuration** — every setting can be overridden per project via `.agent-board/config.json`
 - **GitHub SSO** — authenticate via VS Code's built-in GitHub SSO (no PAT required)
@@ -76,8 +76,6 @@ All settings can also be configured globally through **File > Preferences > Sett
 | `agentBoard.jsonProvider.path` | `".agent-board/tasks"` | Path to JSON tasks file |
 | `agentBoard.beadsProvider.executable` | `"beads"` | Path to Beads CLI |
 | `agentBoard.worktree.enabled` | `true` | Create an isolated git worktree for providers that support it |
-| `agentBoard.copilot.defaultMode` | `"chat"` | Default Copilot mode: `chat`, `cloud`, `local`, `background` |
-| `agentBoard.copilot.localModel` | `"llama3"` | Ollama model name for local mode |
 | `agentBoard.kanban.columns` | `["todo","inprogress","review","done"]` | Kanban column IDs |
 | `agentBoard.pollInterval` | `30000` | Polling interval (ms) for providers |
 | `agentBoard.logLevel` | `"INFO"` | Log level: `DEBUG`, `INFO`, `WARN`, `ERROR` |
@@ -129,15 +127,6 @@ const agentBoard = vscode.extensions.getExtension('agent-board');
 const registry = agentBoard?.exports?.providerRegistry;
 registry?.register(myCustomProvider);
 ```
-
-## Copilot Modes
-
-| Mode | Description |
-|------|-------------|
-| **Chat** | Opens VS Code native chat with task context pre-filled (default) |
-| **Cloud** | Uses GitHub Copilot via `vscode.lm` API |
-| **Local** | Sends prompts to Ollama at `localhost:11434` |
-| **Background** | Runs silently, saves results to `.kanban-notes/` |
 
 ## Git Worktree Support
 
