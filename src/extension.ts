@@ -453,11 +453,11 @@ async function pickAgent(agents: AgentInfo[]): Promise<string | undefined> {
   }
 
   const items = [
-    { label: '$(dash) None', description: 'No agent', slug: '' },
+    { label: '$(dash) None', description: 'No agent', slug: undefined as string | undefined },
     ...agents.map(a => ({
       label: `$(hubot) ${a.displayName}`,
       description: a.slug,
-      slug: a.slug,
+      slug: a.slug as string | undefined,
     })),
   ];
 
@@ -465,7 +465,7 @@ async function pickAgent(agents: AgentInfo[]): Promise<string | undefined> {
     placeHolder: 'Select an agent (optional)',
   });
 
-  return selected?.slug || undefined;
+  return selected?.slug;
 }
 
 /**

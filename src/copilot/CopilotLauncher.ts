@@ -19,6 +19,9 @@ import { readAgentInstructions, AgentInfo } from './agentDiscovery';
  * creation is enabled (default), a git worktree is created before the
  * provider runs so it can operate on an isolated branch.
  */
+export const AGENT_PROMPT_PREFIX = (name: string, instructions: string): string =>
+  `## Agent: ${name}\n\n${instructions}\n\n---\n\n`;
+
 export class CopilotLauncher {
   private readonly logger = Logger.getInstance();
 
@@ -63,7 +66,7 @@ export class CopilotLauncher {
       if (agentInfo) {
         const instructions = readAgentInstructions(agentInfo.filePath);
         if (instructions) {
-          prompt = `## Agent: ${agentInfo.displayName}\n\n${instructions}\n\n---\n\n${prompt}`;
+          prompt = AGENT_PROMPT_PREFIX(agentInfo.displayName, instructions) + prompt;
         }
       }
     }
