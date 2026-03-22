@@ -23,99 +23,190 @@ html, body, #root {
   background: var(--vscode-editor-background);
 }
 
-/* ── Provider Bar ──────────────────────────────────────────────────── */
+/* ── Toolbar ────────────────────────────────────────────────────────── */
 
-.provider-bar {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 8px 16px;
+.toolbar {
   background: var(--vscode-sideBar-background);
   border-bottom: 1px solid var(--vscode-panel-border);
+  padding: 14px 16px 16px;
 }
 
-.provider-bar__name {
-  font-weight: 600;
+.toolbar__row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  row-gap: 12px;
+  min-height: 44px;
+  flex-wrap: wrap;
 }
 
-.provider-bar__status {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
+.toolbar__title {
+  font-weight: 700;
+  font-size: 1.05em;
+  letter-spacing: -0.01em;
+  margin-right: 4px;
+  white-space: nowrap;
 }
 
-.provider-bar__status--ok { background: var(--vscode-terminal-ansiGreen); }
-.provider-bar__status--error { background: var(--vscode-terminal-ansiRed); }
-.provider-bar__status--loading { background: var(--vscode-terminal-ansiYellow); }
+/* ── Group with label ────────────────────── */
 
-.provider-bar__refresh {
-  margin-left: auto;
-  cursor: pointer;
-  background: var(--vscode-button-background);
-  color: var(--vscode-button-foreground);
-  border: none;
-  padding: 4px 10px;
-  border-radius: 3px;
-}
-.provider-bar__refresh:hover {
-  background: var(--vscode-button-hoverBackground);
-}
-
-.provider-bar__add {
-  cursor: pointer;
-  background: var(--vscode-button-background);
-  color: var(--vscode-button-foreground);
-  border: none;
-  padding: 4px 10px;
-  border-radius: 3px;
-}
-.provider-bar__add:hover {
-  background: var(--vscode-button-hoverBackground);
-}
-
-/* ── MCP Status ─────────────────────────────────────────────────────── */
-
-.mcp-status {
+.toolbar__group {
   display: flex;
   align-items: center;
   gap: 6px;
-  margin-left: 12px;
-  padding: 3px 10px;
-  border-radius: 12px;
-  background: var(--vscode-editor-background);
-  border: 1px solid var(--vscode-panel-border);
+  position: relative;
+  padding: 4px 0;
+}
+
+.toolbar__group::before {
+  content: attr(data-label);
+  position: absolute;
+  top: -6px;
+  left: 2px;
+  font-size: 0.65em;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  opacity: 0.45;
+  pointer-events: none;
+}
+
+/* ── Separator ───────────────────────────── */
+
+.toolbar__separator {
+  width: 1px;
+  height: 20px;
+  background: var(--vscode-panel-border);
+  margin: 0 4px;
+  opacity: 0.6;
+}
+
+/* ── Buttons ─────────────────────────────── */
+
+.toolbar__btn {
+  cursor: pointer;
+  border: none;
+  border-radius: 4px;
+  font-size: 0.82em;
+  padding: 4px 10px;
+  white-space: nowrap;
+  line-height: 1.4;
+  transition: background 0.12s, opacity 0.12s;
+}
+
+.toolbar__btn--primary {
+  background: var(--vscode-button-background);
+  color: var(--vscode-button-foreground);
+}
+.toolbar__btn--primary:hover:not(:disabled) {
+  background: var(--vscode-button-hoverBackground);
+}
+.toolbar__btn--primary:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+.toolbar__btn--icon {
+  background: transparent;
+  color: var(--vscode-foreground);
+  font-size: 1em;
+  padding: 3px 6px;
+  opacity: 0.7;
+}
+.toolbar__btn--icon:hover {
+  opacity: 1;
+  background: var(--vscode-toolbar-hoverBackground);
+}
+
+.toolbar__btn--small {
+  background: var(--vscode-button-secondaryBackground, var(--vscode-button-background));
+  color: var(--vscode-button-secondaryForeground, var(--vscode-button-foreground));
+  padding: 2px 8px;
+}
+.toolbar__btn--small:hover {
+  background: var(--vscode-button-secondaryHoverBackground, var(--vscode-button-hoverBackground));
+}
+
+.toolbar__btn--toggle {
+  background: var(--vscode-button-secondaryBackground, var(--vscode-button-background));
+  color: var(--vscode-button-secondaryForeground, var(--vscode-button-foreground));
+}
+.toolbar__btn--toggle:hover {
+  background: var(--vscode-button-secondaryHoverBackground, var(--vscode-button-hoverBackground));
+}
+.toolbar__btn--on {
+  background: var(--vscode-terminal-ansiGreen);
+  color: #fff;
+}
+.toolbar__btn--on:hover {
+  opacity: 0.9;
+}
+
+/* ── Select ──────────────────────────────── */
+
+.toolbar__select {
+  background: var(--vscode-dropdown-background);
+  color: var(--vscode-dropdown-foreground);
+  border: 1px solid var(--vscode-dropdown-border);
+  border-radius: 4px;
+  padding: 3px 8px;
   font-size: 0.82em;
 }
 
-.mcp-status__dot {
-  width: 8px;
-  height: 8px;
+/* ── Search ──────────────────────────────── */
+
+.toolbar__search {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.toolbar__search-input {
+  background: var(--vscode-input-background);
+  color: var(--vscode-input-foreground);
+  border: 1px solid var(--vscode-input-border, var(--vscode-panel-border));
+  border-radius: 4px;
+  padding: 3px 8px;
+  font-size: 0.82em;
+  width: 120px;
+  transition: width 0.2s;
+}
+.toolbar__search-input:focus {
+  width: 180px;
+  outline: 1px solid var(--vscode-focusBorder);
+}
+
+/* ── Badges & dots ───────────────────────── */
+
+.toolbar__badge {
+  font-size: 0.75em;
+  padding: 1px 6px;
+  border-radius: 10px;
+  background: var(--vscode-badge-background);
+  color: var(--vscode-badge-foreground);
+  line-height: 1.5;
+}
+
+.toolbar__badge--live {
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.6; }
+}
+
+.toolbar__dot {
+  width: 7px;
+  height: 7px;
   border-radius: 50%;
+  flex-shrink: 0;
 }
+.toolbar__dot--on { background: var(--vscode-terminal-ansiGreen); }
+.toolbar__dot--off { background: var(--vscode-terminal-ansiRed); }
 
-.mcp-status__dot--on {
-  background: var(--vscode-terminal-ansiGreen);
-}
-
-.mcp-status__dot--off {
-  background: var(--vscode-terminal-ansiRed);
-}
-
-.mcp-status__label {
-  opacity: 0.85;
-}
-
-.mcp-status__toggle {
-  cursor: pointer;
-  background: var(--vscode-button-secondaryBackground, var(--vscode-button-background));
-  color: var(--vscode-button-secondaryForeground, var(--vscode-button-foreground));
-  border: none;
-  padding: 2px 8px;
-  border-radius: 3px;
-  font-size: 0.9em;
-}
-.mcp-status__toggle:hover {
-  background: var(--vscode-button-secondaryHoverBackground, var(--vscode-button-hoverBackground));
+.toolbar__meta {
+  font-size: 0.82em;
+  opacity: 0.8;
 }
 
 /* ── Kanban Board ──────────────────────────────────────────────────── */
@@ -316,30 +407,3 @@ html, body, #root {
   background: var(--vscode-button-hoverBackground);
 }
 
-/* ── Filters ───────────────────────────────────────────────────────── */
-
-.filters {
-  display: flex;
-  gap: 8px;
-  padding: 8px 16px;
-  background: var(--vscode-sideBar-background);
-  border-bottom: 1px solid var(--vscode-panel-border);
-}
-
-.filters__input {
-  flex: 1;
-  padding: 4px 8px;
-  background: var(--vscode-input-background);
-  color: var(--vscode-input-foreground);
-  border: 1px solid var(--vscode-input-border);
-  border-radius: 3px;
-  font-size: 0.9em;
-}
-
-.filters__badge {
-  background: var(--vscode-badge-background);
-  color: var(--vscode-badge-foreground);
-  padding: 2px 8px;
-  border-radius: 10px;
-  font-size: 0.8em;
-}

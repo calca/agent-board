@@ -29,9 +29,15 @@ let currentTasks: KanbanTask[] = [];
 let currentColumns: Column[] = [];
 let selectedTask: KanbanTask | null = null;
 let searchText = '';
+interface SquadStatus {
+  activeCount: number;
+  maxSessions: number;
+  autoSquadEnabled: boolean;
+}
 let availableAgents: AgentOption[] = [];
 let selectedAgentSlug = '';
 let mcpEnabled = false;
+let squadStatus: SquadStatus = { activeCount: 0, maxSessions: 10, autoSquadEnabled: false };
 
 // ── Render ─────────────────────────────────────────────────────────────
 
@@ -48,29 +54,40 @@ function render(): void {
   });
 
   root.innerHTML = `
-    <div class="provider-bar">
-      <span class="provider-bar__name">Agent Board - Kanban</span>
-      <div class="mcp-status">
-        <span class="mcp-status__dot mcp-status__dot--${mcpEnabled ? 'on' : 'off'}"></span>
-        <span class="mcp-status__label">MCP ${mcpEnabled ? 'On' : 'Off'}</span>
-        <button class="mcp-status__toggle" id="btn-mcp-toggle">${mcpEnabled ? 'Disable' : 'Enable'}</button>
+    <header class="toolbar">
+      <div class="toolbar__row toolbar__row--main">
+        <span class="toolbar__title">Agent Board</span>
+
+        <div class="toolbar__group" data-label="Tasks">
+          <button class="toolbar__btn toolbar__btn--primary" id="btn-add-task">＋ Add</button>
+          <div class="toolbar__search">
+            <input class="toolbar__search-input" id="search-input" placeholder="Filter…" value="${escapeHtml(searchText)}" />
+            ${searchText ? `<span class="toolbar__badge">${filtered.length}</span>` : ''}
+          </div>
+          <button class="toolbar__btn toolbar__btn--icon" id="btn-refresh" title="Refresh">⟳</button>
+        </div>
+
+        <div class="toolbar__separator"></div>
+
+        <div class="toolbar__group" data-label="Squad">
+          <select class="toolbar__select" id="agent-select" title="Agent">
+            <option value="">Agent: any</option>
+            ${availableAgents.map(a => `<option value="${escapeHtml(a.slug)}"${a.slug === selectedAgentSlug ? ' selected' : ''}>${escapeHtml(a.displayName)}</option>`).join('')}
+          </select>
+          <button class="toolbar__btn toolbar__btn--primary" id="btn-start-squad" ${squadStatus.activeCount >= squadStatus.maxSessions ? 'disabled' : ''} title="Start Squad">▶ Start</button>
+          <button class="toolbar__btn toolbar__btn--toggle${squadStatus.autoSquadEnabled ? ' toolbar__btn--on' : ''}" id="btn-toggle-auto" title="Toggle Auto‑Squad">⟳ Auto</button>
+          ${squadStatus.activeCount > 0 ? `<span class="toolbar__badge toolbar__badge--live">${squadStatus.activeCount}/${squadStatus.maxSessions}</span>` : ''}
+        </div>
+
+        <div class="toolbar__separator"></div>
+
+        <div class="toolbar__group" data-label="MCP">
+          <span class="toolbar__dot toolbar__dot--${mcpEnabled ? 'on' : 'off'}"></span>
+          <span class="toolbar__meta">${mcpEnabled ? 'On' : 'Off'}</span>
+          <button class="toolbar__btn toolbar__btn--small" id="btn-mcp-toggle">${mcpEnabled ? 'Disable' : 'Enable'}</button>
+        </div>
       </div>
-      <button class="provider-bar__add" id="btn-add-task">＋ Add Task</button>
-      <button class="provider-bar__refresh" id="btn-refresh">⟳ Refresh</button>
-    </div>
-    <div class="filters">
-      <input class="filters__input" id="search-input" placeholder="Filter tasks…" value="${escapeHtml(searchText)}" />
-      ${searchText ? `<span class="filters__badge">${filtered.length} result${filtered.length === 1 ? '' : 's'}</span>` : ''}
-    </div>
-    ${availableAgents.length > 0 ? `
-    <div class="squad-bar">
-      <label class="squad-bar__label" for="agent-select">Agent:</label>
-      <select class="squad-bar__select" id="agent-select">
-        <option value="">— none —</option>
-        ${availableAgents.map(a => `<option value="${escapeHtml(a.slug)}"${a.slug === selectedAgentSlug ? ' selected' : ''}>${escapeHtml(a.displayName)}</option>`).join('')}
-      </select>
-    </div>
-    ` : ''}
+    </header>
     <div class="kanban">
       ${currentColumns.map(col => renderColumn(col, filtered.filter(t => t.status === col.id))).join('')}
     </div>
@@ -96,6 +113,14 @@ function render(): void {
 
   document.getElementById('agent-select')?.addEventListener('change', (e: Event) => {
     selectedAgentSlug = (e.target as HTMLSelectElement).value;
+  });
+
+  document.getElementById('btn-start-squad')?.addEventListener('click', () => {
+    vscode.postMessage({ type: 'startSquad', agentSlug: selectedAgentSlug || undefined });
+  });
+
+  document.getElementById('btn-toggle-auto')?.addEventListener('click', () => {
+    vscode.postMessage({ type: 'toggleAutoSquad', agentSlug: selectedAgentSlug || undefined });
   });
 
   document.querySelectorAll('.task-card').forEach(card => {
@@ -217,6 +242,10 @@ window.addEventListener('message', (event: MessageEvent) => {
       if (selectedAgentSlug && !availableAgents.some(a => a.slug === selectedAgentSlug)) {
         selectedAgentSlug = '';
       }
+      render();
+      break;
+    case 'squadStatus':
+      squadStatus = msg.status ?? squadStatus;
       render();
       break;
     case 'mcpStatus':
