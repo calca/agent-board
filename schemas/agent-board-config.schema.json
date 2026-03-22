@@ -185,6 +185,22 @@
       },
       "additionalProperties": false
     },
+    "mcp": {
+      "type": "object",
+      "description": "MCP (Model Context Protocol) server settings. When enabled, Agent Board exposes a stdio-based MCP server that lets external agents list, read, and update tasks.",
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "default": false,
+          "description": "Whether the MCP server is enabled. Default: false."
+        },
+        "tasksPath": {
+          "type": "string",
+          "description": "Workspace-relative or absolute path to the JSON task file the MCP server operates on. Defaults to the jsonProvider path."
+        }
+      },
+      "additionalProperties": false
+    },
     "pollInterval": {
       "type": "number",
       "minimum": 5000,
