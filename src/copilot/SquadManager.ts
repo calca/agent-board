@@ -253,12 +253,10 @@ export class SquadManager {
 
       this.completeSession(task.id);
     } catch {
-      // Notify on failure
-      if (this.shouldNotify('taskCompleted')) {
-        vscode.window.showErrorMessage(
-          `Task "${task.title}" failed`,
-        );
-      }
+      // Always notify on failure — failures are important regardless of config
+      vscode.window.showErrorMessage(
+        `Task "${task.title}" failed`,
+      );
       this.failSession(task.id);
     }
   }

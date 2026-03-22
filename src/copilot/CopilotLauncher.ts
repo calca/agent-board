@@ -50,11 +50,11 @@ export class CopilotLauncher {
 
     const prompt = ContextBuilder.build(task);
 
-    await provider.run(prompt, task);
-
     if (worktree) {
       this.logger.info(`CopilotLauncher: worktree ready at ${worktree.path} (branch ${worktree.branch})`);
     }
+
+    await provider.run(prompt, task);
   }
 
   // ── Private helpers ─────────────────────────────────────────────────
