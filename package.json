@@ -109,6 +109,16 @@
     "configuration": {
       "title": "Agent Board",
       "properties": {
+        "agentBoard.github.owner": {
+          "type": "string",
+          "default": "",
+          "description": "Default GitHub repository owner (user or organization). Used when not specified in .agent-board/config.json. If empty, the GitHub SSO account name is used as fallback."
+        },
+        "agentBoard.github.repo": {
+          "type": "string",
+          "default": "",
+          "description": "Default GitHub repository name. Used when not specified in .agent-board/config.json."
+        },
         "agentBoard.jsonProvider.path": {
           "type": "string",
           "default": ".agent-board/tasks",

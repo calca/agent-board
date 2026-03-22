@@ -35,6 +35,39 @@ suite('ProjectConfig (extractGitHubConfig)', () => {
     assert.strictEqual(result.owner, '');
     assert.strictEqual(result.repo, '');
   });
+
+  test('falls back to settingConfig when file config is undefined', () => {
+    const result = extractGitHubConfig(undefined, { owner: 'sOwner', repo: 'sRepo' });
+    assert.strictEqual(result.owner, 'sOwner');
+    assert.strictEqual(result.repo, 'sRepo');
+  });
+
+  test('file config takes priority over settingConfig', () => {
+    const file: ProjectConfigData = { github: { owner: 'fileOwner', repo: 'fileRepo' } };
+    const result = extractGitHubConfig(file, { owner: 'sOwner', repo: 'sRepo' });
+    assert.strictEqual(result.owner, 'fileOwner');
+    assert.strictEqual(result.repo, 'fileRepo');
+  });
+
+  test('partial file config falls back to settingConfig for missing fields', () => {
+    const file: ProjectConfigData = { github: { owner: 'fileOwner' } };
+    const result = extractGitHubConfig(file, { owner: 'sOwner', repo: 'sRepo' });
+    assert.strictEqual(result.owner, 'fileOwner');
+    assert.strictEqual(result.repo, 'sRepo');
+  });
+
+  test('empty file config values fall back to settingConfig', () => {
+    const file: ProjectConfigData = { github: { owner: '', repo: '' } };
+    const result = extractGitHubConfig(file, { owner: 'sOwner', repo: 'sRepo' });
+    assert.strictEqual(result.owner, 'sOwner');
+    assert.strictEqual(result.repo, 'sRepo');
+  });
+
+  test('settingConfig with empty strings returns empty strings', () => {
+    const result = extractGitHubConfig(undefined, { owner: '', repo: '' });
+    assert.strictEqual(result.owner, '');
+    assert.strictEqual(result.repo, '');
+  });
 });
 
 suite('resolveConfigValue', () => {
