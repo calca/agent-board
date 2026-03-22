@@ -1,6 +1,6 @@
 import * as vscode from 'vscode';
-import { KanbanTask } from './types/KanbanTask';
 import { ITaskProvider } from './providers/ITaskProvider';
+import { KanbanTask } from './types/KanbanTask';
 
 export class TaskTreeItem extends vscode.TreeItem {
   constructor(public readonly task: KanbanTask) {

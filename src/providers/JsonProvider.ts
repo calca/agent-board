@@ -1,10 +1,10 @@
-import * as vscode from 'vscode';
-import * as path from 'path';
 import * as fs from 'fs';
-import { ITaskProvider } from './ITaskProvider';
-import { KanbanTask } from '../types/KanbanTask';
-import { ColumnId, COLUMN_IDS } from '../types/ColumnId';
+import * as path from 'path';
+import * as vscode from 'vscode';
 import { ProjectConfig } from '../config/ProjectConfig';
+import { COLUMN_IDS, ColumnId } from '../types/ColumnId';
+import { KanbanTask } from '../types/KanbanTask';
+import { ITaskProvider } from './ITaskProvider';
 
 /** Shape of a single task file on disk. */
 interface JsonTaskEntry {

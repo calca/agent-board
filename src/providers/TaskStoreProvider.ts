@@ -1,8 +1,8 @@
 import * as vscode from 'vscode';
-import { ITaskProvider } from './ITaskProvider';
-import { KanbanTask } from '../types/KanbanTask';
 import { TaskStore } from '../taskStore';
 import { Task } from '../types';
+import { KanbanTask } from '../types/KanbanTask';
+import { ITaskProvider } from './ITaskProvider';
 
 /**
  * Exposes the internal `TaskStore` (workspace-state tasks) as a `ITaskProvider`

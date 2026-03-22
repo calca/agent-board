@@ -1,8 +1,7 @@
 import * as vscode from 'vscode';
-import * as path from 'path';
+import { COLUMN_IDS, COLUMN_LABELS } from '../types/ColumnId';
 import { KanbanTask } from '../types/KanbanTask';
-import { ColumnId, COLUMN_IDS, COLUMN_LABELS } from '../types/ColumnId';
-import { HostToWebView, WebViewToHost, Column, SquadStatus, AgentOption } from '../types/Messages';
+import { AgentOption, Column, HostToWebView, SquadStatus, WebViewToHost } from '../types/Messages';
 
 /**
  * Manages the Kanban board WebView panel.

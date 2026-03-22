@@ -1,5 +1,5 @@
-import { KanbanTask } from './KanbanTask';
 import { ColumnId } from './ColumnId';
+import { KanbanTask } from './KanbanTask';
 
 // ── Host → WebView ──────────────────────────────────────────────────────────
 
