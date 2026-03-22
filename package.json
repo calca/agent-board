@@ -146,6 +146,16 @@
           "default": true,
           "description": "Create an isolated git worktree for providers that support it (e.g. Copilot CLI). Overridable in .agent-board/config.json."
         },
+        "agentBoard.copilotCli.yolo": {
+          "type": "boolean",
+          "default": false,
+          "description": "Enable /yolo mode for Copilot CLI — auto-approve all changes without confirmation. Overridable in .agent-board/config.json under genAiProviders.copilot-cli.yolo."
+        },
+        "agentBoard.copilotCli.fleet": {
+          "type": "boolean",
+          "default": false,
+          "description": "Enable /fleet mode for Copilot CLI — optimise prompt for parallel fleet execution. Overridable in .agent-board/config.json under genAiProviders.copilot-cli.fleet."
+        },
         "agentBoard.kanban.columns": {
           "type": "array",
           "items": {

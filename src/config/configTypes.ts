@@ -6,6 +6,10 @@ export interface GenAiProviderConfigEntry {
   enabled?: boolean;
   model?: string;
   endpoint?: string;
+  /** Enable /yolo mode — auto-approve all changes without confirmation. */
+  yolo?: boolean;
+  /** Enable /fleet mode — optimise prompt for parallel fleet execution. */
+  fleet?: boolean;
 }
 
 /**

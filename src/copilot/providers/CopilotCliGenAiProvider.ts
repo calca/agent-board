@@ -1,9 +1,10 @@
 import * as vscode from 'vscode';
 import * as fs from 'fs';
 import * as path from 'path';
-import { IGenAiProvider, GenAiProviderScope } from '../IGenAiProvider';
+import { IGenAiProvider, GenAiProviderScope, GenAiProviderConfig } from '../IGenAiProvider';
 import { KanbanTask } from '../../types/KanbanTask';
 import { Logger } from '../../utils/logger';
+import { buildOptimisationPrefix } from '../copilotCliUtils';
 
 /**
  * GenAI provider that runs GitHub Copilot silently via the VS Code
@@ -13,6 +14,8 @@ import { Logger } from '../../utils/logger';
  *
  * Output is written to `.kanban-notes/{taskId}.md` and shown in
  * an output channel.
+ *
+ * Supports `/yolo` and `/fleet` optimisations via provider config.
  */
 export class CopilotCliGenAiProvider implements IGenAiProvider {
   readonly id = 'copilot-cli';
@@ -20,6 +23,14 @@ export class CopilotCliGenAiProvider implements IGenAiProvider {
   readonly icon = 'terminal';
   readonly scope: GenAiProviderScope = 'global';
   readonly supportsWorktree = true;
+
+  private readonly yolo: boolean;
+  private readonly fleet: boolean;
+
+  constructor(config?: GenAiProviderConfig) {
+    this.yolo = config?.yolo ?? false;
+    this.fleet = config?.fleet ?? false;
+  }
 
   async isAvailable(): Promise<boolean> {
     return !!(vscode.lm && typeof vscode.lm.selectChatModels === 'function');
@@ -29,6 +40,10 @@ export class CopilotCliGenAiProvider implements IGenAiProvider {
     const logger = Logger.getInstance();
     const channel = vscode.window.createOutputChannel('Copilot CLI');
 
+    // Apply /yolo and /fleet optimisation prefixes
+    const prefix = buildOptimisationPrefix(this.yolo, this.fleet);
+    const effectivePrompt = prefix + prompt;
+
     try {
       let responseText = '';
 
@@ -36,7 +51,7 @@ export class CopilotCliGenAiProvider implements IGenAiProvider {
         const models = await vscode.lm.selectChatModels({ vendor: 'copilot' });
         if (models.length > 0) {
           const model = models[0];
-          const messages = [vscode.LanguageModelChatMessage.User(prompt)];
+          const messages = [vscode.LanguageModelChatMessage.User(effectivePrompt)];
           const response = await model.sendRequest(messages);
 
           for await (const chunk of response.text) {
