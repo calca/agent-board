@@ -24,10 +24,16 @@ interface AgentOption {
   slug: string;
   displayName: string;
 }
+interface GenAiProviderOption {
+  id: string;
+  displayName: string;
+  icon: string;
+}
 
 let currentTasks: KanbanTask[] = [];
 let currentColumns: Column[] = [];
 let selectedTask: KanbanTask | null = null;
+let editingTask: KanbanTask | null = null;
 let searchText = '';
 interface SquadStatus {
   activeCount: number;
@@ -38,6 +44,10 @@ let availableAgents: AgentOption[] = [];
 let selectedAgentSlug = '';
 let mcpEnabled = false;
 let squadStatus: SquadStatus = { activeCount: 0, maxSessions: 10, autoSquadEnabled: false };
+let showTaskForm = false;
+let formColumns: Column[] = [];
+let editableProviderIds: string[] = [];
+let genAiProviders: GenAiProviderOption[] = [];
 
 // ── Render ─────────────────────────────────────────────────────────────
 
@@ -91,7 +101,9 @@ function render(): void {
     <div class="kanban">
       ${currentColumns.map(col => renderColumn(col, filtered.filter(t => t.status === col.id))).join('')}
     </div>
-    ${selectedTask ? renderDetail(selectedTask) : ''}
+    ${selectedTask && !editingTask ? renderDetail(selectedTask) : ''}
+    ${editingTask ? renderEditForm(editingTask) : ''}
+    ${showTaskForm && !editingTask ? renderTaskForm() : ''}
   `;
 
   // Event listeners
@@ -103,7 +115,10 @@ function render(): void {
     vscode.postMessage({ type: 'toggleMcp' });
   });
   document.getElementById('btn-add-task')?.addEventListener('click', () => {
-    vscode.postMessage({ type: 'addTask' });
+    showTaskForm = true;
+    formColumns = currentColumns;
+    selectedTask = null;
+    render();
   });
 
   document.getElementById('search-input')?.addEventListener('input', (e: Event) => {
@@ -126,7 +141,16 @@ function render(): void {
   document.querySelectorAll('.task-card').forEach(card => {
     card.addEventListener('click', () => {
       const taskId = (card as HTMLElement).dataset.taskId;
-      selectedTask = currentTasks.find(t => t.id === taskId) ?? null;
+      const task = currentTasks.find(t => t.id === taskId) ?? null;
+      if (task && editableProviderIds.includes(task.providerId)) {
+        editingTask = task;
+        selectedTask = null;
+        showTaskForm = false;
+      } else {
+        selectedTask = task;
+        editingTask = null;
+        showTaskForm = false;
+      }
       render();
     });
   });
@@ -140,6 +164,48 @@ function render(): void {
     if (selectedTask) {
       vscode.postMessage({ type: 'openCopilot', taskId: selectedTask.id, providerId: 'cloud', agentSlug: selectedAgentSlug || undefined });
     }
+  });
+
+  // ── Task form listeners ──────────────────────────────────────────
+  document.getElementById('task-form-close')?.addEventListener('click', () => {
+    showTaskForm = false;
+    editingTask = null;
+    render();
+  });
+  document.getElementById('task-form-cancel')?.addEventListener('click', () => {
+    showTaskForm = false;
+    editingTask = null;
+    render();
+  });
+
+  document.getElementById('task-form')?.addEventListener('submit', (e: Event) => {
+    e.preventDefault();
+    const form = e.target as HTMLFormElement;
+    const title = (form.querySelector('#tf-title') as HTMLInputElement).value.trim();
+    if (!title) { return; }
+    const body = (form.querySelector('#tf-body') as HTMLTextAreaElement).value.trim();
+    const status = (form.querySelector('#tf-status') as HTMLSelectElement).value;
+    const labels = (form.querySelector('#tf-labels') as HTMLInputElement).value.trim();
+    const assignee = (form.querySelector('#tf-assignee') as HTMLInputElement).value.trim();
+
+    if (editingTask) {
+      vscode.postMessage({ type: 'editTask', taskId: editingTask.id, data: { title, body, status, labels, assignee } });
+      editingTask = null;
+    } else {
+      vscode.postMessage({ type: 'saveTask', data: { title, body, status, labels, assignee } });
+      showTaskForm = false;
+    }
+    render();
+  });
+
+  // ── GenAI provider action buttons ─────────────────────────────────
+  document.querySelectorAll('.actions__provider-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const providerId = (btn as HTMLElement).dataset.providerId;
+      if (editingTask && providerId) {
+        vscode.postMessage({ type: 'launchProvider', taskId: editingTask.id, genAiProviderId: providerId });
+      }
+    });
   });
 
   // DnD — dragstart
@@ -218,6 +284,89 @@ function renderDetail(task: KanbanTask): string {
   `;
 }
 
+function renderEditForm(task: KanbanTask): string {
+  const cols = currentColumns;
+  return `
+    <div class="task-form-overlay">
+      <div class="task-form-panel">
+        <button class="task-form-panel__close" id="task-form-close">✕</button>
+        <div class="task-form-panel__heading">Edit Task</div>
+        <form id="task-form" class="task-form">
+          <label class="task-form__label" for="tf-title">Title *</label>
+          <input class="task-form__input" id="tf-title" type="text" value="${escapeHtml(task.title)}" required />
+
+          <label class="task-form__label" for="tf-body">Description</label>
+          <textarea class="task-form__textarea" id="tf-body" rows="4">${escapeHtml(task.body)}</textarea>
+
+          <label class="task-form__label" for="tf-status">Status</label>
+          <select class="task-form__select" id="tf-status">
+            ${cols.map(c => `<option value="${escapeHtml(c.id)}"${c.id === task.status ? ' selected' : ''}>${escapeHtml(c.label)}</option>`).join('')}
+          </select>
+
+          <label class="task-form__label" for="tf-labels">Labels</label>
+          <input class="task-form__input" id="tf-labels" type="text" value="${escapeHtml(task.labels.join(', '))}" placeholder="bug, feature  (comma separated)" />
+
+          <label class="task-form__label" for="tf-assignee">Assignee</label>
+          <input class="task-form__input" id="tf-assignee" type="text" value="${escapeHtml(task.assignee ?? '')}" placeholder="Username" />
+
+          <div class="task-form__actions">
+            <button type="submit" class="task-form__btn task-form__btn--save">Save</button>
+            <button type="button" class="task-form__btn task-form__btn--cancel" id="task-form-cancel">Close</button>
+          </div>
+        </form>
+        ${genAiProviders.length > 0 ? `
+        <div class="actions-toolbar">
+          <div class="actions-toolbar__heading">Actions</div>
+          <div class="actions-toolbar__list">
+            ${genAiProviders.map(p => `
+              <button class="actions__provider-btn" data-provider-id="${escapeHtml(p.id)}" title="${escapeHtml(p.displayName)}">
+                <span class="actions__provider-icon codicon codicon-${escapeHtml(p.icon)}"></span>
+                ${escapeHtml(p.displayName)}
+              </button>
+            `).join('')}
+          </div>
+        </div>
+        ` : ''}
+      </div>
+    </div>
+  `;
+}
+
+function renderTaskForm(): string {
+  const cols = formColumns.length > 0 ? formColumns : currentColumns;
+  return `
+    <div class="task-form-overlay">
+      <div class="task-form-panel">
+        <button class="task-form-panel__close" id="task-form-close">✕</button>
+        <div class="task-form-panel__heading">New Task</div>
+        <form id="task-form" class="task-form">
+          <label class="task-form__label" for="tf-title">Title *</label>
+          <input class="task-form__input" id="tf-title" type="text" placeholder="What needs to be done?" required />
+
+          <label class="task-form__label" for="tf-body">Description</label>
+          <textarea class="task-form__textarea" id="tf-body" rows="4" placeholder="Add more details…"></textarea>
+
+          <label class="task-form__label" for="tf-status">Status</label>
+          <select class="task-form__select" id="tf-status">
+            ${cols.map(c => `<option value="${escapeHtml(c.id)}">${escapeHtml(c.label)}</option>`).join('')}
+          </select>
+
+          <label class="task-form__label" for="tf-labels">Labels</label>
+          <input class="task-form__input" id="tf-labels" type="text" placeholder="bug, feature  (comma separated)" />
+
+          <label class="task-form__label" for="tf-assignee">Assignee</label>
+          <input class="task-form__input" id="tf-assignee" type="text" placeholder="Username" />
+
+          <div class="task-form__actions">
+            <button type="submit" class="task-form__btn task-form__btn--save">Save</button>
+            <button type="button" class="task-form__btn task-form__btn--cancel" id="task-form-cancel">Cancel</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  `;
+}
+
 function escapeHtml(str: string): string {
   return str
     .replace(/&/g, '&amp;')
@@ -234,6 +383,14 @@ window.addEventListener('message', (event: MessageEvent) => {
     case 'tasksUpdate':
       currentTasks = msg.tasks ?? [];
       currentColumns = msg.columns ?? [];
+      editableProviderIds = msg.editableProviderIds ?? [];
+      genAiProviders = msg.genAiProviders ?? [];
+      // If the editing task was refreshed, update its data
+      if (editingTask) {
+        const updated = currentTasks.find(t => t.id === editingTask!.id);
+        if (updated) { editingTask = updated; }
+        else { editingTask = null; }
+      }
       render();
       break;
     case 'agentsAvailable':
@@ -250,6 +407,12 @@ window.addEventListener('message', (event: MessageEvent) => {
       break;
     case 'mcpStatus':
       mcpEnabled = msg.enabled ?? false;
+      render();
+      break;
+    case 'showTaskForm':
+      formColumns = msg.columns ?? currentColumns;
+      showTaskForm = true;
+      selectedTask = null;
       render();
       break;
     case 'themeChange':

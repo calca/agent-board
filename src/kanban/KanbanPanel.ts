@@ -1,7 +1,7 @@
 import * as vscode from 'vscode';
 import { COLUMN_IDS, COLUMN_LABELS } from '../types/ColumnId';
 import { KanbanTask } from '../types/KanbanTask';
-import { AgentOption, Column, HostToWebView, SquadStatus, WebViewToHost } from '../types/Messages';
+import { AgentOption, Column, GenAiProviderOption, HostToWebView, SquadStatus, WebViewToHost } from '../types/Messages';
 
 /**
  * Manages the Kanban board WebView panel.
@@ -89,12 +89,12 @@ export class KanbanPanel {
   }
 
   /** Push a full task + column update to the WebView. */
-  updateTasks(tasks: KanbanTask[]): void {
+  updateTasks(tasks: KanbanTask[], editableProviderIds: string[] = [], genAiProviders: GenAiProviderOption[] = []): void {
     const columns: Column[] = COLUMN_IDS.map(id => ({
       id,
       label: COLUMN_LABELS[id],
     }));
-    this.postMessage({ type: 'tasksUpdate', tasks, columns });
+    this.postMessage({ type: 'tasksUpdate', tasks, columns, editableProviderIds, genAiProviders });
   }
 
   /** Push the current squad status to the WebView. */

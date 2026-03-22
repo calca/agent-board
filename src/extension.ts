@@ -22,6 +22,7 @@ import { ProviderPicker } from './providers/ProviderPicker';
 import { ProviderRegistry } from './providers/ProviderRegistry';
 import { TaskStore } from './taskStore';
 import { TasksTreeProvider, TaskTreeItem } from './tasksTreeProvider';
+import { COLUMN_IDS, COLUMN_LABELS } from './types/ColumnId';
 import { AgentOption } from './types/Messages';
 import { formatError } from './utils/errorUtils';
 import { Logger } from './utils/logger';
@@ -170,7 +171,7 @@ export function activate(context: vscode.ExtensionContext): void {
     refresh();
     const activePanel = KanbanPanel.getInstance();
     if (activePanel) {
-      await sendTasksToPanel(activePanel, providerRegistry);
+      await sendTasksToPanel(activePanel, providerRegistry, genAiRegistry);
     }
     vscode.window.showInformationMessage(`Task "${title}" added.`);
   });
@@ -250,14 +251,14 @@ export function activate(context: vscode.ExtensionContext): void {
       switch (msg.type) {
         case 'ready':
           // Send initial tasks, squad status, available agents, and MCP status
-          await sendTasksToPanel(panel, providerRegistry);
+          await sendTasksToPanel(panel, providerRegistry, genAiRegistry);
           panel.updateSquadStatus(squadManager.getStatus());
           panel.updateAgents(agentOptions());
           panel.updateMcpStatus(ProjectConfig.getProjectConfig()?.mcp?.enabled ?? false);
           break;
         case 'refreshRequest':
           await refreshTasksCommand(providerRegistry);
-          await sendTasksToPanel(panel, providerRegistry);
+          await sendTasksToPanel(panel, providerRegistry, genAiRegistry);
           refreshAgents();
           panel.updateAgents(agentOptions());
           break;
@@ -271,7 +272,7 @@ export function activate(context: vscode.ExtensionContext): void {
               await provider.updateTask({ ...task, status: msg.toCol });
             }
           }
-          await sendTasksToPanel(panel, providerRegistry);
+          await sendTasksToPanel(panel, providerRegistry, genAiRegistry);
           break;
         }
         case 'openCopilot':
@@ -280,7 +281,7 @@ export function activate(context: vscode.ExtensionContext): void {
         case 'startSquad': {
           await handleStartSquad(squadManager, msg.agentSlug);
           panel.updateSquadStatus(squadManager.getStatus());
-          await sendTasksToPanel(panel, providerRegistry);
+          await sendTasksToPanel(panel, providerRegistry, genAiRegistry);
           break;
         }
         case 'toggleAutoSquad': {
@@ -297,20 +298,52 @@ export function activate(context: vscode.ExtensionContext): void {
           break;
         }
         case 'addTask': {
-          const title = await vscode.window.showInputBox({
-            prompt: 'Task title',
-            placeHolder: 'What needs to be done?',
-            validateInput: v => (v.trim() ? undefined : 'Title cannot be empty'),
-          });
-          if (!title) { break; }
-          const description = await vscode.window.showInputBox({
-            prompt: 'Task description (optional)',
-            placeHolder: 'Add more details…',
-          });
-          await jsonProvider.createTask(title.trim(), description?.trim() || undefined);
+          const columns = COLUMN_IDS.map(id => ({ id, label: COLUMN_LABELS[id] }));
+          panel.postMessage({ type: 'showTaskForm', columns });
+          break;
+        }
+        case 'saveTask': {
+          const { title, body, status, labels, assignee } = msg.data;
+          const task = await jsonProvider.createTask(title, body || undefined);
+          // Apply extra properties
+          const updates: Partial<import('./types/KanbanTask').KanbanTask> = { ...task };
+          if (status) { updates.status = status; }
+          if (labels) { updates.labels = labels.split(',').map((l: string) => l.trim()).filter(Boolean); }
+          if (assignee) { updates.assignee = assignee; }
+          if (updates.status !== task.status || (updates.labels && updates.labels.length > 0) || updates.assignee) {
+            await jsonProvider.updateTask(updates as import('./types/KanbanTask').KanbanTask);
+          }
           refresh();
-          await sendTasksToPanel(panel, providerRegistry);
-          vscode.window.showInformationMessage(`Task "${title}" added.`);
+          await sendTasksToPanel(panel, providerRegistry, genAiRegistry);
+          break;
+        }
+        case 'cancelTaskForm':
+          break;
+        case 'editTask': {
+          const [editProviderId] = msg.taskId.split(':');
+          const editProvider = providerRegistry.get(editProviderId);
+          if (editProvider) {
+            const tasks = await editProvider.getTasks();
+            const existing = tasks.find(t => t.id === msg.taskId);
+            if (existing) {
+              const { title, body, status, labels, assignee } = msg.data;
+              const parsedLabels = labels ? labels.split(',').map((l: string) => l.trim()).filter(Boolean) : [];
+              await editProvider.updateTask({
+                ...existing,
+                title,
+                body,
+                status: status || existing.status,
+                labels: parsedLabels,
+                assignee: assignee || undefined,
+              });
+            }
+          }
+          refresh();
+          await sendTasksToPanel(panel, providerRegistry, genAiRegistry);
+          break;
+        }
+        case 'launchProvider': {
+          await copilotLauncher.launch(msg.taskId, msg.genAiProviderId);
           break;
         }
       }
@@ -477,10 +510,13 @@ function simulateAgentRun(agentId: string, agentManager: AgentManager, refresh: 
   }, SIMULATE_MS);
 }
 
+/** Provider IDs whose tasks support full inline editing. */
+const EDITABLE_PROVIDER_IDS = ['json', 'github'];
+
 /**
  * Gather tasks from all providers and push them to the Kanban panel.
  */
-async function sendTasksToPanel(panel: KanbanPanel, registry: ProviderRegistry): Promise<void> {
+async function sendTasksToPanel(panel: KanbanPanel, registry: ProviderRegistry, genAiRegistry?: import('./copilot/GenAiProviderRegistry').GenAiProviderRegistry): Promise<void> {
   const providers = registry.getAll();
   const allTasks = (
     await Promise.allSettled(providers.map(p => p.getTasks()))
@@ -488,7 +524,10 @@ async function sendTasksToPanel(panel: KanbanPanel, registry: ProviderRegistry):
     .filter((r): r is PromiseFulfilledResult<import('./types/KanbanTask').KanbanTask[]> => r.status === 'fulfilled')
     .flatMap(r => r.value);
 
-  panel.updateTasks(allTasks);
+  const genAiOptions = genAiRegistry
+    ? genAiRegistry.getAll().map(p => ({ id: p.id, displayName: p.displayName, icon: p.icon }))
+    : [];
+  panel.updateTasks(allTasks, EDITABLE_PROVIDER_IDS, genAiOptions);
 }
 
 /** IDs of GenAI providers that are always registered (VS Code integrated). */

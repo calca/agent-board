@@ -24,15 +24,32 @@ export interface AgentOption {
   displayName: string;
 }
 
+/** Minimal GenAI provider info sent to the WebView. */
+export interface GenAiProviderOption {
+  id: string;
+  displayName: string;
+  icon: string;
+}
+
 export type HostToWebView =
-  | { type: 'tasksUpdate'; tasks: KanbanTask[]; columns: Column[] }
+  | { type: 'tasksUpdate'; tasks: KanbanTask[]; columns: Column[]; editableProviderIds: string[]; genAiProviders: GenAiProviderOption[] }
   | { type: 'providerStatus'; providerId: string; status: 'ok' | 'error' | 'loading'; message?: string }
   | { type: 'themeChange'; kind: 'dark' | 'light' | 'hc' }
   | { type: 'squadStatus'; status: SquadStatus }
   | { type: 'agentsAvailable'; agents: AgentOption[] }
-  | { type: 'mcpStatus'; enabled: boolean };
+  | { type: 'mcpStatus'; enabled: boolean }
+  | { type: 'showTaskForm'; columns: Column[] };
 
 // ── WebView → Host ──────────────────────────────────────────────────────────
+
+/** Data sent from the task‑creation form in the side panel. */
+export interface NewTaskData {
+  title: string;
+  body: string;
+  status: ColumnId;
+  labels: string;
+  assignee: string;
+}
 
 export type WebViewToHost =
   | { type: 'taskMoved'; taskId: string; toCol: ColumnId; index: number }
@@ -40,6 +57,10 @@ export type WebViewToHost =
   | { type: 'refreshRequest'; providerId?: string }
   | { type: 'ready' }
   | { type: 'addTask' }
+  | { type: 'saveTask'; data: NewTaskData }
+  | { type: 'editTask'; taskId: string; data: NewTaskData }
+  | { type: 'launchProvider'; taskId: string; genAiProviderId: string }
+  | { type: 'cancelTaskForm' }
   | { type: 'startSquad'; agentSlug?: string }
   | { type: 'toggleAutoSquad'; agentSlug?: string }
   | { type: 'toggleMcp' };
