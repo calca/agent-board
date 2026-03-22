@@ -61,6 +61,51 @@ html, body, #root {
   background: var(--vscode-button-hoverBackground);
 }
 
+/* ── MCP Status ─────────────────────────────────────────────────────── */
+
+.mcp-status {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: 12px;
+  padding: 3px 10px;
+  border-radius: 12px;
+  background: var(--vscode-editor-background);
+  border: 1px solid var(--vscode-panel-border);
+  font-size: 0.82em;
+}
+
+.mcp-status__dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+
+.mcp-status__dot--on {
+  background: var(--vscode-terminal-ansiGreen);
+}
+
+.mcp-status__dot--off {
+  background: var(--vscode-terminal-ansiRed);
+}
+
+.mcp-status__label {
+  opacity: 0.85;
+}
+
+.mcp-status__toggle {
+  cursor: pointer;
+  background: var(--vscode-button-secondaryBackground, var(--vscode-button-background));
+  color: var(--vscode-button-secondaryForeground, var(--vscode-button-foreground));
+  border: none;
+  padding: 2px 8px;
+  border-radius: 3px;
+  font-size: 0.9em;
+}
+.mcp-status__toggle:hover {
+  background: var(--vscode-button-secondaryHoverBackground, var(--vscode-button-hoverBackground));
+}
+
 /* ── Kanban Board ──────────────────────────────────────────────────── */
 
 .kanban {

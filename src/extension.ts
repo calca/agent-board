@@ -220,10 +220,11 @@ export function activate(context: vscode.ExtensionContext): void {
     panel.onMessage(async (msg) => {
       switch (msg.type) {
         case 'ready':
-          // Send initial tasks, squad status, and available agents
+          // Send initial tasks, squad status, available agents, and MCP status
           await sendTasksToPanel(panel, providerRegistry);
           panel.updateSquadStatus(squadManager.getStatus());
           panel.updateAgents(agentOptions());
+          panel.updateMcpStatus(ProjectConfig.getProjectConfig()?.mcp?.enabled ?? false);
           break;
         case 'refreshRequest':
           await refreshTasksCommand(providerRegistry);
@@ -256,6 +257,14 @@ export function activate(context: vscode.ExtensionContext): void {
         case 'toggleAutoSquad': {
           handleToggleAutoSquad(squadManager, msg.agentSlug);
           panel.updateSquadStatus(squadManager.getStatus());
+          break;
+        }
+        case 'toggleMcp': {
+          const currentMcp = ProjectConfig.getProjectConfig()?.mcp?.enabled ?? false;
+          const newMcpEnabled = !currentMcp;
+          ProjectConfig.updateConfig({ mcp: { enabled: newMcpEnabled } });
+          panel.updateMcpStatus(newMcpEnabled);
+          logger.info(`MCP server ${newMcpEnabled ? 'enabled' : 'disabled'} via board toggle`);
           break;
         }
       }

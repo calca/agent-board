@@ -101,6 +101,21 @@ export interface ProjectConfigData {
     /** Show a VS Code notification when a task is automatically moved to the done column. */
     taskDone?: boolean;
   };
+  /**
+   * MCP (Model Context Protocol) server settings.
+   *
+   * When enabled, Agent Board exposes a stdio-based MCP server that
+   * lets external agents list, read, and update tasks on the board.
+   */
+  mcp?: {
+    /** Whether the MCP server is enabled.  Defaults to `false`. */
+    enabled?: boolean;
+    /**
+     * Workspace-relative or absolute path to the JSON task file
+     * the MCP server operates on.  Defaults to the jsonProvider path.
+     */
+    tasksPath?: string;
+  };
   pollInterval?: number;
   logLevel?: string;
 }

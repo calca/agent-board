@@ -48,6 +48,39 @@ export class ProjectConfig {
   }
 
   /**
+   * Merge a partial update into the config file.
+   *
+   * Creates the `.agent-board/` directory and `config.json` if they
+   * don't exist.  Existing keys are preserved; only the keys in
+   * `partial` are overwritten (shallow-merged at the top level, deep-
+   * merged one level down for nested objects like `mcp`).
+   */
+  static updateConfig(partial: Partial<ProjectConfigData>): void {
+    const filePath = ProjectConfig.configFilePath();
+    if (!filePath) {
+      return;
+    }
+
+    const existing = ProjectConfig.readConfigFile() ?? {};
+
+    // Shallow-merge top-level keys; for objects, merge one level deeper
+    const merged: Record<string, unknown> = { ...existing };
+    for (const [key, value] of Object.entries(partial)) {
+      if (value !== null && typeof value === 'object' && !Array.isArray(value)) {
+        merged[key] = { ...(existing as Record<string, unknown>)[key] as Record<string, unknown> ?? {}, ...value };
+      } else {
+        merged[key] = value;
+      }
+    }
+
+    const dir = path.dirname(filePath);
+    if (!fs.existsSync(dir)) {
+      fs.mkdirSync(dir, { recursive: true });
+    }
+    fs.writeFileSync(filePath, JSON.stringify(merged, null, 2), 'utf-8');
+  }
+
+  /**
    * Return the absolute path to the config file (or `undefined` if no
    * workspace folder is open).
    */
