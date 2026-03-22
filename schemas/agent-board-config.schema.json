@@ -43,7 +43,7 @@
     },
     "copilot": {
       "type": "object",
-      "description": "Copilot integration settings (legacy — prefer genAiProviders).",
+      "description": "Copilot integration settings.",
       "properties": {
         "defaultMode": {
           "type": "string",

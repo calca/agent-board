@@ -76,8 +76,8 @@ All settings can also be configured globally through **File > Preferences > Sett
 | `agentBoard.jsonProvider.path` | `".agent-board/tasks"` | Path to JSON tasks file |
 | `agentBoard.beadsProvider.executable` | `"beads"` | Path to Beads CLI |
 | `agentBoard.worktree.enabled` | `true` | Create an isolated git worktree for providers that support it |
-| `agentBoard.copilot.defaultMode` | `"chat"` | Default Copilot mode: `chat`, `cloud`, `local`, `background` *(legacy — prefer genAiProviders)* |
-| `agentBoard.copilot.localModel` | `"llama3"` | Ollama model name for local mode *(legacy — prefer genAiProviders)* |
+| `agentBoard.copilot.defaultMode` | `"chat"` | Default Copilot mode: `chat`, `cloud`, `local`, `background` |
+| `agentBoard.copilot.localModel` | `"llama3"` | Ollama model name for local mode |
 | `agentBoard.kanban.columns` | `["todo","inprogress","review","done"]` | Kanban column IDs |
 | `agentBoard.pollInterval` | `30000` | Polling interval (ms) for providers |
 | `agentBoard.logLevel` | `"INFO"` | Log level: `DEBUG`, `INFO`, `WARN`, `ERROR` |
@@ -130,10 +130,7 @@ const registry = agentBoard?.exports?.providerRegistry;
 registry?.register(myCustomProvider);
 ```
 
-## Copilot Modes *(legacy)*
-
-> **Note:** The mode-based Copilot settings (`copilot.defaultMode`, `copilot.localModel`) are
-> legacy and kept for backward compatibility. Prefer using **GenAI Providers** below.
+## Copilot Modes
 
 | Mode | Description |
 |------|-------------|
