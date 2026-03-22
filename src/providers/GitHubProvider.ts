@@ -21,8 +21,10 @@ export interface GitHubIssue {
  *
  * Auth uses the VSCode built-in GitHub SSO (`vscode.authentication`).
  *
- * Repository coordinates (`owner`/`repo`) are read from the per-project
- * file `.agent-board/config.json`.
+ * Repository coordinates (`owner`/`repo`) are resolved in order:
+ *   1. `.agent-board/config.json`
+ *   2. VS Code settings (`agentBoard.github.owner` / `.repo`)
+ *   3. For `owner` only: the GitHub SSO account login name
  */
 export class GitHubProvider implements ITaskProvider {
   readonly id = 'github';
@@ -123,6 +125,11 @@ export class GitHubProvider implements ITaskProvider {
   private async fetchTasks(): Promise<KanbanTask[]> {
     await this.ensureToken();
 
+    // If owner is still empty after config resolution, try the SSO login name
+    if (!this.owner && this.token) {
+      await this.fillOwnerFromSso();
+    }
+
     if (!this.token || !this.owner || !this.repo) {
       return [];
     }
@@ -180,6 +187,22 @@ export class GitHubProvider implements ITaskProvider {
       return 'review';
     }
     return 'todo';
+  }
+
+  /**
+   * Derive `owner` from the GitHub SSO session account name.
+   */
+  private async fillOwnerFromSso(): Promise<void> {
+    try {
+      const session = await vscode.authentication.getSession('github', ['repo'], {
+        createIfNone: false,
+      });
+      if (session?.account?.label) {
+        this.owner = session.account.label;
+      }
+    } catch {
+      // SSO not available — leave owner empty
+    }
   }
 
   private headers(): Record<string, string> {

@@ -45,15 +45,17 @@ export interface ProjectConfigData {
 }
 
 /**
- * Pure extraction logic — resolves GitHub `owner`/`repo` from
- * the per-project config file data.
+ * Pure extraction logic — resolves GitHub `owner`/`repo`.
+ *
+ * Resolution order: project config file → VS Code settings → default ('').
  */
 export function extractGitHubConfig(
   fileConfig: ProjectConfigData | undefined,
+  settingConfig?: { owner?: string; repo?: string },
 ): { owner: string; repo: string } {
   return {
-    owner: fileConfig?.github?.owner || '',
-    repo: fileConfig?.github?.repo || '',
+    owner: fileConfig?.github?.owner || settingConfig?.owner || '',
+    repo: fileConfig?.github?.repo || settingConfig?.repo || '',
   };
 }
 

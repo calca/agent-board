@@ -17,11 +17,20 @@ export class ProjectConfig {
   static readonly CONFIG_FILE = 'config.json';
 
   /**
-   * Resolve the GitHub `owner` and `repo` from `.agent-board/config.json`.
+   * Resolve the GitHub `owner` and `repo`.
+   *
+   * Resolution order:
+   *   1. `.agent-board/config.json`
+   *   2. VS Code settings (`agentBoard.github.owner` / `agentBoard.github.repo`)
    */
   static getGitHubConfig(): { owner: string; repo: string } {
     const file = ProjectConfig.readConfigFile();
-    return extractGitHubConfig(file);
+    const cfg = vscode.workspace.getConfiguration('agentBoard');
+    const settingConfig = {
+      owner: cfg.get<string>('github.owner', ''),
+      repo: cfg.get<string>('github.repo', ''),
+    };
+    return extractGitHubConfig(file, settingConfig);
   }
 
   /**
