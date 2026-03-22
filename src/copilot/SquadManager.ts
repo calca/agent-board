@@ -184,18 +184,20 @@ export class SquadManager {
       for (const [taskId, session] of this.activeSessions) {
         session.state = 'failed';
         session.finishedAt = new Date().toISOString();
-        // Best-effort: move task back (fire-and-forget — we're shutting down)
+        // Best-effort: move task back (fire-and-forget — we're shutting down).
+        // We only update the status field; updateTask implementations should
+        // treat this as a column move (the task's full data is already persisted).
         const [providerId] = taskId.split(':');
         const provider = this.providerRegistry.get(providerId);
         if (provider) {
           void provider.updateTask({
             id: taskId,
-            title: '',
+            title: taskId,
             body: '',
             status: sourceCol,
             labels: [],
             providerId,
-            meta: {},
+            meta: { gracefulShutdown: true },
           });
         }
       }
@@ -307,10 +309,17 @@ export class SquadManager {
 
       // Race the launch against the timeout (if configured)
       if (timeoutMs > 0) {
+        let timer: ReturnType<typeof setTimeout> | undefined;
         const timeoutPromise = new Promise<never>((_, reject) => {
-          setTimeout(() => reject(new Error('Session timed out')), timeoutMs);
+          timer = setTimeout(() => reject(new Error('Session timed out')), timeoutMs);
         });
-        await Promise.race([launchPromise, timeoutPromise]);
+        try {
+          await Promise.race([launchPromise, timeoutPromise]);
+        } finally {
+          if (timer !== undefined) {
+            clearTimeout(timer);
+          }
+        }
       } else {
         await launchPromise;
       }
