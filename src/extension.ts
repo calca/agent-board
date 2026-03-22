@@ -44,7 +44,15 @@ export function activate(context: vscode.ExtensionContext): void {
   // Global providers (VS Code integrated) — always registered
   genAiRegistry.register(new ChatGenAiProvider());
   genAiRegistry.register(new CloudGenAiProvider());
-  genAiRegistry.register(new CopilotCliGenAiProvider());
+
+  // Copilot CLI — pass per-project config (yolo / fleet), falling back to VS Code settings
+  const copilotCliCfg = ProjectConfig.getProjectConfig()?.genAiProviders?.['copilot-cli'];
+  const copilotCliConfig = {
+    ...copilotCliCfg,
+    yolo: copilotCliCfg?.yolo ?? vscode.workspace.getConfiguration('agentBoard').get<boolean>('copilotCli.yolo', false),
+    fleet: copilotCliCfg?.fleet ?? vscode.workspace.getConfiguration('agentBoard').get<boolean>('copilotCli.fleet', false),
+  };
+  genAiRegistry.register(new CopilotCliGenAiProvider(copilotCliConfig));
 
   // Project providers — registered only when enabled in config
   registerProjectGenAiProviders(genAiRegistry);

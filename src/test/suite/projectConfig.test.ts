@@ -159,6 +159,26 @@ suite('ProjectConfigData (full shape)', () => {
     assert.strictEqual(cfg.genAiProviders?.mistral?.model, 'mistral-tiny');
   });
 
+  test('genAiProviders supports yolo and fleet flags', () => {
+    const cfg: ProjectConfigData = {
+      genAiProviders: {
+        'copilot-cli': { yolo: true, fleet: true },
+      },
+    };
+    assert.strictEqual(cfg.genAiProviders?.['copilot-cli']?.yolo, true);
+    assert.strictEqual(cfg.genAiProviders?.['copilot-cli']?.fleet, true);
+  });
+
+  test('genAiProviders yolo and fleet default to undefined', () => {
+    const cfg: ProjectConfigData = {
+      genAiProviders: {
+        'copilot-cli': { enabled: true },
+      },
+    };
+    assert.strictEqual(cfg.genAiProviders?.['copilot-cli']?.yolo, undefined);
+    assert.strictEqual(cfg.genAiProviders?.['copilot-cli']?.fleet, undefined);
+  });
+
   test('worktree can be explicitly enabled', () => {
     const cfg: ProjectConfigData = { worktree: { enabled: true } };
     assert.strictEqual(cfg.worktree?.enabled, true);

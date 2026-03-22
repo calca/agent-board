@@ -1,6 +1,7 @@
 import * as assert from 'assert';
 import { GenAiProviderRegistry } from '../../copilot/GenAiProviderRegistry';
 import { IGenAiProvider, GenAiProviderScope } from '../../copilot/IGenAiProvider';
+import { buildOptimisationPrefix, YOLO_PREFIX, FLEET_PREFIX } from '../../copilot/copilotCliUtils';
 
 /** Minimal stub GenAI provider for testing the registry. */
 function makeGenAiProvider(
@@ -151,5 +152,37 @@ suite('IGenAiProvider interface shape', () => {
       supportsWorktree: false,
     };
     assert.strictEqual(p.supportsWorktree, false);
+  });
+});
+
+suite('buildOptimisationPrefix (CopilotCliGenAiProvider)', () => {
+  test('returns empty string when both flags are false', () => {
+    assert.strictEqual(buildOptimisationPrefix(false, false), '');
+  });
+
+  test('returns yolo prefix when yolo is true', () => {
+    const result = buildOptimisationPrefix(true, false);
+    assert.strictEqual(result, YOLO_PREFIX);
+    assert.ok(result.includes('/yolo'));
+  });
+
+  test('returns fleet prefix when fleet is true', () => {
+    const result = buildOptimisationPrefix(false, true);
+    assert.strictEqual(result, FLEET_PREFIX);
+    assert.ok(result.includes('/fleet'));
+  });
+
+  test('returns both prefixes when both flags are true', () => {
+    const result = buildOptimisationPrefix(true, true);
+    assert.strictEqual(result, YOLO_PREFIX + FLEET_PREFIX);
+    assert.ok(result.includes('/yolo'));
+    assert.ok(result.includes('/fleet'));
+  });
+
+  test('yolo prefix appears before fleet prefix', () => {
+    const result = buildOptimisationPrefix(true, true);
+    const yoloIdx = result.indexOf('/yolo');
+    const fleetIdx = result.indexOf('/fleet');
+    assert.ok(yoloIdx < fleetIdx, 'yolo should appear before fleet');
   });
 });

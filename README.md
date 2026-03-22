@@ -58,6 +58,7 @@ Create a `.agent-board/config.json` file in the workspace root to override any V
     "enabled": true
   },
   "genAiProviders": {
+    "copilot-cli": { "yolo": true, "fleet": true },
     "ollama": { "enabled": true, "model": "codellama" },
     "mistral": { "enabled": true, "model": "mistral-small-latest" }
   },
@@ -97,6 +98,8 @@ All settings can also be configured globally through **File > Preferences > Sett
 | `agentBoard.jsonProvider.path` | `".agent-board/tasks"` | Path to JSON tasks file |
 | `agentBoard.beadsProvider.executable` | `"beads"` | Path to Beads CLI |
 | `agentBoard.worktree.enabled` | `true` | Create an isolated git worktree for providers that support it |
+| `agentBoard.copilotCli.yolo` | `false` | Enable `/yolo` mode — auto-approve all changes without confirmation |
+| `agentBoard.copilotCli.fleet` | `false` | Enable `/fleet` mode — optimise prompt for parallel fleet execution |
 | `agentBoard.kanban.columns` | `["todo","inprogress","review","done"]` | Kanban column IDs |
 | `agentBoard.squad.maxSessions` | `10` | Maximum parallel agent sessions |
 | `agentBoard.squad.sourceColumn` | `"todo"` | Column from which the squad picks tasks |
@@ -197,7 +200,35 @@ These providers integrate with VS Code APIs and are always registered. Their con
 |----------|-------------|
 | **Chat** (`chat`) | Opens VS Code native chat with task context pre-filled |
 | **Cloud** (`cloud`) | Uses GitHub Copilot cloud model via `vscode.lm` API |
-| **Copilot CLI** (`copilot-cli`) | Runs silently via `vscode.lm`, saves result to `.kanban-notes/` — **supports worktree** |
+| **Copilot CLI** (`copilot-cli`) | Runs silently via `vscode.lm`, saves result to `.kanban-notes/` — **supports worktree**, `/yolo`, `/fleet` |
+
+#### Copilot CLI Optimisations
+
+The **Copilot CLI** provider supports two optimisation flags that modify the prompt sent to the model:
+
+| Flag | Config Key | Default | Description |
+|------|-----------|---------|-------------|
+| `/yolo` | `genAiProviders.copilot-cli.yolo` | `false` | Auto-approve all changes without asking for confirmation. The model is instructed to apply changes autonomously. |
+| `/fleet` | `genAiProviders.copilot-cli.fleet` | `false` | Optimise for parallel fleet execution. The model is instructed to focus on its assigned task and avoid conflicts with other sessions. |
+
+Enable both via `.agent-board/config.json`:
+
+```jsonc
+{
+  "genAiProviders": {
+    "copilot-cli": { "yolo": true, "fleet": true }
+  }
+}
+```
+
+Or via VS Code settings:
+
+```json
+{
+  "agentBoard.copilotCli.yolo": true,
+  "agentBoard.copilotCli.fleet": true
+}
+```
 
 ### Project Providers
 
