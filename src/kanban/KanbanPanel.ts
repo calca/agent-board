@@ -2,7 +2,7 @@ import * as vscode from 'vscode';
 import * as path from 'path';
 import { KanbanTask } from '../types/KanbanTask';
 import { ColumnId, COLUMN_IDS, COLUMN_LABELS } from '../types/ColumnId';
-import { HostToWebView, WebViewToHost, Column, SquadStatus } from '../types/Messages';
+import { HostToWebView, WebViewToHost, Column, SquadStatus, AgentOption } from '../types/Messages';
 
 /**
  * Manages the Kanban board WebView panel.
@@ -96,6 +96,11 @@ export class KanbanPanel {
   /** Push the current squad status to the WebView. */
   updateSquadStatus(status: SquadStatus): void {
     this.postMessage({ type: 'squadStatus', status });
+  }
+
+  /** Push the list of discovered agents to the WebView. */
+  updateAgents(agents: AgentOption[]): void {
+    this.postMessage({ type: 'agentsAvailable', agents });
   }
 
   dispose(): void {

@@ -20,11 +20,17 @@ interface KanbanTask {
   url?: string;
   providerId: string;
 }
+interface AgentOption {
+  slug: string;
+  displayName: string;
+}
 
 let currentTasks: KanbanTask[] = [];
 let currentColumns: Column[] = [];
 let selectedTask: KanbanTask | null = null;
 let searchText = '';
+let availableAgents: AgentOption[] = [];
+let selectedAgentSlug = '';
 
 // ── Render ─────────────────────────────────────────────────────────────
 
@@ -49,6 +55,15 @@ function render(): void {
       <input class="filters__input" id="search-input" placeholder="Filter tasks…" value="${escapeHtml(searchText)}" />
       ${searchText ? `<span class="filters__badge">${filtered.length} result${filtered.length === 1 ? '' : 's'}</span>` : ''}
     </div>
+    ${availableAgents.length > 0 ? `
+    <div class="squad-bar">
+      <label class="squad-bar__label" for="agent-select">Agent:</label>
+      <select class="squad-bar__select" id="agent-select">
+        <option value="">— none —</option>
+        ${availableAgents.map(a => `<option value="${escapeHtml(a.slug)}"${a.slug === selectedAgentSlug ? ' selected' : ''}>${escapeHtml(a.displayName)}</option>`).join('')}
+      </select>
+    </div>
+    ` : ''}
     <div class="kanban">
       ${currentColumns.map(col => renderColumn(col, filtered.filter(t => t.status === col.id))).join('')}
     </div>
@@ -63,6 +78,10 @@ function render(): void {
   document.getElementById('search-input')?.addEventListener('input', (e: Event) => {
     searchText = (e.target as HTMLInputElement).value;
     render();
+  });
+
+  document.getElementById('agent-select')?.addEventListener('change', (e: Event) => {
+    selectedAgentSlug = (e.target as HTMLSelectElement).value;
   });
 
   document.querySelectorAll('.task-card').forEach(card => {
@@ -80,7 +99,7 @@ function render(): void {
 
   document.getElementById('detail-copilot')?.addEventListener('click', () => {
     if (selectedTask) {
-      vscode.postMessage({ type: 'openCopilot', taskId: selectedTask.id, providerId: 'cloud' });
+      vscode.postMessage({ type: 'openCopilot', taskId: selectedTask.id, providerId: 'cloud', ...(selectedAgentSlug ? { agentSlug: selectedAgentSlug } : {}) });
     }
   });
 
@@ -176,6 +195,14 @@ window.addEventListener('message', (event: MessageEvent) => {
     case 'tasksUpdate':
       currentTasks = msg.tasks ?? [];
       currentColumns = msg.columns ?? [];
+      render();
+      break;
+    case 'agentsAvailable':
+      availableAgents = msg.agents ?? [];
+      // Reset selected agent if it was removed
+      if (selectedAgentSlug && !availableAgents.some(a => a.slug === selectedAgentSlug)) {
+        selectedAgentSlug = '';
+      }
       render();
       break;
     case 'themeChange':

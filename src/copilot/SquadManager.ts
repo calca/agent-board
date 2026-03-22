@@ -62,6 +62,8 @@ export class SquadManager {
   private autoSquadTimer: ReturnType<typeof setInterval> | undefined;
   /** Concurrency guard — prevents overlapping startSquad() calls. */
   private launching = false;
+  /** Agent slug used during auto-squad polling. */
+  private autoSquadAgentSlug: string | undefined;
 
   private readonly logger = Logger.getInstance();
 
@@ -78,7 +80,7 @@ export class SquadManager {
   // ── Public API ──────────────────────────────────────────────────────
 
   /** One-shot: launch copilot sessions for available tasks up to maxSessions. */
-  async startSquad(): Promise<number> {
+  async startSquad(agentSlug?: string): Promise<number> {
     // Concurrency guard: skip if a launch cycle is already running
     if (this.launching) {
       this.logger.info('SquadManager: launch cycle already in progress — skipping');
@@ -86,13 +88,13 @@ export class SquadManager {
     }
     this.launching = true;
     try {
-      return await this.doStartSquad();
+      return await this.doStartSquad(agentSlug);
     } finally {
       this.launching = false;
     }
   }
 
-  private async doStartSquad(): Promise<number> {
+  private async doStartSquad(agentSlug?: string): Promise<number> {
     const max = this.getMaxSessions();
     const available = max - this.activeSessions.size;
     if (available <= 0) {
@@ -111,7 +113,7 @@ export class SquadManager {
       if (launched > 0 && cooldownMs > 0) {
         await this.delay(cooldownMs);
       }
-      await this.launchSession(task);
+      await this.launchSession(task, agentSlug);
       launched++;
     }
 
@@ -120,16 +122,18 @@ export class SquadManager {
   }
 
   /** Toggle auto-squad mode. Returns the new state. */
-  toggleAutoSquad(): boolean {
+  toggleAutoSquad(agentSlug?: string): boolean {
     this.autoSquadEnabled = !this.autoSquadEnabled;
 
     if (this.autoSquadEnabled) {
+      this.autoSquadAgentSlug = agentSlug;
       this.logger.info('SquadManager: auto-squad ENABLED');
       // Immediately try to fill slots, then poll
-      void this.startSquad();
+      void this.startSquad(agentSlug);
       const interval = this.getAutoSquadInterval();
-      this.autoSquadTimer = setInterval(() => void this.startSquad(), interval);
+      this.autoSquadTimer = setInterval(() => void this.startSquad(this.autoSquadAgentSlug), interval);
     } else {
+      this.autoSquadAgentSlug = undefined;
       this.logger.info('SquadManager: auto-squad DISABLED');
       if (this.autoSquadTimer) {
         clearInterval(this.autoSquadTimer);
@@ -300,7 +304,7 @@ export class SquadManager {
     );
   }
 
-  private async launchSession(task: KanbanTask): Promise<void> {
+  private async launchSession(task: KanbanTask, agentSlug?: string): Promise<void> {
     const providerId = this.genAiProviderId();
     const session: CopilotSessionInfo = {
       state: 'running',
@@ -321,7 +325,7 @@ export class SquadManager {
     }
 
     try {
-      const launchPromise = this.copilotLauncher.launch(task.id, providerId);
+      const launchPromise = this.copilotLauncher.launch(task.id, providerId, agentSlug);
       const timeoutMs = this.getSessionTimeout();
 
       // Race the launch against the timeout (if configured)

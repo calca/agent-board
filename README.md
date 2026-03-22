@@ -9,6 +9,7 @@
 - **Kanban Board** — drag-and-drop task management with configurable columns
 - **Extensible Providers** — load tasks from GitHub Issues, local JSON files, Beads CLI, or any custom source
 - **Copilot Integration** — launch Copilot sessions with full task context via extensible GenAI providers
+- **Agent Selection** — discover agents from `.github/agents/` and select one when launching a single task or from a dropdown near squad buttons
 - **Agent Squad** — launch multiple parallel agent sessions, with auto-squad mode that continuously monitors and fills slots as sessions complete
 - **Squad Autonomy** — 10 configurable features: tunable polling, auto-retry, label-based priority, session timeout, worktree cleanup, concurrency guard, graceful shutdown, cooldown, label exclusion, assignee filtering
 - **Git Worktree Support** — providers that support it (e.g. Copilot CLI) automatically create an isolated git worktree per task
@@ -229,6 +230,39 @@ const genAiRegistry = agentBoard?.exports?.genAiRegistry;
 genAiRegistry?.register(myCustomGenAiProvider);
 ```
 
+## Agent Selection
+
+When `.github/agents/` contains Markdown files, Agent Board automatically discovers them and exposes an **agent picker**:
+
+- **Single task** — the task detail panel lets you select an agent before clicking "Launch Copilot". The agent's instructions are prepended to the context sent to the GenAI provider.
+- **Squad / Auto-Squad** — a dropdown appears in the Kanban board near the squad buttons. When an agent is selected, every session launched by the squad uses that agent.
+- **Command palette** — when starting a squad or toggling auto-squad from the command palette, a Quick Pick appears to select an agent (if any are available).
+
+### Agent file format
+
+Each `.md` file in `.github/agents/` defines an agent. The file name (without extension) becomes the **slug** used to identify the agent. The first `# Heading` line is used as the display name; if no heading is present, the slug is title-cased automatically.
+
+```
+.github/agents/
+├── code-reviewer.md     → slug: "code-reviewer", name: "Code Reviewer"
+├── test-writer.md       → slug: "test-writer",   name: "Test Writer"
+└── doc-updater.md       → slug: "doc-updater",   name: "Doc Updater"
+```
+
+#### Example agent file
+
+```markdown
+# Code Reviewer
+
+You are a senior code reviewer. Review the code changes described in the task below. Focus on:
+- Correctness and edge cases
+- Security vulnerabilities
+- Performance implications
+- Code style consistency
+```
+
+When an agent is selected, its full Markdown content is prepended to the task context.
+
 ## Agent Squad
 
 The **squad** feature launches multiple parallel GenAI sessions, one per task. It supports two modes:
@@ -301,9 +335,10 @@ Extension Host (Node.js)
 │   ├── CopilotCliGenAiProvider (global — background + file save, worktree)
 │   ├── OllamaGenAiProvider (project — local HTTP)
 │   └── MistralGenAiProvider (project — Mistral API)
-├── SquadManager → parallel sessions, auto-squad, retry, priority, timeout
+├── AgentDiscovery → .github/agents/*.md (agent instructions)
+├── SquadManager → parallel sessions, auto-squad, retry, priority, timeout, agent selection
 │   └── squadUtils.ts (pure helpers: computeAvailableSlots, canRetry, sortByPriority, isTimedOut, shouldExclude, matchesAssignee)
-├── CopilotLauncher → ContextBuilder + GenAiProviderRegistry + WorktreeManager
+├── CopilotLauncher → ContextBuilder + GenAiProviderRegistry + WorktreeManager + AgentDiscovery
 ├── WorktreeManager → git worktree create / remove
 ├── KanbanPanel → WebView (HTML/CSS/JS)
 │   ├── MessageBridge (typed postMessage)

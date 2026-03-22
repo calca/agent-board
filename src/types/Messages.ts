@@ -18,18 +18,25 @@ export interface SquadStatus {
   autoSquadEnabled: boolean;
 }
 
+/** Minimal agent info sent to the WebView for the agent picker. */
+export interface AgentOption {
+  slug: string;
+  displayName: string;
+}
+
 export type HostToWebView =
   | { type: 'tasksUpdate'; tasks: KanbanTask[]; columns: Column[] }
   | { type: 'providerStatus'; providerId: string; status: 'ok' | 'error' | 'loading'; message?: string }
   | { type: 'themeChange'; kind: 'dark' | 'light' | 'hc' }
-  | { type: 'squadStatus'; status: SquadStatus };
+  | { type: 'squadStatus'; status: SquadStatus }
+  | { type: 'agentsAvailable'; agents: AgentOption[] };
 
 // ── WebView → Host ──────────────────────────────────────────────────────────
 
 export type WebViewToHost =
   | { type: 'taskMoved'; taskId: string; toCol: ColumnId; index: number }
-  | { type: 'openCopilot'; taskId: string; providerId: string }
+  | { type: 'openCopilot'; taskId: string; providerId: string; agentSlug?: string }
   | { type: 'refreshRequest'; providerId?: string }
   | { type: 'ready' }
-  | { type: 'startSquad' }
-  | { type: 'toggleAutoSquad' };
+  | { type: 'startSquad'; agentSlug?: string }
+  | { type: 'toggleAutoSquad'; agentSlug?: string };
