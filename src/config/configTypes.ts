@@ -71,6 +71,25 @@ export interface ProjectConfigData {
      * Set to 0 to disable timeout.
      */
     sessionTimeout?: number;
+    /**
+     * Delay in milliseconds between consecutive session launches.
+     * Prevents rate-limiting when starting multiple sessions at once.
+     * Default 0 = no cooldown.
+     */
+    cooldownMs?: number;
+    /**
+     * Labels that cause a task to be skipped by the squad (case-insensitive).
+     * e.g. `["blocked", "manual"]` will skip any task with those labels.
+     */
+    excludeLabels?: string[];
+    /**
+     * Only launch tasks matching this assignee filter.
+     * - `""` (default) → no filter, all tasks.
+     * - `"*"` → only tasks with *any* assignee.
+     * - `"unassigned"` → only unassigned tasks.
+     * - Any other value → exact assignee match (case-insensitive).
+     */
+    assigneeFilter?: string;
   };
   notifications?: {
     /** Show a VS Code notification when a task is automatically moved to the active column. */

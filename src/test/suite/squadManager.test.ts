@@ -4,6 +4,8 @@ import {
   canRetry,
   sortByPriority,
   isTimedOut,
+  shouldExclude,
+  matchesAssignee,
   DEFAULT_MAX_SESSIONS,
   DEFAULT_SOURCE_COLUMN,
   DEFAULT_ACTIVE_COLUMN,
@@ -11,6 +13,7 @@ import {
   DEFAULT_AUTO_SQUAD_INTERVAL,
   DEFAULT_MAX_RETRIES,
   DEFAULT_SESSION_TIMEOUT,
+  DEFAULT_COOLDOWN_MS,
 } from '../../copilot/squadUtils';
 import { KanbanTask } from '../../types/KanbanTask';
 
@@ -71,6 +74,10 @@ suite('SquadManager constants', () => {
 
   test('DEFAULT_SESSION_TIMEOUT is 300000', () => {
     assert.strictEqual(DEFAULT_SESSION_TIMEOUT, 300_000);
+  });
+
+  test('DEFAULT_COOLDOWN_MS is 0', () => {
+    assert.strictEqual(DEFAULT_COOLDOWN_MS, 0);
   });
 });
 
@@ -268,6 +275,20 @@ suite('ProjectConfigData squad/notifications', () => {
     assert.deepStrictEqual(cfg.squad.priorityLabels, ['critical', 'high', 'medium']);
     assert.strictEqual(cfg.squad.sessionTimeout, 600000);
   });
+
+  test('squad config with cooldown, excludeLabels, assigneeFilter', () => {
+    const cfg = {
+      squad: {
+        maxSessions: 5,
+        cooldownMs: 2000,
+        excludeLabels: ['blocked', 'manual'],
+        assigneeFilter: 'alice',
+      },
+    };
+    assert.strictEqual(cfg.squad.cooldownMs, 2000);
+    assert.deepStrictEqual(cfg.squad.excludeLabels, ['blocked', 'manual']);
+    assert.strictEqual(cfg.squad.assigneeFilter, 'alice');
+  });
 });
 
 suite('canRetry', () => {
@@ -414,5 +435,82 @@ suite('isTimedOut', () => {
     const now = new Date('2026-01-01T00:00:01Z');
     const startedAt = '2026-01-01T00:00:00Z'; // 1 second ago
     assert.strictEqual(isTimedOut(startedAt, 300_000, now), false);
+  });
+});
+
+suite('shouldExclude', () => {
+  test('returns false when excludeLabels is empty', () => {
+    assert.strictEqual(shouldExclude(['bug', 'feature'], []), false);
+  });
+
+  test('returns false when task has no labels', () => {
+    assert.strictEqual(shouldExclude([], ['blocked']), false);
+  });
+
+  test('returns true when task has an excluded label', () => {
+    assert.strictEqual(shouldExclude(['bug', 'blocked'], ['blocked']), true);
+  });
+
+  test('returns false when task has no excluded labels', () => {
+    assert.strictEqual(shouldExclude(['bug', 'feature'], ['blocked', 'manual']), false);
+  });
+
+  test('case-insensitive matching', () => {
+    assert.strictEqual(shouldExclude(['BLOCKED'], ['blocked']), true);
+    assert.strictEqual(shouldExclude(['blocked'], ['BLOCKED']), true);
+  });
+
+  test('matches any excluded label (not all)', () => {
+    assert.strictEqual(shouldExclude(['manual'], ['blocked', 'manual']), true);
+  });
+
+  test('empty exclude list with empty task labels', () => {
+    assert.strictEqual(shouldExclude([], []), false);
+  });
+});
+
+suite('matchesAssignee', () => {
+  test('empty filter matches everything', () => {
+    assert.strictEqual(matchesAssignee('alice', ''), true);
+    assert.strictEqual(matchesAssignee(undefined, ''), true);
+  });
+
+  test('* filter matches any assignee', () => {
+    assert.strictEqual(matchesAssignee('alice', '*'), true);
+    assert.strictEqual(matchesAssignee('bob', '*'), true);
+  });
+
+  test('* filter rejects unassigned', () => {
+    assert.strictEqual(matchesAssignee(undefined, '*'), false);
+  });
+
+  test('unassigned filter matches undefined assignee', () => {
+    assert.strictEqual(matchesAssignee(undefined, 'unassigned'), true);
+  });
+
+  test('unassigned filter rejects assigned tasks', () => {
+    assert.strictEqual(matchesAssignee('alice', 'unassigned'), false);
+  });
+
+  test('unassigned filter is case-insensitive', () => {
+    assert.strictEqual(matchesAssignee(undefined, 'Unassigned'), true);
+    assert.strictEqual(matchesAssignee(undefined, 'UNASSIGNED'), true);
+  });
+
+  test('exact match on assignee name', () => {
+    assert.strictEqual(matchesAssignee('alice', 'alice'), true);
+  });
+
+  test('exact match is case-insensitive', () => {
+    assert.strictEqual(matchesAssignee('Alice', 'alice'), true);
+    assert.strictEqual(matchesAssignee('alice', 'ALICE'), true);
+  });
+
+  test('different assignee does not match', () => {
+    assert.strictEqual(matchesAssignee('bob', 'alice'), false);
+  });
+
+  test('undefined assignee does not match a username', () => {
+    assert.strictEqual(matchesAssignee(undefined, 'alice'), false);
   });
 });

@@ -14,9 +14,12 @@ import {
   DEFAULT_AUTO_SQUAD_INTERVAL,
   DEFAULT_MAX_RETRIES,
   DEFAULT_SESSION_TIMEOUT,
+  DEFAULT_COOLDOWN_MS,
   computeAvailableSlots,
   canRetry,
   sortByPriority,
+  shouldExclude,
+  matchesAssignee,
 } from './squadUtils';
 
 export {
@@ -27,9 +30,12 @@ export {
   DEFAULT_AUTO_SQUAD_INTERVAL,
   DEFAULT_MAX_RETRIES,
   DEFAULT_SESSION_TIMEOUT,
+  DEFAULT_COOLDOWN_MS,
   computeAvailableSlots,
   canRetry,
   sortByPriority,
+  shouldExclude,
+  matchesAssignee,
 } from './squadUtils';
 
 /**
@@ -98,8 +104,13 @@ export class SquadManager {
     const toRun = tasks.slice(0, available);
 
     this.logger.info('SquadManager: starting squad — %d tasks to launch', toRun.length);
+    const cooldownMs = this.getCooldownMs();
     let launched = 0;
     for (const task of toRun) {
+      // Apply cooldown between consecutive launches (skip before the first)
+      if (launched > 0 && cooldownMs > 0) {
+        await this.delay(cooldownMs);
+      }
       await this.launchSession(task);
       launched++;
     }
@@ -255,8 +266,14 @@ export class SquadManager {
       .flatMap(r => r.value);
 
     // Only tasks in the configured source column that don't already have an active session
+    const excludeLabels = this.getExcludeLabels();
+    const assigneeFilter = this.getAssigneeFilter();
     const eligible = allTasks.filter(
-      t => t.status === sourceCol && !this.activeSessions.has(t.id),
+      t =>
+        t.status === sourceCol &&
+        !this.activeSessions.has(t.id) &&
+        !shouldExclude(t.labels, excludeLabels) &&
+        matchesAssignee(t.assignee, assigneeFilter),
     );
 
     // Sort by label-based priority when configured
@@ -394,6 +411,38 @@ export class SquadManager {
       'squad.sessionTimeout',
       DEFAULT_SESSION_TIMEOUT,
     );
+  }
+
+  private getCooldownMs(): number {
+    const projectCfg = ProjectConfig.getProjectConfig();
+    return ProjectConfig.resolve(
+      projectCfg?.squad?.cooldownMs,
+      'squad.cooldownMs',
+      DEFAULT_COOLDOWN_MS,
+    );
+  }
+
+  private getExcludeLabels(): string[] {
+    const projectCfg = ProjectConfig.getProjectConfig();
+    return ProjectConfig.resolve(
+      projectCfg?.squad?.excludeLabels,
+      'squad.excludeLabels',
+      [] as string[],
+    );
+  }
+
+  private getAssigneeFilter(): string {
+    const projectCfg = ProjectConfig.getProjectConfig();
+    return ProjectConfig.resolve(
+      projectCfg?.squad?.assigneeFilter,
+      'squad.assigneeFilter',
+      '',
+    );
+  }
+
+  /** Simple async delay (injectable via subclass for testing). */
+  private delay(ms: number): Promise<void> {
+    return new Promise(resolve => setTimeout(resolve, ms));
   }
 
   private fireStatusChange(): void {

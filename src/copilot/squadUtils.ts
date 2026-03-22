@@ -27,6 +27,9 @@ export const DEFAULT_MAX_RETRIES = 0;
 /** Default session timeout in milliseconds (5 minutes). 0 = no timeout. */
 export const DEFAULT_SESSION_TIMEOUT = 300_000;
 
+/** Default cooldown between consecutive session launches in milliseconds. 0 = no cooldown. */
+export const DEFAULT_COOLDOWN_MS = 0;
+
 /**
  * Compute how many new sessions can be launched.
  */
@@ -79,4 +82,40 @@ export function isTimedOut(startedAt: string, timeoutMs: number, now: Date = new
   }
   const elapsed = now.getTime() - new Date(startedAt).getTime();
   return elapsed >= timeoutMs;
+}
+
+/**
+ * Determine whether a task should be excluded based on its labels.
+ *
+ * Returns `true` when the task has *any* label that appears in the
+ * `excludeLabels` list (case-insensitive).
+ */
+export function shouldExclude(taskLabels: string[], excludeLabels: string[]): boolean {
+  if (excludeLabels.length === 0) {
+    return false;
+  }
+  const lower = excludeLabels.map(l => l.toLowerCase());
+  return taskLabels.some(l => lower.includes(l.toLowerCase()));
+}
+
+/**
+ * Determine whether a task matches the assignee filter.
+ *
+ * - Empty `filter` → matches every task (no filtering).
+ * - `"*"` → matches tasks that have *any* assignee (skip unassigned).
+ * - `"unassigned"` → matches tasks with no assignee.
+ * - Any other value → matches tasks whose `assignee` equals `filter`
+ *   (case-insensitive).
+ */
+export function matchesAssignee(taskAssignee: string | undefined, filter: string): boolean {
+  if (!filter) {
+    return true; // no filter → all tasks
+  }
+  if (filter === '*') {
+    return !!taskAssignee;
+  }
+  if (filter.toLowerCase() === 'unassigned') {
+    return !taskAssignee;
+  }
+  return (taskAssignee ?? '').toLowerCase() === filter.toLowerCase();
 }

@@ -223,6 +223,23 @@
           "minimum": 0,
           "description": "Maximum time in milliseconds a session may run before being timed out. Set to 0 to disable. Overridable in .agent-board/config.json."
         },
+        "agentBoard.squad.cooldownMs": {
+          "type": "number",
+          "default": 0,
+          "minimum": 0,
+          "description": "Delay in milliseconds between consecutive session launches. Prevents rate-limiting. Overridable in .agent-board/config.json."
+        },
+        "agentBoard.squad.excludeLabels": {
+          "type": "array",
+          "items": { "type": "string" },
+          "default": [],
+          "description": "Labels that cause a task to be skipped by the squad. Case-insensitive. Overridable in .agent-board/config.json."
+        },
+        "agentBoard.squad.assigneeFilter": {
+          "type": "string",
+          "default": "",
+          "description": "Only launch tasks matching this assignee. Empty = all, '*' = any assignee, 'unassigned' = no assignee, or exact username. Overridable in .agent-board/config.json."
+        },
         "agentBoard.notifications.taskActive": {
           "type": "boolean",
           "default": true,
