@@ -60,6 +60,7 @@ export type WebViewToHost =
   | { type: 'saveTask'; data: NewTaskData }
   | { type: 'editTask'; taskId: string; data: NewTaskData }
   | { type: 'launchProvider'; taskId: string; genAiProviderId: string }
+  | { type: 'reopenSession'; taskId: string }
   | { type: 'cancelTaskForm' }
   | { type: 'startSquad'; agentSlug?: string }
   | { type: 'toggleAutoSquad'; agentSlug?: string }

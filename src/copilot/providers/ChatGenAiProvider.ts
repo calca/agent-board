@@ -33,11 +33,12 @@ export class ChatGenAiProvider implements IGenAiProvider {
 
       // Force a brand-new chat session for every CTA click.
       await vscode.commands.executeCommand('workbench.action.chat.newChat');
+      await new Promise(r => setTimeout(r, 300));
 
       // Open a fresh chat session in agent mode with the query prefilled.
       // isPartialQuery: true  → prefills the input box but does NOT submit.
       await vscode.commands.executeCommand('workbench.action.chat.open', {
-        mode: 'agent',
+        mode: 'autopilot',
         query,
         isPartialQuery: true,
       });

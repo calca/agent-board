@@ -28,12 +28,8 @@
     "views": {
       "agent-board": [
         {
-          "id": "agentBoardTasks",
-          "name": "Tasks"
-        },
-        {
-          "id": "agentBoardAgents",
-          "name": "Agents"
+          "id": "agentBoardOverview",
+          "name": "Overview"
         }
       ]
     },
@@ -279,46 +275,16 @@
       "view/title": [
         {
           "command": "agentBoard.openKanban",
-          "when": "view == agentBoardTasks",
-          "group": "navigation"
-        },
-        {
-          "command": "agentBoard.addTask",
-          "when": "view == agentBoardTasks",
+          "when": "view == agentBoardOverview",
           "group": "navigation"
         },
         {
           "command": "agentBoard.refreshTasks",
-          "when": "view == agentBoardTasks",
+          "when": "view == agentBoardOverview",
           "group": "navigation"
         }
       ],
       "view/item/context": [
-        {
-          "command": "agentBoard.completeTask",
-          "when": "view == agentBoardTasks && viewItem == task-pending",
-          "group": "inline"
-        },
-        {
-          "command": "agentBoard.editTask",
-          "when": "view == agentBoardTasks && viewItem =~ /^task-/",
-          "group": "inline"
-        },
-        {
-          "command": "agentBoard.deleteTask",
-          "when": "view == agentBoardTasks && viewItem =~ /^task-/",
-          "group": "inline"
-        },
-        {
-          "command": "agentBoard.runAgent",
-          "when": "view == agentBoardAgents && viewItem == agent-idle",
-          "group": "inline"
-        },
-        {
-          "command": "agentBoard.stopAgent",
-          "when": "view == agentBoardAgents && viewItem == agent-running",
-          "group": "inline"
-        }
       ]
     },
     "jsonValidation": [

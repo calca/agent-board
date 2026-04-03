@@ -19,6 +19,12 @@ interface KanbanTask {
   assignee?: string;
   url?: string;
   providerId: string;
+  copilotSession?: {
+    state: string;
+    providerId?: string;
+    startedAt?: string;
+    finishedAt?: string;
+  };
 }
 interface AgentOption {
   slug: string;
@@ -180,6 +186,13 @@ function render(): void {
     });
   });
 
+  // Detail panel — reopen running session
+  document.getElementById('detail-reopen-session')?.addEventListener('click', () => {
+    if (selectedTask) {
+      vscode.postMessage({ type: 'reopenSession', taskId: selectedTask.id });
+    }
+  });
+
   // ── Task form listeners ──────────────────────────────────────────
   document.getElementById('task-form-close')?.addEventListener('click', () => {
     showTaskForm = false;
@@ -218,6 +231,9 @@ function render(): void {
       const providerId = (btn as HTMLElement).dataset.providerId;
       if (editingTask && providerId) {
         vscode.postMessage({ type: 'launchProvider', taskId: editingTask.id, genAiProviderId: providerId });
+        editingTask = null;
+        showTaskForm = false;
+        render();
       }
     });
   });
@@ -291,7 +307,10 @@ function renderCard(task: KanbanTask): string {
 function renderDetail(task: KanbanTask): string {
   const sessionInfo = task.copilotSession;
   const sessionLine = sessionInfo
-    ? `<div class="task-detail__session">Session: <strong>${sessionInfo.state}</strong>${sessionInfo.startedAt ? ` — started ${sessionInfo.startedAt}` : ''}</div>`
+    ? `<div class="task-detail__session">
+        Session: <strong>${sessionInfo.state}</strong>${sessionInfo.startedAt ? ` — started ${sessionInfo.startedAt}` : ''}
+        ${sessionInfo.state === 'running' ? `<button class="task-detail__reopen-btn" id="detail-reopen-session">↗ Open Session</button>` : ''}
+      </div>`
     : '';
   return `
     <div class="task-detail">

@@ -4,13 +4,11 @@ import { Logger } from '../../utils/logger';
 import { GenAiProviderScope, IGenAiProvider } from '../IGenAiProvider';
 
 /**
- * GenAI provider that runs silently via the VS Code Language Model API.
+ * GenAI provider that opens a VS Code agent chat session in autopilot
+ * mode and auto-submits. The session is visible in VS Code’s
+ * Sessions panel.
  *
- * - No sidebar, no terminal, no output channel.
- * - Always autopilot.
- * - The task is moved to in-progress by SquadManager.
- *
- * Scope: **global** — integrates with the VS Code Language Model API.
+ * Scope: **global** — integrates with VS Code Chat API.
  */
 export class CloudGenAiProvider implements IGenAiProvider {
   readonly id = 'cloud';
@@ -19,33 +17,32 @@ export class CloudGenAiProvider implements IGenAiProvider {
   readonly scope: GenAiProviderScope = 'global';
 
   async isAvailable(): Promise<boolean> {
-    return !!(vscode.lm && typeof vscode.lm.selectChatModels === 'function');
+    const commands = await vscode.commands.getCommands(true);
+    return commands.includes('workbench.action.chat.open');
   }
 
   async run(prompt: string, _task?: KanbanTask): Promise<void> {
     const logger = Logger.getInstance();
 
-    const effectivePrompt = `Apply all changes automatically without asking for confirmation.\n\n${prompt}`;
+    try {
+      const effectivePrompt = `Apply all changes automatically without asking for confirmation.\n\n${prompt}`;
 
-    const models = await vscode.lm.selectChatModels({ vendor: 'copilot' });
-    if (models.length === 0) {
-      logger.warn('CloudGenAiProvider: no Copilot model available');
-      return;
+      // Create a new chat session visible in VS Code Sessions panel
+      await vscode.commands.executeCommand('workbench.action.chat.newChat');
+      await new Promise(r => setTimeout(r, 300));
+      await vscode.commands.executeCommand('workbench.action.chat.open', {
+        mode: 'autopilot',
+        query: effectivePrompt,
+        isPartialQuery: false,
+      });
+      // Refocus editor so the chat panel doesn't steal focus
+      await vscode.commands.executeCommand('workbench.action.focusActiveEditorGroup');
+
+      logger.info('CloudGenAiProvider: agent session created (autopilot)');
+    } catch (err) {
+      logger.error('CloudGenAiProvider error:', String(err));
     }
-
-    const model = models[0];
-    const messages = [vscode.LanguageModelChatMessage.User(effectivePrompt)];
-    const response = await model.sendRequest(messages);
-
-    // Consume the stream silently
-    for await (const _ of response.text) {
-      // no-op — background execution
-    }
-
-    logger.info('CloudGenAiProvider: completed silently (autopilot)');
   }
 
-  dispose(): void {
-    // Nothing to clean up
-  }
+  dispose(): void {}
 }

@@ -13,6 +13,7 @@ import { CloudGenAiProvider } from './copilot/providers/CloudGenAiProvider';
 import { CopilotCliGenAiProvider } from './copilot/providers/CopilotCliGenAiProvider';
 import { SquadManager } from './copilot/SquadManager';
 import { KanbanPanel } from './kanban/KanbanPanel';
+import { OverviewTreeProvider } from './overviewTreeProvider';
 import { GitHubProvider } from './providers/GitHubProvider';
 import { ITaskProvider } from './providers/ITaskProvider';
 import { JsonProvider } from './providers/JsonProvider';
@@ -102,31 +103,33 @@ export function activate(context: vscode.ExtensionContext): void {
   const jsonProvider = new JsonProvider();
   providerRegistry.register(jsonProvider);
 
-  // Tree views
-  const tasksProvider = new TasksTreeProvider(jsonProvider);
+  // Overview sidebar view
+  const overviewProvider = new OverviewTreeProvider(providerRegistry, squadManager);
+
+  const overviewView = vscode.window.createTreeView('agentBoardOverview', {
+    treeDataProvider: overviewProvider,
+    showCollapseAll: false,
+  });
+
+  // Keep old providers for internal use (agents, task store)
   const agentsProvider = new AgentsTreeProvider(agentManager);
-
-  const tasksView = vscode.window.createTreeView('agentBoardTasks', {
-    treeDataProvider: tasksProvider,
-    showCollapseAll: false,
-  });
-
-  const agentsView = vscode.window.createTreeView('agentBoardAgents', {
-    treeDataProvider: agentsProvider,
-    showCollapseAll: false,
-  });
 
   // Status bar item showing pending task count
   const statusBarItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 100);
-  statusBarItem.command = 'agentBoard.addTask';
+  statusBarItem.command = 'agentBoard.openKanban';
   void updateStatusBar(statusBarItem, jsonProvider);
   statusBarItem.show();
 
   function refresh(): void {
-    tasksProvider.refresh();
+    overviewProvider.refresh();
     agentsProvider.refresh();
     void updateStatusBar(statusBarItem, jsonProvider);
   }
+
+  // Auto-refresh overview when squad status changes
+  squadManager.onDidChangeStatus(() => {
+    overviewProvider.refresh();
+  });
 
   // ── WebView panel serializer ───────────────────────────────────────────
 
@@ -351,6 +354,11 @@ export function activate(context: vscode.ExtensionContext): void {
           await sendTasksToPanel(panel, providerRegistry, genAiRegistry, squadManager);
           break;
         }
+        case 'reopenSession': {
+          // Focus the VS Code chat panel so the user can see the running session
+          await vscode.commands.executeCommand('workbench.action.chat.open');
+          break;
+        }
       }
     });
   });
@@ -445,8 +453,7 @@ export function activate(context: vscode.ExtensionContext): void {
   // ── Subscriptions ─────────────────────────────────────────────────────
 
   context.subscriptions.push(
-    tasksView,
-    agentsView,
+    overviewView,
     statusBarItem,
     addTask,
     editTask,
