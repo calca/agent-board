@@ -163,7 +163,21 @@ function render(): void {
   document.getElementById('detail-copilot')?.addEventListener('click', () => {
     if (selectedTask) {
       vscode.postMessage({ type: 'openCopilot', taskId: selectedTask.id, providerId: 'cloud', agentSlug: selectedAgentSlug || undefined });
+      selectedTask = null;
+      render();
     }
+  });
+
+  // Detail panel — per-provider launch buttons
+  document.querySelectorAll('.detail-launch-provider').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const providerId = (btn as HTMLElement).dataset.providerId;
+      if (selectedTask && providerId) {
+        vscode.postMessage({ type: 'launchProvider', taskId: selectedTask.id, genAiProviderId: providerId });
+        selectedTask = null;
+        render();
+      }
+    });
   });
 
   // ── Task form listeners ──────────────────────────────────────────
@@ -257,10 +271,15 @@ function renderCard(task: KanbanTask): string {
   const initials = task.assignee
     ? task.assignee.slice(0, 2).toUpperCase()
     : '';
+  const session = task.copilotSession;
+  const sessionBadge = session
+    ? `<span class="task-card__session task-card__session--${session.state}" title="Session: ${session.state}">${session.state === 'running' ? '⟳' : session.state === 'completed' ? '✓' : '✗'}</span>`
+    : '';
   return `
-    <div class="task-card" data-task-id="${escapeHtml(task.id)}">
+    <div class="task-card${session?.state === 'running' ? ' task-card--running' : ''}" data-task-id="${escapeHtml(task.id)}">
       <div class="task-card__title">${escapeHtml(task.title)}</div>
       <div class="task-card__meta">
+        ${sessionBadge}
         ${task.labels.map(l => `<span class="task-card__label">${escapeHtml(l)}</span>`).join('')}
         ${initials ? `<span class="task-card__assignee">${initials}</span>` : ''}
         <span class="task-card__provider">${escapeHtml(task.providerId)}</span>
@@ -270,6 +289,10 @@ function renderCard(task: KanbanTask): string {
 }
 
 function renderDetail(task: KanbanTask): string {
+  const sessionInfo = task.copilotSession;
+  const sessionLine = sessionInfo
+    ? `<div class="task-detail__session">Session: <strong>${sessionInfo.state}</strong>${sessionInfo.startedAt ? ` — started ${sessionInfo.startedAt}` : ''}</div>`
+    : '';
   return `
     <div class="task-detail">
       <button class="task-detail__close" id="detail-close">✕</button>
@@ -278,8 +301,15 @@ function renderDetail(task: KanbanTask): string {
         ${task.labels.map(l => `<span class="task-card__label">${escapeHtml(l)}</span>`).join('')}
       </div>
       <div class="task-detail__body">${escapeHtml(task.body)}</div>
+      ${sessionLine}
       ${task.url ? `<a class="task-detail__link" href="${escapeHtml(task.url)}">Open source ↗</a>` : ''}
-      <button class="task-detail__copilot-btn" id="detail-copilot">🤖 Launch Copilot</button>
+      <div class="task-detail__actions">
+        ${genAiProviders.map(p => `
+          <button class="task-detail__copilot-btn detail-launch-provider" data-provider-id="${escapeHtml(p.id)}">
+            🤖 ${escapeHtml(p.displayName)}
+          </button>
+        `).join('')}
+      </div>
     </div>
   `;
 }

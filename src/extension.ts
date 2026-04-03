@@ -11,8 +11,6 @@ import { ModelSelector } from './copilot/ModelSelector';
 import { ChatGenAiProvider } from './copilot/providers/ChatGenAiProvider';
 import { CloudGenAiProvider } from './copilot/providers/CloudGenAiProvider';
 import { CopilotCliGenAiProvider } from './copilot/providers/CopilotCliGenAiProvider';
-import { MistralGenAiProvider } from './copilot/providers/MistralGenAiProvider';
-import { OllamaGenAiProvider } from './copilot/providers/OllamaGenAiProvider';
 import { SquadManager } from './copilot/SquadManager';
 import { KanbanPanel } from './kanban/KanbanPanel';
 import { GitHubProvider } from './providers/GitHubProvider';
@@ -52,13 +50,10 @@ export function activate(context: vscode.ExtensionContext): void {
   const copilotCliCfg = ProjectConfig.getProjectConfig()?.genAiProviders?.['copilot-cli'];
   const copilotCliConfig = {
     ...copilotCliCfg,
-    yolo: copilotCliCfg?.yolo ?? vscode.workspace.getConfiguration('agentBoard').get<boolean>('copilotCli.yolo', false),
+    yolo: copilotCliCfg?.yolo ?? vscode.workspace.getConfiguration('agentBoard').get<boolean>('copilotCli.yolo', true),
     fleet: copilotCliCfg?.fleet ?? vscode.workspace.getConfiguration('agentBoard').get<boolean>('copilotCli.fleet', false),
   };
   genAiRegistry.register(new CopilotCliGenAiProvider(copilotCliConfig));
-
-  // Project providers — registered only when enabled in config
-  registerProjectGenAiProviders(genAiRegistry);
 
   // ── Copilot infrastructure ─────────────────────────────────────────────
 
@@ -171,7 +166,7 @@ export function activate(context: vscode.ExtensionContext): void {
     refresh();
     const activePanel = KanbanPanel.getInstance();
     if (activePanel) {
-      await sendTasksToPanel(activePanel, providerRegistry, genAiRegistry);
+      await sendTasksToPanel(activePanel, providerRegistry, genAiRegistry, squadManager);
     }
     vscode.window.showInformationMessage(`Task "${title}" added.`);
   });
@@ -246,19 +241,26 @@ export function activate(context: vscode.ExtensionContext): void {
     }
     const panel = KanbanPanel.createOrShow(context.extensionUri);
 
+    // Auto-refresh board when squad session state changes (background completion/failure)
+    const squadSub = squadManager.onDidChangeStatus(async () => {
+      panel.updateSquadStatus(squadManager.getStatus());
+      await sendTasksToPanel(panel, providerRegistry, genAiRegistry, squadManager);
+    });
+    panel.onDispose(() => squadSub.dispose());
+
     // Wire WebView messages
     panel.onMessage(async (msg) => {
       switch (msg.type) {
         case 'ready':
           // Send initial tasks, squad status, available agents, and MCP status
-          await sendTasksToPanel(panel, providerRegistry, genAiRegistry);
+          await sendTasksToPanel(panel, providerRegistry, genAiRegistry, squadManager);
           panel.updateSquadStatus(squadManager.getStatus());
           panel.updateAgents(agentOptions());
           panel.updateMcpStatus(ProjectConfig.getProjectConfig()?.mcp?.enabled ?? false);
           break;
         case 'refreshRequest':
           await refreshTasksCommand(providerRegistry);
-          await sendTasksToPanel(panel, providerRegistry, genAiRegistry);
+          await sendTasksToPanel(panel, providerRegistry, genAiRegistry, squadManager);
           refreshAgents();
           panel.updateAgents(agentOptions());
           break;
@@ -272,16 +274,18 @@ export function activate(context: vscode.ExtensionContext): void {
               await provider.updateTask({ ...task, status: msg.toCol });
             }
           }
-          await sendTasksToPanel(panel, providerRegistry, genAiRegistry);
+          await sendTasksToPanel(panel, providerRegistry, genAiRegistry, squadManager);
           break;
         }
         case 'openCopilot':
-          await copilotLauncher.launch(msg.taskId, msg.providerId, msg.agentSlug);
+          await squadManager.launchSingle(msg.taskId, msg.providerId, msg.agentSlug);
+          panel.updateSquadStatus(squadManager.getStatus());
+          await sendTasksToPanel(panel, providerRegistry, genAiRegistry, squadManager);
           break;
         case 'startSquad': {
           await handleStartSquad(squadManager, msg.agentSlug);
           panel.updateSquadStatus(squadManager.getStatus());
-          await sendTasksToPanel(panel, providerRegistry, genAiRegistry);
+          await sendTasksToPanel(panel, providerRegistry, genAiRegistry, squadManager);
           break;
         }
         case 'toggleAutoSquad': {
@@ -314,7 +318,7 @@ export function activate(context: vscode.ExtensionContext): void {
             await jsonProvider.updateTask(updates as import('./types/KanbanTask').KanbanTask);
           }
           refresh();
-          await sendTasksToPanel(panel, providerRegistry, genAiRegistry);
+          await sendTasksToPanel(panel, providerRegistry, genAiRegistry, squadManager);
           break;
         }
         case 'cancelTaskForm':
@@ -339,11 +343,13 @@ export function activate(context: vscode.ExtensionContext): void {
             }
           }
           refresh();
-          await sendTasksToPanel(panel, providerRegistry, genAiRegistry);
+          await sendTasksToPanel(panel, providerRegistry, genAiRegistry, squadManager);
           break;
         }
         case 'launchProvider': {
-          await copilotLauncher.launch(msg.taskId, msg.genAiProviderId);
+          await squadManager.launchSingle(msg.taskId, msg.genAiProviderId, undefined);
+          panel.updateSquadStatus(squadManager.getStatus());
+          await sendTasksToPanel(panel, providerRegistry, genAiRegistry, squadManager);
           break;
         }
       }
@@ -516,13 +522,24 @@ const EDITABLE_PROVIDER_IDS = ['json', 'github'];
 /**
  * Gather tasks from all providers and push them to the Kanban panel.
  */
-async function sendTasksToPanel(panel: KanbanPanel, registry: ProviderRegistry, genAiRegistry?: import('./copilot/GenAiProviderRegistry').GenAiProviderRegistry): Promise<void> {
+async function sendTasksToPanel(panel: KanbanPanel, registry: ProviderRegistry, genAiRegistry?: import('./copilot/GenAiProviderRegistry').GenAiProviderRegistry, squadMgr?: SquadManager): Promise<void> {
   const providers = registry.getAll();
   const allTasks = (
     await Promise.allSettled(providers.map(p => p.getTasks()))
   )
     .filter((r): r is PromiseFulfilledResult<import('./types/KanbanTask').KanbanTask[]> => r.status === 'fulfilled')
     .flatMap(r => r.value);
+
+  // Inject active session info into tasks so the webview can show status
+  if (squadMgr) {
+    const sessions = squadMgr.getActiveSessions();
+    for (const task of allTasks) {
+      const session = sessions.get(task.id);
+      if (session) {
+        task.copilotSession = session;
+      }
+    }
+  }
 
   const genAiOptions = genAiRegistry
     ? genAiRegistry.getAll().map(p => ({ id: p.id, displayName: p.displayName, icon: p.icon }))
@@ -576,49 +593,4 @@ async function pickAgent(agents: AgentInfo[]): Promise<string | undefined> {
   });
 
   return selected?.slug;
-}
-
-/**
- * Register project-scoped GenAI providers based on `.agent-board/config.json`.
- *
- * Global providers (chat, cloud, copilot-cli) are always registered.
- * Project providers (ollama, mistral) are only registered when explicitly
- * enabled in the project config.
- */
-function registerProjectGenAiProviders(genAiRegistry: GenAiProviderRegistry): void {
-  const logger = Logger.getInstance();
-  const projectCfg = ProjectConfig.getProjectConfig();
-  const providers = projectCfg?.genAiProviders;
-  if (!providers) {
-    return;
-  }
-
-  for (const [id, entry] of Object.entries(providers)) {
-    // Skip global providers — they are always registered above
-    if (GLOBAL_GENAI_PROVIDER_IDS.includes(id)) {
-      continue;
-    }
-
-    if (!entry.enabled) {
-      continue;
-    }
-
-    try {
-      switch (id) {
-        case 'ollama':
-          genAiRegistry.register(new OllamaGenAiProvider(entry));
-          logger.info(`Registered project GenAI provider: ${id}`);
-          break;
-        case 'mistral':
-          genAiRegistry.register(new MistralGenAiProvider(entry));
-          logger.info(`Registered project GenAI provider: ${id}`);
-          break;
-        default:
-          logger.info(`Unknown GenAI provider "${id}" in config — skipped`);
-          break;
-      }
-    } catch (err) {
-      logger.error(`Failed to register GenAI provider "${id}":`, formatError(err));
-    }
-  }
 }

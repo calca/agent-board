@@ -55,7 +55,7 @@ export class CopilotLauncher {
 
     // ── Worktree support ──────────────────────────────────────────────
     let worktree: WorktreeInfo | undefined;
-    if (provider.supportsWorktree && this.isWorktreeEnabled()) {
+    if (provider.supportsWorktree && this.isWorktreeEnabled(provider.id)) {
       worktree = await this.tryCreateWorktree(taskId);
     }
 
@@ -102,7 +102,12 @@ export class CopilotLauncher {
     }
   }
 
-  private isWorktreeEnabled(): boolean {
+  private isWorktreeEnabled(providerId?: string): boolean {
+    // Copilot CLI must always run in a dedicated worktree.
+    if (providerId === 'copilot-cli') {
+      return true;
+    }
+
     const projectCfg = ProjectConfig.getProjectConfig();
     const fileValue = projectCfg?.worktree?.enabled;
     if (fileValue !== undefined) {

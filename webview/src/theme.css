@@ -282,6 +282,38 @@ html, body, #root {
   opacity: 0.6;
 }
 
+.task-card--running {
+  border-left: 3px solid var(--vscode-progressBar-background, #0078d4);
+}
+
+.task-card__session {
+  font-size: 0.75em;
+  padding: 1px 6px;
+  border-radius: 10px;
+  font-weight: 700;
+}
+
+.task-card__session--running {
+  background: var(--vscode-progressBar-background, #0078d4);
+  color: var(--vscode-button-foreground, #fff);
+  animation: pulse 1.5s ease-in-out infinite;
+}
+
+.task-card__session--completed {
+  background: var(--vscode-terminal-ansiGreen, #16825d);
+  color: var(--vscode-button-foreground, #fff);
+}
+
+.task-card__session--failed {
+  background: var(--vscode-errorForeground, #f44747);
+  color: var(--vscode-button-foreground, #fff);
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
 .task-card__title {
   font-weight: 500;
   display: -webkit-box;

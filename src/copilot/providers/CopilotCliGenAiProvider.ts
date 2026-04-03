@@ -1,21 +1,15 @@
 import * as vscode from 'vscode';
-import * as fs from 'fs';
-import * as path from 'path';
 import { IGenAiProvider, GenAiProviderScope, GenAiProviderConfig } from '../IGenAiProvider';
 import { KanbanTask } from '../../types/KanbanTask';
 import { Logger } from '../../utils/logger';
-import { buildOptimisationPrefix } from '../copilotCliUtils';
 
 /**
- * GenAI provider that runs GitHub Copilot silently via the VS Code
- * Language Model API and saves the result to a workspace file.
+ * GenAI provider that runs silently via the VS Code Language Model API.
  *
- * Scope: **global** — integrates with the VS Code Language Model API.
- *
- * Output is written to `.kanban-notes/{taskId}.md` and shown in
- * an output channel.
- *
- * Supports `/yolo` and `/fleet` optimisations via provider config.
+ * - No sidebar, no terminal, no output channel.
+ * - Worktree is always enabled (`supportsWorktree = true`).
+ * - `/yolo` is on by default; `/fleet` is configurable.
+ * - The task is moved to in-progress by SquadManager.
  */
 export class CopilotCliGenAiProvider implements IGenAiProvider {
   readonly id = 'copilot-cli';
@@ -28,7 +22,7 @@ export class CopilotCliGenAiProvider implements IGenAiProvider {
   private readonly fleet: boolean;
 
   constructor(config?: GenAiProviderConfig) {
-    this.yolo = config?.yolo ?? false;
+    this.yolo = config?.yolo ?? true;
     this.fleet = config?.fleet ?? false;
   }
 
@@ -36,69 +30,45 @@ export class CopilotCliGenAiProvider implements IGenAiProvider {
     return !!(vscode.lm && typeof vscode.lm.selectChatModels === 'function');
   }
 
-  async run(prompt: string, task?: KanbanTask): Promise<void> {
+  async run(prompt: string, _task?: KanbanTask): Promise<void> {
     const logger = Logger.getInstance();
-    const channel = vscode.window.createOutputChannel('Copilot CLI');
 
-    // Apply /yolo and /fleet optimisation prefixes
-    const prefix = buildOptimisationPrefix(this.yolo, this.fleet);
-    const effectivePrompt = prefix + prompt;
+    const effectivePrompt = this.buildPrompt(prompt);
 
-    try {
-      let responseText = '';
-
-      if (await this.isAvailable()) {
-        const models = await vscode.lm.selectChatModels({ vendor: 'copilot' });
-        if (models.length > 0) {
-          const model = models[0];
-          const messages = [vscode.LanguageModelChatMessage.User(effectivePrompt)];
-          const response = await model.sendRequest(messages);
-
-          for await (const chunk of response.text) {
-            responseText += chunk;
-          }
-        }
-      }
-
-      if (!responseText) {
-        responseText = `(Background analysis${task ? ` for task "${task.title}"` : ''} — no model available)`;
-      }
-
-      channel.appendLine(responseText);
-      channel.show(true);
-
-      // Save to workspace file when a task is provided
-      if (task) {
-        const folders = vscode.workspace.workspaceFolders;
-        if (folders) {
-          const notesDir = path.join(folders[0].uri.fsPath, '.kanban-notes');
-          if (!fs.existsSync(notesDir)) {
-            fs.mkdirSync(notesDir, { recursive: true });
-          }
-
-          const safeId = task.id.replace(/[^a-zA-Z0-9_-]/g, '_');
-          const filePath = path.join(notesDir, `${safeId}.md`);
-          const header = [
-            '---',
-            `task: "${task.title}"`,
-            `id: "${task.id}"`,
-            `status: "${task.status}"`,
-            `date: "${new Date().toISOString()}"`,
-            '---',
-            '',
-          ].join('\n');
-
-          fs.writeFileSync(filePath, header + responseText, 'utf-8');
-          logger.info(`CopilotCliGenAiProvider: saved to ${filePath}`);
-        }
-      }
-    } catch (err) {
-      logger.error('CopilotCliGenAiProvider error:', String(err));
-      vscode.window.showErrorMessage(`Copilot CLI error: ${err}`);
+    const models = await vscode.lm.selectChatModels({ vendor: 'copilot' });
+    if (models.length === 0) {
+      logger.warn('CopilotCliGenAiProvider: no Copilot model available');
+      return;
     }
+
+    const model = models[0];
+    const messages = [vscode.LanguageModelChatMessage.User(effectivePrompt)];
+    const response = await model.sendRequest(messages);
+
+    // Consume the stream silently
+    for await (const _ of response.text) {
+      // no-op — background execution
+    }
+
+    logger.info('CopilotCliGenAiProvider: completed silently (yolo=%s, fleet=%s)', this.yolo, this.fleet);
   }
 
   dispose(): void {
     // Nothing to clean up
+  }
+
+  private buildPrompt(prompt: string): string {
+    const parts: string[] = [];
+    if (this.yolo) {
+      parts.push('Apply all changes automatically without asking for confirmation.');
+    }
+    if (this.fleet) {
+      parts.push('Focus exclusively on the assigned task, work independently, avoid conflicts with other sessions.');
+    }
+    if (parts.length > 0) {
+      parts.push('');
+    }
+    parts.push(prompt);
+    return parts.join('\n');
   }
 }

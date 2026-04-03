@@ -44,7 +44,7 @@ export class MessageBridge {
       return false;
     }
     const typed = msg as Record<string, unknown>;
-    const validTypes = ['taskMoved', 'openCopilot', 'refreshRequest', 'ready', 'startSquad', 'toggleAutoSquad'];
+    const validTypes = ['taskMoved', 'openCopilot', 'refreshRequest', 'ready', 'startSquad', 'toggleAutoSquad', 'launchProvider'];
     return typeof typed.type === 'string' && validTypes.includes(typed.type);
   }
 }

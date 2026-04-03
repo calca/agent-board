@@ -83,6 +83,11 @@ export class KanbanPanel {
     this.onMessageCallback = callback;
   }
 
+  /** Register a callback invoked when the panel is disposed. */
+  onDispose(callback: () => void): void {
+    this.panel.onDidDispose(callback, null, this.disposables);
+  }
+
   /** Send a typed message to the WebView. */
   postMessage(msg: HostToWebView): void {
     this.panel.webview.postMessage(msg);

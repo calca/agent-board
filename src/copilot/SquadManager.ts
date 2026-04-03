@@ -159,9 +159,78 @@ export class SquadManager {
     };
   }
 
+  /**
+   * Launch a single task as a tracked session (used by the CTA button).
+   *
+   * Registers the session and moves the task to the active column
+   * **synchronously**, then runs the provider in the background.
+   * When the provider completes the task moves to done; on failure
+   * it moves back to the source column.
+   *
+   * Returns immediately after registration so the UI can refresh.
+   */
+  async launchSingle(taskId: string, providerId: string, agentSlug?: string): Promise<void> {
+    const cfg = this.getConfig();
+
+    // Resolve the task from its provider
+    const [taskProviderId] = taskId.split(':');
+    const taskProvider = this.providerRegistry.get(taskProviderId);
+    if (!taskProvider) {
+      this.logger.warn('SquadManager.launchSingle: provider "%s" not found', taskProviderId);
+      return;
+    }
+    const tasks = await taskProvider.getTasks();
+    const task = tasks.find(t => t.id === taskId);
+    if (!task) {
+      this.logger.warn('SquadManager.launchSingle: task "%s" not found', taskId);
+      return;
+    }
+
+    // Register the session
+    const session: CopilotSessionInfo = {
+      state: 'running',
+      providerId,
+      startedAt: new Date().toISOString(),
+    };
+    this.activeSessions.set(taskId, session);
+    this.fireStatusChange();
+
+    // Move to active column
+    await this.moveTask(task, cfg.activeColumn);
+
+    // Run the provider in the background (fire-and-forget)
+    this.runInBackground(taskId, task, providerId, agentSlug, cfg);
+  }
+
+  /** Execute the provider in the background and update session state on completion. */
+  private runInBackground(
+    taskId: string,
+    task: KanbanTask,
+    providerId: string,
+    agentSlug: string | undefined,
+    cfg: SquadConfig,
+  ): void {
+    this.copilotLauncher.launch(taskId, providerId, agentSlug)
+      .then(async () => {
+        await this.moveTask(task, cfg.doneColumn);
+        this.completeSession(taskId);
+        this.logger.info('SquadManager: session completed for "%s"', task.title);
+      })
+      .catch(async () => {
+        this.failSession(taskId);
+        await this.moveTask(task, cfg.sourceColumn);
+        this.logger.error('SquadManager: session failed for "%s"', task.title);
+      });
+  }
+
   /** Get session info for a specific task, if any. */
   getSessionInfo(taskId: string): CopilotSessionInfo | undefined {
     return this.activeSessions.get(taskId);
+  }
+
+  /** Return a snapshot of all active sessions (taskId → session info). */
+  getActiveSessions(): ReadonlyMap<string, CopilotSessionInfo> {
+    return this.activeSessions;
   }
 
   /** Mark a session as completed (called when the provider finishes). */
