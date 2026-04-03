@@ -1,6 +1,6 @@
-import * as vscode from 'vscode';
 import { KanbanTask } from '../../types/KanbanTask';
 import { Logger } from '../../utils/logger';
+import { ChatSessionFactory } from '../ChatSessionFactory';
 import { GenAiProviderConfig, GenAiProviderScope, IGenAiProvider } from '../IGenAiProvider';
 
 /**
@@ -37,16 +37,14 @@ export class CopilotCliGenAiProvider implements IGenAiProvider {
     try {
       const effectivePrompt = this.buildPrompt(prompt);
 
-      // Create a new chat session visible in VS Code Sessions panel
-      await vscode.commands.executeCommand('workbench.action.chat.newChat');
-      await new Promise(r => setTimeout(r, 300));
-      await vscode.commands.executeCommand('workbench.action.chat.open', {
+      // Create a new independent chat session via the serialised factory.
+      // hideAfter: true — close the chat panel so it runs in background.
+      await ChatSessionFactory.getInstance().create({
         mode: 'autopilot',
         query: effectivePrompt,
         isPartialQuery: false,
+        hideAfter: true,
       });
-      // Hide the chat (secondary sidebar) so it doesn't interrupt the flow
-      await vscode.commands.executeCommand('workbench.action.closeAuxiliaryBar');
 
       logger.info('CopilotCliGenAiProvider: agent session created (yolo=%s, fleet=%s)', this.yolo, this.fleet);
     } catch (err) {

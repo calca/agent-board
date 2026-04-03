@@ -1,6 +1,6 @@
-import * as vscode from 'vscode';
 import { KanbanTask } from '../../types/KanbanTask';
 import { Logger } from '../../utils/logger';
+import { ChatSessionFactory } from '../ChatSessionFactory';
 import { GenAiProviderScope, IGenAiProvider } from '../IGenAiProvider';
 
 /**
@@ -31,13 +31,8 @@ export class ChatGenAiProvider implements IGenAiProvider {
       // Build a concise prompt from the task title (+ description when available).
       const query = this.buildChatQuery(prompt, task);
 
-      // Force a brand-new chat session for every CTA click.
-      await vscode.commands.executeCommand('workbench.action.chat.newChat');
-      await new Promise(r => setTimeout(r, 300));
-
-      // Open a fresh chat session in agent mode with the query prefilled.
-      // isPartialQuery: true  → prefills the input box but does NOT submit.
-      await vscode.commands.executeCommand('workbench.action.chat.open', {
+      // Create a new independent chat session via the serialised factory.
+      await ChatSessionFactory.getInstance().create({
         mode: 'autopilot',
         query,
         isPartialQuery: true,

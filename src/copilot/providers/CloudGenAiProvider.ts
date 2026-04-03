@@ -1,6 +1,6 @@
-import * as vscode from 'vscode';
 import { KanbanTask } from '../../types/KanbanTask';
 import { Logger } from '../../utils/logger';
+import { ChatSessionFactory } from '../ChatSessionFactory';
 import { GenAiProviderScope, IGenAiProvider } from '../IGenAiProvider';
 
 /**
@@ -27,16 +27,12 @@ export class CloudGenAiProvider implements IGenAiProvider {
     try {
       const effectivePrompt = `Apply all changes automatically without asking for confirmation.\n\n${prompt}`;
 
-      // Create a new chat session visible in VS Code Sessions panel
-      await vscode.commands.executeCommand('workbench.action.chat.newChat');
-      await new Promise(r => setTimeout(r, 300));
-      await vscode.commands.executeCommand('workbench.action.chat.open', {
+      // Create a new independent chat session via the serialised factory.
+      await ChatSessionFactory.getInstance().create({
         mode: 'autopilot',
         query: effectivePrompt,
         isPartialQuery: false,
       });
-      // Refocus editor so the chat panel doesn't steal focus
-      await vscode.commands.executeCommand('workbench.action.focusActiveEditorGroup');
 
       logger.info('CloudGenAiProvider: agent session created (autopilot)');
     } catch (err) {
