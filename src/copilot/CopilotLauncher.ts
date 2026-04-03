@@ -1,13 +1,13 @@
 import * as vscode from 'vscode';
-import { KanbanTask } from '../types/KanbanTask';
+import { ProjectConfig } from '../config/ProjectConfig';
 import { ProviderRegistry } from '../providers/ProviderRegistry';
+import { KanbanTask } from '../types/KanbanTask';
+import { formatError } from '../utils/errorUtils';
+import { Logger } from '../utils/logger';
+import { AgentInfo, readAgentInstructions } from './agentDiscovery';
 import { ContextBuilder } from './ContextBuilder';
 import { GenAiProviderRegistry } from './GenAiProviderRegistry';
-import { Logger } from '../utils/logger';
 import { createWorktree, removeWorktree, WorktreeInfo } from './WorktreeManager';
-import { ProjectConfig } from '../config/ProjectConfig';
-import { readAgentInstructions, AgentInfo } from './agentDiscovery';
-import { formatError } from '../utils/errorUtils';
 
 /**
  * Entry point for launching a GenAI session with task context.

@@ -1,44 +1,22 @@
 import * as vscode from 'vscode';
-import { KanbanTask, CopilotSessionInfo } from '../types/KanbanTask';
-import { ColumnId } from '../types/ColumnId';
-import { SquadStatus } from '../types/Messages';
-import { ProviderRegistry } from '../providers/ProviderRegistry';
-import { CopilotLauncher } from './CopilotLauncher';
 import { ProjectConfig } from '../config/ProjectConfig';
+import { ProviderRegistry } from '../providers/ProviderRegistry';
+import { ColumnId } from '../types/ColumnId';
+import { CopilotSessionInfo, KanbanTask } from '../types/KanbanTask';
+import { SquadStatus } from '../types/Messages';
 import { Logger } from '../utils/logger';
+import { CopilotLauncher } from './CopilotLauncher';
 import {
-  DEFAULT_MAX_SESSIONS,
-  DEFAULT_SOURCE_COLUMN,
-  DEFAULT_ACTIVE_COLUMN,
-  DEFAULT_DONE_COLUMN,
-  DEFAULT_AUTO_SQUAD_INTERVAL,
-  DEFAULT_MAX_RETRIES,
-  DEFAULT_SESSION_TIMEOUT,
-  DEFAULT_COOLDOWN_MS,
-  SquadConfig,
-  resolveSquadConfig,
-  computeAvailableSlots,
-  canRetry,
-  sortByPriority,
-  shouldExclude,
-  matchesAssignee,
+    SquadConfig,
+    canRetry,
+    matchesAssignee,
+    resolveSquadConfig,
+    shouldExclude,
+    sortByPriority
 } from './squadUtils';
 
 export {
-  DEFAULT_MAX_SESSIONS,
-  DEFAULT_SOURCE_COLUMN,
-  DEFAULT_ACTIVE_COLUMN,
-  DEFAULT_DONE_COLUMN,
-  DEFAULT_AUTO_SQUAD_INTERVAL,
-  DEFAULT_MAX_RETRIES,
-  DEFAULT_SESSION_TIMEOUT,
-  DEFAULT_COOLDOWN_MS,
-  resolveSquadConfig,
-  computeAvailableSlots,
-  canRetry,
-  sortByPriority,
-  shouldExclude,
-  matchesAssignee,
+    DEFAULT_ACTIVE_COLUMN, DEFAULT_AUTO_SQUAD_INTERVAL, DEFAULT_COOLDOWN_MS, DEFAULT_DONE_COLUMN, DEFAULT_MAX_RETRIES, DEFAULT_MAX_SESSIONS, DEFAULT_SESSION_TIMEOUT, DEFAULT_SOURCE_COLUMN, canRetry, computeAvailableSlots, matchesAssignee, resolveSquadConfig, shouldExclude, sortByPriority
 } from './squadUtils';
 
 export type { SquadConfig } from './squadUtils';

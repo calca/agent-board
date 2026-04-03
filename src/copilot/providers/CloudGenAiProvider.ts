@@ -1,7 +1,7 @@
 import * as vscode from 'vscode';
-import { IGenAiProvider, GenAiProviderScope } from '../IGenAiProvider';
 import { KanbanTask } from '../../types/KanbanTask';
 import { Logger } from '../../utils/logger';
+import { GenAiProviderScope, IGenAiProvider } from '../IGenAiProvider';
 
 /**
  * GenAI provider that runs silently via the VS Code Language Model API.

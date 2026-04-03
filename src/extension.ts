@@ -22,7 +22,6 @@ import { TaskStore } from './taskStore';
 import { TasksTreeProvider, TaskTreeItem } from './tasksTreeProvider';
 import { COLUMN_IDS, COLUMN_LABELS } from './types/ColumnId';
 import { AgentOption } from './types/Messages';
-import { formatError } from './utils/errorUtils';
 import { Logger } from './utils/logger';
 
 export function activate(context: vscode.ExtensionContext): void {
