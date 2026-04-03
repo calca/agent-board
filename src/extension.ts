@@ -12,6 +12,8 @@ import { ModelSelector } from './copilot/ModelSelector';
 import { ChatGenAiProvider } from './copilot/providers/ChatGenAiProvider';
 import { CloudGenAiProvider } from './copilot/providers/CloudGenAiProvider';
 import { CopilotCliGenAiProvider } from './copilot/providers/CopilotCliGenAiProvider';
+import { LmApiGenAiProvider } from './copilot/providers/LmApiGenAiProvider';
+import { SessionStateManager } from './copilot/SessionStateManager';
 import { SquadManager } from './copilot/SquadManager';
 import { KanbanPanel } from './kanban/KanbanPanel';
 import { OverviewTreeProvider } from './overviewTreeProvider';
@@ -46,6 +48,7 @@ export function activate(context: vscode.ExtensionContext): void {
   // Global providers (VS Code integrated) — always registered
   genAiRegistry.register(new ChatGenAiProvider());
   genAiRegistry.register(new CloudGenAiProvider());
+  genAiRegistry.register(new LmApiGenAiProvider());
 
   // Copilot CLI — pass per-project config (yolo / fleet), falling back to VS Code settings
   const copilotCliCfg = ProjectConfig.getProjectConfig()?.genAiProviders?.['copilot-cli'];
@@ -65,6 +68,16 @@ export function activate(context: vscode.ExtensionContext): void {
     copilotLauncher,
     () => modelSelector.getProviderId(),
   );
+
+  // ── Session state manager ──────────────────────────────────────────────
+
+  const sessionStateManager = new SessionStateManager(context);
+
+  // Wire session state changes → refresh overview + kanban
+  sessionStateManager.onDidChangeState(({ taskId, state }) => {
+    logger.info('SessionState changed: %s → %s', taskId, state);
+    overviewProvider.refresh();
+  });
 
   // ── Agent discovery ────────────────────────────────────────────────────
 
@@ -491,6 +504,7 @@ export function activate(context: vscode.ExtensionContext): void {
   context.subscriptions.push(
     overviewView,
     statusBarItem,
+    sessionStateManager,
     addTask,
     editTask,
     completeTask,
