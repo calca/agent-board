@@ -30,7 +30,7 @@ export const DEFAULT_MAX_RETRIES = 0;
 export const DEFAULT_SESSION_TIMEOUT = 300_000;
 
 /** Default cooldown between consecutive session launches in milliseconds. 0 = no cooldown. */
-export const DEFAULT_COOLDOWN_MS = 0;
+export const DEFAULT_COOLDOWN_MS = 1000;
 
 // ── SquadConfig ─────────────────────────────────────────────────────────────
 

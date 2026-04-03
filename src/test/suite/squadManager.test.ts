@@ -77,8 +77,8 @@ suite('SquadManager constants', () => {
     assert.strictEqual(DEFAULT_SESSION_TIMEOUT, 300_000);
   });
 
-  test('DEFAULT_COOLDOWN_MS is 0', () => {
-    assert.strictEqual(DEFAULT_COOLDOWN_MS, 0);
+  test('DEFAULT_COOLDOWN_MS is 1000', () => {
+    assert.strictEqual(DEFAULT_COOLDOWN_MS, 1000);
   });
 });
 
