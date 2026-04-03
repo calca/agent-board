@@ -300,17 +300,29 @@ export function activate(context: vscode.ExtensionContext): void {
           break;
         }
         case 'openCopilot':
+          if (!(await isGitRepository())) {
+            vscode.window.showWarningMessage('Agent Board: squad requires a git repository.');
+            break;
+          }
           await squadManager.launchSingle(msg.taskId, msg.providerId, msg.agentSlug);
           panel.updateSquadStatus(squadManager.getStatus());
           await sendTasksToPanel(panel, providerRegistry, genAiRegistry, squadManager);
           break;
         case 'startSquad': {
+          if (!(await isGitRepository())) {
+            vscode.window.showWarningMessage('Agent Board: squad requires a git repository.');
+            break;
+          }
           await handleStartSquad(squadManager, msg.agentSlug);
           panel.updateSquadStatus(squadManager.getStatus());
           await sendTasksToPanel(panel, providerRegistry, genAiRegistry, squadManager);
           break;
         }
         case 'toggleAutoSquad': {
+          if (!(await isGitRepository())) {
+            vscode.window.showWarningMessage('Agent Board: squad requires a git repository.');
+            break;
+          }
           handleToggleAutoSquad(squadManager, msg.agentSlug);
           panel.updateSquadStatus(squadManager.getStatus());
           break;
@@ -428,12 +440,20 @@ export function activate(context: vscode.ExtensionContext): void {
 
   const startSquad = vscode.commands.registerCommand('agentBoard.startSquad', async () => {
     logger.info('startSquad command invoked');
+    if (!(await isGitRepository())) {
+      vscode.window.showWarningMessage('Agent Board: squad requires a git repository.');
+      return;
+    }
     const agentSlug = await pickAgent(discoveredAgents);
     await handleStartSquad(squadManager, agentSlug);
   });
 
   const toggleAutoSquad = vscode.commands.registerCommand('agentBoard.toggleAutoSquad', async () => {
     logger.info('toggleAutoSquad command invoked');
+    if (!(await isGitRepository())) {
+      vscode.window.showWarningMessage('Agent Board: squad requires a git repository.');
+      return;
+    }
     const agentSlug = await pickAgent(discoveredAgents);
     handleToggleAutoSquad(squadManager, agentSlug);
   });

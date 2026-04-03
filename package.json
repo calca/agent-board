@@ -98,13 +98,15 @@
         "command": "agentBoard.startSquad",
         "title": "Start Squad Session",
         "icon": "$(run-all)",
-        "category": "Agent Board"
+        "category": "Agent Board",
+        "enablement": "gitOpenRepositoryCount != 0"
       },
       {
         "command": "agentBoard.toggleAutoSquad",
         "title": "Toggle Auto Squad",
         "icon": "$(sync)",
-        "category": "Agent Board"
+        "category": "Agent Board",
+        "enablement": "gitOpenRepositoryCount != 0"
       },
       {
         "command": "agentBoard.toggleMaximize",
