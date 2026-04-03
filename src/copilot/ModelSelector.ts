@@ -1,4 +1,5 @@
 import * as vscode from 'vscode';
+import { SquadStatus } from '../types/Messages';
 import { GenAiProviderRegistry } from './GenAiProviderRegistry';
 
 /**
@@ -6,19 +7,28 @@ import { GenAiProviderRegistry } from './GenAiProviderRegistry';
  * Persists selection in `workspaceState`. Shows current provider in status bar.
  *
  * Builds the picker dynamically from the `GenAiProviderRegistry`.
+ *
+ * Also shows active session count with a spinner in the status bar.
  */
 export class ModelSelector {
   private static readonly STATE_KEY = 'agentBoard.selectedProviderId';
   private readonly statusBarItem: vscode.StatusBarItem;
+  private activeCount = 0;
 
   constructor(
     private readonly context: vscode.ExtensionContext,
     private readonly genAiRegistry: GenAiProviderRegistry,
   ) {
     this.statusBarItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right, 50);
-    this.statusBarItem.command = 'agentBoard.selectCopilotMode';
+    this.statusBarItem.command = 'agentBoard.openKanban';
     this.updateStatusBar();
     this.statusBarItem.show();
+  }
+
+  /** Update the status bar to reflect current squad status. */
+  updateSquadStatus(status: SquadStatus): void {
+    this.activeCount = status.activeCount;
+    this.updateStatusBar();
   }
 
   /** Show Quick Pick and return the selected provider id. */
@@ -68,11 +78,17 @@ export class ModelSelector {
     const providerId = this.getProviderId();
     const provider = this.genAiRegistry.get(providerId);
 
+    const sessionLabel = this.activeCount > 0
+      ? ` $(sync~spin) ${this.activeCount} session${this.activeCount === 1 ? '' : 's'}`
+      : '';
+
     if (provider) {
-      this.statusBarItem.text = `$(${provider.icon}) Copilot: ${provider.displayName}`;
+      this.statusBarItem.text = `$(robot) ${provider.displayName}${sessionLabel}`;
     } else {
-      this.statusBarItem.text = `$(beaker) Copilot: ${providerId}`;
+      this.statusBarItem.text = `$(robot) ${providerId}${sessionLabel}`;
     }
-    this.statusBarItem.tooltip = 'Click to change GenAI provider';
+    this.statusBarItem.tooltip = this.activeCount > 0
+      ? `${this.activeCount} active session(s) — click to open Kanban`
+      : 'Click to open Kanban board';
   }
 }

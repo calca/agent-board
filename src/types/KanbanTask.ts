@@ -17,6 +17,14 @@ export interface CopilotSessionInfo {
   startedAt?: string;
   /** Timestamp when the session finished. */
   finishedAt?: string;
+  /** Pull request URL (set after PR creation). */
+  prUrl?: string;
+  /** Pull request number. */
+  prNumber?: number;
+  /** Pull request state. */
+  prState?: 'open' | 'closed' | 'merged';
+  /** Files changed during the session. */
+  changedFiles?: string[];
 }
 
 /**

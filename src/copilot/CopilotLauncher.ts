@@ -1,6 +1,8 @@
 import * as vscode from 'vscode';
 import { ProjectConfig } from '../config/ProjectConfig';
+import { DiffWatcher } from '../diff/DiffWatcher';
 import { ProviderRegistry } from '../providers/ProviderRegistry';
+import { StreamRegistry } from '../stream/StreamController';
 import { KanbanTask } from '../types/KanbanTask';
 import { formatError } from '../utils/errorUtils';
 import { Logger } from '../utils/logger';
@@ -25,6 +27,8 @@ export const AGENT_PROMPT_PREFIX = (name: string, instructions: string): string 
 
 export class CopilotLauncher {
   private readonly logger = Logger.getInstance();
+  private readonly streamRegistry = new StreamRegistry();
+  private readonly diffWatchers = new Map<string, DiffWatcher>();
 
   constructor(
     private readonly registry: ProviderRegistry,
@@ -32,6 +36,16 @@ export class CopilotLauncher {
     private readonly genAiRegistry: GenAiProviderRegistry,
     private agents: AgentInfo[] = [],
   ) {}
+
+  /** The shared stream registry (used by KanbanPanel for real-time output). */
+  getStreamRegistry(): StreamRegistry {
+    return this.streamRegistry;
+  }
+
+  /** Get the DiffWatcher for a session, if any. */
+  getDiffWatcher(sessionId: string): DiffWatcher | undefined {
+    return this.diffWatchers.get(sessionId);
+  }
 
   /** Update the cached list of discovered agents. */
   setAgents(agents: AgentInfo[]): void {
@@ -76,12 +90,26 @@ export class CopilotLauncher {
       this.logger.info(`CopilotLauncher: worktree ready at ${worktree.path} (branch ${worktree.branch})`);
     }
 
+    // ── Stream + DiffWatcher ──────────────────────────────────────────
+    const stream = this.streamRegistry.getOrCreate(taskId);
+    const watchRoot = worktree?.path ?? vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
+    if (watchRoot) {
+      const dw = new DiffWatcher(watchRoot);
+      this.diffWatchers.set(taskId, dw);
+    }
+
     try {
       await provider.run(prompt, task);
     } finally {
       // Auto-cleanup worktree after session completes or fails
       if (worktree) {
         await this.tryRemoveWorktree(taskId);
+      }
+      // Cleanup diff watcher (stream kept until explicit removal)
+      const dw = this.diffWatchers.get(taskId);
+      if (dw) {
+        dw.dispose();
+        this.diffWatchers.delete(taskId);
       }
     }
   }

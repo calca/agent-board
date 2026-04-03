@@ -1,3 +1,4 @@
+import * as vscode from 'vscode';
 import { KanbanTask } from '../../types/KanbanTask';
 import { Logger } from '../../utils/logger';
 import { ChatSessionFactory } from '../ChatSessionFactory';

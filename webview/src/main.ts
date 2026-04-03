@@ -34,6 +34,8 @@ interface GenAiProviderOption {
   id: string;
   displayName: string;
   icon: string;
+  disabled?: boolean;
+  disabledReason?: string;
 }
 
 let currentTasks: KanbanTask[] = [];
@@ -54,6 +56,14 @@ let showTaskForm = false;
 let formColumns: Column[] = [];
 let editableProviderIds: string[] = [];
 let genAiProviders: GenAiProviderOption[] = [];
+
+// ── Session panel state ────────────────────────────────────────────
+interface FileChangeInfo { path: string; status: 'added' | 'modified' | 'deleted' }
+let sessionPanelTaskId: string | null = null;
+let sessionStreamLines: string[] = [];
+let sessionFileChanges: FileChangeInfo[] = [];
+let repoIsGit = true;
+let repoIsGitHub = true;
 
 // ── Render ─────────────────────────────────────────────────────────────
 
@@ -104,12 +114,14 @@ function render(): void {
         </div>
       </div>
     </header>
+    ${renderRepoBanners()}
     <div class="kanban">
       ${currentColumns.map(col => renderColumn(col, filtered.filter(t => t.status === col.id))).join('')}
     </div>
     ${selectedTask && !editingTask ? renderDetail(selectedTask) : ''}
     ${editingTask ? renderEditForm(editingTask) : ''}
     ${showTaskForm && !editingTask ? renderTaskForm() : ''}
+    ${sessionPanelTaskId ? renderSessionPanel() : ''}
   `;
 
   // Event listeners
@@ -191,6 +203,49 @@ function render(): void {
     if (selectedTask) {
       vscode.postMessage({ type: 'reopenSession', taskId: selectedTask.id });
     }
+  });
+
+  // Detail panel — open session panel (stream + files)
+  document.getElementById('detail-open-session-panel')?.addEventListener('click', () => {
+    if (selectedTask) {
+      sessionPanelTaskId = selectedTask.id;
+      sessionStreamLines = [];
+      sessionFileChanges = [];
+      selectedTask = null;
+      render();
+    }
+  });
+
+  // ── Session panel listeners ────────────────────────────────────────
+  document.getElementById('session-panel-close')?.addEventListener('click', () => {
+    sessionPanelTaskId = null;
+    sessionStreamLines = [];
+    sessionFileChanges = [];
+    render();
+  });
+  document.getElementById('session-btn-full-diff')?.addEventListener('click', () => {
+    vscode.postMessage({ type: 'openFullDiff' });
+  });
+  document.getElementById('session-btn-export')?.addEventListener('click', () => {
+    if (sessionPanelTaskId) {
+      vscode.postMessage({ type: 'exportLog', sessionId: sessionPanelTaskId });
+    }
+  });
+  document.getElementById('session-follow-up-form')?.addEventListener('submit', (e: Event) => {
+    e.preventDefault();
+    const input = document.getElementById('session-follow-up-input') as HTMLInputElement | null;
+    if (input && sessionPanelTaskId && input.value.trim()) {
+      vscode.postMessage({ type: 'sendFollowUp', sessionId: sessionPanelTaskId, text: input.value.trim() });
+      input.value = '';
+    }
+  });
+  document.querySelectorAll('.session-file-item').forEach(item => {
+    item.addEventListener('click', () => {
+      const filePath = (item as HTMLElement).dataset.filePath;
+      if (filePath) {
+        vscode.postMessage({ type: 'openDiff', filePath });
+      }
+    });
   });
 
   // ── Task form listeners ──────────────────────────────────────────
@@ -310,6 +365,7 @@ function renderDetail(task: KanbanTask): string {
     ? `<div class="task-detail__session">
         Session: <strong>${sessionInfo.state}</strong>${sessionInfo.startedAt ? ` — started ${sessionInfo.startedAt}` : ''}
         ${sessionInfo.state === 'running' ? `<button class="task-detail__reopen-btn" id="detail-reopen-session">↗ Open Session</button>` : ''}
+        ${sessionInfo.state === 'running' ? `<button class="task-detail__reopen-btn" id="detail-open-session-panel">📊 Session Panel</button>` : ''}
       </div>`
     : '';
   return `
@@ -324,7 +380,7 @@ function renderDetail(task: KanbanTask): string {
       ${task.url ? `<a class="task-detail__link" href="${escapeHtml(task.url)}">Open source ↗</a>` : ''}
       <div class="task-detail__actions">
         ${genAiProviders.map(p => `
-          <button class="task-detail__copilot-btn detail-launch-provider" data-provider-id="${escapeHtml(p.id)}">
+          <button class="task-detail__copilot-btn detail-launch-provider${p.disabled ? ' task-detail__copilot-btn--disabled' : ''}" data-provider-id="${escapeHtml(p.id)}" ${p.disabled ? 'disabled' : ''} title="${escapeHtml(p.disabled ? (p.disabledReason ?? 'Not available') : p.displayName)}">
             🤖 ${escapeHtml(p.displayName)}
           </button>
         `).join('')}
@@ -368,7 +424,7 @@ function renderEditForm(task: KanbanTask): string {
           <div class="actions-toolbar__heading">Actions</div>
           <div class="actions-toolbar__list">
             ${genAiProviders.map(p => `
-              <button class="actions__provider-btn" data-provider-id="${escapeHtml(p.id)}" title="${escapeHtml(p.displayName)}">
+              <button class="actions__provider-btn${p.disabled ? ' actions__provider-btn--disabled' : ''}" data-provider-id="${escapeHtml(p.id)}" ${p.disabled ? 'disabled' : ''} title="${escapeHtml(p.disabled ? (p.disabledReason ?? 'Not available') : p.displayName)}">
                 <span class="actions__provider-icon codicon codicon-${escapeHtml(p.icon)}"></span>
                 ${escapeHtml(p.displayName)}
               </button>
@@ -412,6 +468,72 @@ function renderTaskForm(): string {
           </div>
         </form>
       </div>
+    </div>
+  `;
+}
+
+function renderRepoBanners(): string {
+  const banners: string[] = [];
+  if (!repoIsGit) {
+    banners.push(`
+      <div class="repo-banner repo-banner--warn">
+        <span class="repo-banner__icon">⚠</span>
+        <span class="repo-banner__text">
+          Questo progetto non è un repository Git.
+          <span class="repo-banner__provider">Copilot CLI</span> e
+          <span class="repo-banner__provider">Cloud</span> sono disabilitati.
+        </span>
+      </div>
+    `);
+  } else if (!repoIsGitHub) {
+    banners.push(`
+      <div class="repo-banner repo-banner--warn">
+        <span class="repo-banner__icon">⚠</span>
+        <span class="repo-banner__text">
+          Nessun remote GitHub collegato.
+          <span class="repo-banner__provider">Cloud</span> è disabilitato.
+        </span>
+      </div>
+    `);
+  }
+  if (banners.length === 0) { return ''; }
+  return `<div class="repo-banners">${banners.join('')}</div>`;
+}
+
+function renderSessionPanel(): string {
+  const task = currentTasks.find(t => t.id === sessionPanelTaskId);
+  const title = task ? escapeHtml(task.title) : sessionPanelTaskId ?? '';
+  const statusIcons: Record<string, string> = { added: '＋', modified: '✎', deleted: '✕' };
+  return `
+    <div class="session-panel">
+      <div class="session-panel__header">
+        <span class="session-panel__title">${title}</span>
+        <div class="session-panel__action-bar">
+          <button class="toolbar__btn toolbar__btn--small" id="session-btn-full-diff" title="Full Diff">Diff</button>
+          <button class="toolbar__btn toolbar__btn--small" id="session-btn-export" title="Export Log">Export</button>
+          <button class="session-panel__close" id="session-panel-close">✕</button>
+        </div>
+      </div>
+      <div class="session-panel__body">
+        <div class="session-panel__stream">
+          <div class="stream-output" id="stream-output">${sessionStreamLines.map(l => `<div class="stream-output__line">${escapeHtml(l)}</div>`).join('')}</div>
+        </div>
+        <div class="session-panel__files">
+          <div class="file-list__header">Changed files (${sessionFileChanges.length})</div>
+          ${sessionFileChanges.length === 0
+            ? '<div class="file-list__empty">No changes yet</div>'
+            : sessionFileChanges.map(f => `
+              <div class="session-file-item file-list__item file-list__item--${f.status}" data-file-path="${escapeHtml(f.path)}">
+                <span class="file-list__icon">${statusIcons[f.status] || '?'}</span>
+                <span class="file-list__path">${escapeHtml(f.path)}</span>
+              </div>
+            `).join('')}
+        </div>
+      </div>
+      <form class="session-panel__follow-up" id="session-follow-up-form">
+        <input class="task-form__input" id="session-follow-up-input" type="text" placeholder="Send follow-up…" />
+        <button type="submit" class="toolbar__btn toolbar__btn--primary">Send</button>
+      </form>
     </div>
   `;
 }
@@ -464,8 +586,41 @@ window.addEventListener('message', (event: MessageEvent) => {
       selectedTask = null;
       render();
       break;
+    case 'streamOutput':
+      if (sessionPanelTaskId === msg.sessionId) {
+        sessionStreamLines.push(...msg.text.split('\n'));
+        // Cap to last 500 lines in the UI for performance
+        if (sessionStreamLines.length > 500) {
+          sessionStreamLines = sessionStreamLines.slice(-500);
+        }
+        const outputEl = document.getElementById('stream-output');
+        if (outputEl) {
+          const lines = msg.text.split('\n');
+          for (const l of lines) {
+            const div = document.createElement('div');
+            div.className = 'stream-output__line';
+            div.textContent = l;
+            outputEl.appendChild(div);
+          }
+          outputEl.scrollTop = outputEl.scrollHeight;
+        } else {
+          render();
+        }
+      }
+      break;
+    case 'fileChanges':
+      if (sessionPanelTaskId === msg.sessionId) {
+        sessionFileChanges = msg.files ?? [];
+        render();
+      }
+      break;
     case 'themeChange':
       // Theme is auto-applied via CSS variables; nothing to do.
+      break;
+    case 'repoStatus':
+      repoIsGit = msg.isGit ?? true;
+      repoIsGitHub = msg.isGitHub ?? true;
+      render();
       break;
   }
 });

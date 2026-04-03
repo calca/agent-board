@@ -1,6 +1,14 @@
 import { ColumnId } from './ColumnId';
 import { KanbanTask } from './KanbanTask';
 
+// ── Shared payload types ─────────────────────────────────────────────────────
+
+/** A single file change reported by the DiffWatcher. */
+export interface FileChangeInfo {
+  path: string;
+  status: 'added' | 'modified' | 'deleted';
+}
+
 // ── Host → WebView ──────────────────────────────────────────────────────────
 
 export interface Column {
@@ -29,6 +37,10 @@ export interface GenAiProviderOption {
   id: string;
   displayName: string;
   icon: string;
+  /** When true the provider button is shown but greyed-out / non-clickable. */
+  disabled?: boolean;
+  /** Short reason shown as tooltip when the button is disabled. */
+  disabledReason?: string;
 }
 
 export type HostToWebView =
@@ -38,7 +50,10 @@ export type HostToWebView =
   | { type: 'squadStatus'; status: SquadStatus }
   | { type: 'agentsAvailable'; agents: AgentOption[] }
   | { type: 'mcpStatus'; enabled: boolean }
-  | { type: 'showTaskForm'; columns: Column[] };
+  | { type: 'showTaskForm'; columns: Column[] }
+  | { type: 'streamOutput'; sessionId: string; text: string }
+  | { type: 'fileChanges'; sessionId: string; files: FileChangeInfo[] }
+  | { type: 'repoStatus'; isGit: boolean; isGitHub: boolean };
 
 // ── WebView → Host ──────────────────────────────────────────────────────────
 
@@ -64,4 +79,8 @@ export type WebViewToHost =
   | { type: 'cancelTaskForm' }
   | { type: 'startSquad'; agentSlug?: string }
   | { type: 'toggleAutoSquad'; agentSlug?: string }
-  | { type: 'toggleMcp' };
+  | { type: 'toggleMcp' }
+  | { type: 'openDiff'; filePath: string }
+  | { type: 'openFullDiff' }
+  | { type: 'exportLog'; sessionId: string }
+  | { type: 'sendFollowUp'; sessionId: string; text: string };

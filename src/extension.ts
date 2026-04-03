@@ -1,3 +1,4 @@
+import { exec } from 'child_process';
 import * as vscode from 'vscode';
 import { AgentManager } from './agentManager';
 import { AgentsTreeProvider, AgentTreeItem } from './agentsTreeProvider';
@@ -22,7 +23,7 @@ import { ProviderRegistry } from './providers/ProviderRegistry';
 import { TaskStore } from './taskStore';
 import { TaskTreeItem } from './tasksTreeProvider';
 import { COLUMN_IDS, COLUMN_LABELS } from './types/ColumnId';
-import { AgentOption } from './types/Messages';
+import { AgentOption, GenAiProviderOption } from './types/Messages';
 import { Logger } from './utils/logger';
 
 export function activate(context: vscode.ExtensionContext): void {
@@ -129,6 +130,7 @@ export function activate(context: vscode.ExtensionContext): void {
   // Auto-refresh overview when squad status changes
   squadManager.onDidChangeStatus(() => {
     overviewProvider.refresh();
+    modelSelector.updateSquadStatus(squadManager.getStatus());
   });
 
   // ── WebView panel serializer ───────────────────────────────────────────
@@ -259,6 +261,11 @@ export function activate(context: vscode.ExtensionContext): void {
           panel.updateSquadStatus(squadManager.getStatus());
           panel.updateAgents(agentOptions());
           panel.updateMcpStatus(ProjectConfig.getProjectConfig()?.mcp?.enabled ?? false);
+          panel.postMessage({
+            type: 'repoStatus',
+            isGit: await isGitRepository(),
+            isGitHub: await isGitHubRepository(),
+          });
           break;
         case 'refreshRequest':
           await refreshTasksCommand(providerRegistry);
@@ -357,6 +364,35 @@ export function activate(context: vscode.ExtensionContext): void {
         case 'reopenSession': {
           // Focus the VS Code chat panel so the user can see the running session
           await vscode.commands.executeCommand('workbench.action.chat.open');
+          break;
+        }
+        case 'openDiff': {
+          // Open diff editor for a single file via any active DiffWatcher
+          const streamReg = copilotLauncher.getStreamRegistry();
+          for (const sid of streamReg.sessionIds) {
+            const dw = copilotLauncher.getDiffWatcher(sid);
+            if (dw) {
+              await dw.openDiff(msg.filePath);
+              break;
+            }
+          }
+          break;
+        }
+        case 'openFullDiff': {
+          await vscode.commands.executeCommand('workbench.view.scm');
+          break;
+        }
+        case 'exportLog': {
+          const stream = copilotLauncher.getStreamRegistry().get(msg.sessionId);
+          if (stream) {
+            const doc = await vscode.workspace.openTextDocument({ content: stream.exportLog(), language: 'log' });
+            await vscode.window.showTextDocument(doc);
+          }
+          break;
+        }
+        case 'sendFollowUp': {
+          // Open chat with the follow-up text
+          await vscode.commands.executeCommand('workbench.action.chat.open', { query: msg.text });
           break;
         }
       }
@@ -548,7 +584,7 @@ async function sendTasksToPanel(panel: KanbanPanel, registry: ProviderRegistry, 
   }
 
   const genAiOptions = genAiRegistry
-    ? genAiRegistry.getAll().map(p => ({ id: p.id, displayName: p.displayName, icon: p.icon }))
+    ? await buildGenAiOptions(genAiRegistry)
     : [];
   panel.updateTasks(allTasks, EDITABLE_PROVIDER_IDS, genAiOptions);
 }
@@ -599,4 +635,66 @@ async function pickAgent(agents: AgentInfo[]): Promise<string | undefined> {
   });
 
   return selected?.slug;
+}
+
+// ── Git / GitHub detection helpers ──────────────────────────────────────────
+
+/** Cache for workspace git/github detection (computed once per session). */
+let _isGitRepo: boolean | undefined;
+let _isGitHubRepo: boolean | undefined;
+
+function shellCheck(cmd: string, cwd: string): Promise<boolean> {
+  return new Promise(resolve => {
+    exec(cmd, { cwd, timeout: 5_000 }, (err, stdout) => {
+      if (err) { resolve(false); return; }
+      resolve(stdout.trim().length > 0);
+    });
+  });
+}
+
+async function isGitRepository(): Promise<boolean> {
+  if (_isGitRepo !== undefined) { return _isGitRepo; }
+  const root = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
+  if (!root) { _isGitRepo = false; return false; }
+  _isGitRepo = await shellCheck('git rev-parse --is-inside-work-tree', root);
+  return _isGitRepo;
+}
+
+async function isGitHubRepository(): Promise<boolean> {
+  if (_isGitHubRepo !== undefined) { return _isGitHubRepo; }
+  const isGit = await isGitRepository();
+  if (!isGit) { _isGitHubRepo = false; return false; }
+  const root = vscode.workspace.workspaceFolders![0].uri.fsPath;
+  _isGitHubRepo = await shellCheck('git remote -v | grep -i github.com', root);
+  return _isGitHubRepo;
+}
+
+/**
+ * Build the GenAI provider options list, disabling providers
+ * that require git or GitHub when the workspace doesn't qualify.
+ *
+ * - `copilot-cli` and `cloud` require a git repository.
+ * - `cloud` additionally requires a GitHub remote.
+ */
+async function buildGenAiOptions(registry: GenAiProviderRegistry): Promise<GenAiProviderOption[]> {
+  const isGit = await isGitRepository();
+  const isGitHub = await isGitHubRepository();
+
+  return registry.getAll().map(p => {
+    const option: GenAiProviderOption = {
+      id: p.id,
+      displayName: p.displayName,
+      icon: p.icon,
+    };
+
+    if (!isGit && (p.id === 'copilot-cli' || p.id === 'cloud')) {
+      option.disabled = true;
+      option.disabledReason = 'Requires a git repository';
+    } else if (!isGitHub && p.id === 'cloud') {
+      option.disabled = true;
+      option.disabledReason = 'Requires a GitHub repository';
+    }
+
+    return option;
+  });
 }

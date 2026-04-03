@@ -1,3 +1,5 @@
+import * as vscode from 'vscode';
+import { AgentTools } from '../../agent/AgentTools';
 import { KanbanTask } from '../../types/KanbanTask';
 import { Logger } from '../../utils/logger';
 import { ChatSessionFactory } from '../ChatSessionFactory';
@@ -19,6 +21,8 @@ export class ChatGenAiProvider implements IGenAiProvider {
   readonly icon = 'comment-discussion';
   readonly scope: GenAiProviderScope = 'global';
 
+  private agentTools: AgentTools | undefined;
+
   async isAvailable(): Promise<boolean> {
     const commands = await vscode.commands.getCommands(true);
     return commands.includes('workbench.action.chat.open');
@@ -26,6 +30,14 @@ export class ChatGenAiProvider implements IGenAiProvider {
 
   async run(prompt: string, task?: KanbanTask): Promise<void> {
     const logger = Logger.getInstance();
+
+    // Lazily initialise AgentTools with workspace root
+    if (!this.agentTools) {
+      const root = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
+      if (root) {
+        this.agentTools = new AgentTools(root);
+      }
+    }
 
     try {
       // Build a concise prompt from the task title (+ description when available).
@@ -51,6 +63,15 @@ export class ChatGenAiProvider implements IGenAiProvider {
         vscode.window.showErrorMessage(`Failed to open VS Code chat: ${message}`);
       }
     }
+  }
+
+  /** Execute a tool call from the model. Falls back gracefully if tools API is unavailable. */
+  async handleToolCall(name: string, args: Record<string, unknown>): Promise<string> {
+    if (!this.agentTools) {
+      return 'Tools not available — no workspace root';
+    }
+    const result = await this.agentTools.execute(name, args);
+    return result.content;
   }
 
   dispose(): void {

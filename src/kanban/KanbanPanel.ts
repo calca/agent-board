@@ -1,7 +1,7 @@
 import * as vscode from 'vscode';
 import { COLUMN_IDS, COLUMN_LABELS } from '../types/ColumnId';
 import { KanbanTask } from '../types/KanbanTask';
-import { AgentOption, Column, GenAiProviderOption, HostToWebView, SquadStatus, WebViewToHost } from '../types/Messages';
+import { AgentOption, Column, FileChangeInfo, GenAiProviderOption, HostToWebView, SquadStatus, WebViewToHost } from '../types/Messages';
 
 /**
  * Manages the Kanban board WebView panel.
@@ -115,6 +115,16 @@ export class KanbanPanel {
   /** Push the current MCP server status to the WebView. */
   updateMcpStatus(enabled: boolean): void {
     this.postMessage({ type: 'mcpStatus', enabled });
+  }
+
+  /** Push a stream-output chunk for a session to the WebView. */
+  appendStreamOutput(sessionId: string, text: string): void {
+    this.postMessage({ type: 'streamOutput', sessionId, text });
+  }
+
+  /** Push the latest file-change list for a session to the WebView. */
+  updateFileChanges(sessionId: string, files: FileChangeInfo[]): void {
+    this.postMessage({ type: 'fileChanges', sessionId, files });
   }
 
   dispose(): void {

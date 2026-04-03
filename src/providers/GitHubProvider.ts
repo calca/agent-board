@@ -1,8 +1,8 @@
 import * as vscode from 'vscode';
-import { ITaskProvider } from './ITaskProvider';
-import { KanbanTask } from '../types/KanbanTask';
-import { ColumnId } from '../types/ColumnId';
 import { ProjectConfig } from '../config/ProjectConfig';
+import { ColumnId } from '../types/ColumnId';
+import { KanbanTask } from '../types/KanbanTask';
+import { ITaskProvider } from './ITaskProvider';
 
 export interface GitHubIssue {
   number: number;
@@ -84,6 +84,32 @@ export class GitHubProvider implements ITaskProvider {
     this.cacheTimestamp = 0;
     const tasks = await this.fetchTasks();
     this._onDidChangeTasks.fire(tasks);
+  }
+
+  /**
+   * Post a markdown summary comment on an issue after agent completion.
+   *
+   * @param issueNumber GitHub issue number (without provider prefix).
+   * @param summary Markdown text to post as a comment.
+   */
+  async postAgentSummary(issueNumber: number, summary: string): Promise<void> {
+    await this.ensureToken();
+    if (!this.token || !this.owner || !this.repo) {
+      return;
+    }
+
+    const res = await fetch(
+      `https://api.github.com/repos/${this.owner}/${this.repo}/issues/${issueNumber}/comments`,
+      {
+        method: 'POST',
+        headers: this.headers(),
+        body: JSON.stringify({ body: summary }),
+      },
+    );
+
+    if (!res.ok) {
+      throw new Error(`GitHub API error posting comment: ${res.status} ${res.statusText}`);
+    }
   }
 
   dispose(): void {

@@ -9,9 +9,18 @@
 - **Kanban Board** — drag-and-drop task management with fully configurable columns
 - **Extensible Providers** — load tasks from GitHub Issues, local JSON files, Beads CLI, or any custom source
 - **Copilot Integration** — launch Copilot sessions with full task context via extensible GenAI providers
+- **Session Panel** — real-time stream output with split view (output on the left, changed files on the right), auto-scroll, and action bar (Stop / Full Diff / Export / Follow-up)
+- **Stream Controller** — circular buffer (10k lines) per session with `onDidAppend` events for real-time WebView streaming
+- **Output Parser** — stateful parser for fenced code blocks (```diff, ```bash, FILE: path) in agent output
+- **Diff Watcher** — FileSystemWatcher + `git diff` for live file-change tracking in worktrees
 - **Agent Selection** — discover agents from `.github/agents/` and select one when launching a single task or from a dropdown near squad buttons
 - **Agent Squad** — launch multiple parallel agent sessions, with auto-squad mode that continuously monitors and fills slots as sessions complete
 - **Squad Autonomy** — 10 configurable features: tunable polling, auto-retry, label-based priority, session timeout, worktree cleanup, concurrency guard, graceful shutdown, cooldown, label exclusion, assignee filtering
+- **Tool Calling** — agent tools (`read_file`, `write_file`, `run_command`, `get_diff`, `list_files`) with path traversal prevention and timeout, exposed via vscode.lm API
+- **Pull Request Manager** — create PRs from worktree branches via GitHub REST API with confirmation dialog and state tracking
+- **GitHub Agent Summary** — post markdown completion summaries as comments on GitHub issues
+- **Context Depth** — configurable context injection (`minimal` / `standard` / `full`) with optional file tree and git metadata
+- **Status Bar** — shows active session count with spinner, click to open Kanban
 - **Git Worktree Support** — providers that support it (e.g. Copilot CLI) automatically create an isolated git worktree per task
 - **Per-Project Configuration** — every setting can be overridden per project via `.agent-board/config.json`
 - **GitHub SSO** — authenticate via VS Code's built-in GitHub SSO (no PAT required)
@@ -132,6 +141,7 @@ All settings can also be configured globally through **File > Preferences > Sett
 | `agentBoard.notifications.taskDone` | `true` | Notify when task moves to done column |
 | `agentBoard.pollInterval` | `30000` | Polling interval (ms) for providers |
 | `agentBoard.logLevel` | `"INFO"` | Log level: `DEBUG`, `INFO`, `WARN`, `ERROR` |
+| `agentBoard.contextDepth` | `"standard"` | Context depth: `minimal`, `standard`, `full` (file tree + git) |
 
 ## Commands
 
