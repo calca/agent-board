@@ -20,7 +20,7 @@ import { JsonProvider } from './providers/JsonProvider';
 import { ProviderPicker } from './providers/ProviderPicker';
 import { ProviderRegistry } from './providers/ProviderRegistry';
 import { TaskStore } from './taskStore';
-import { TasksTreeProvider, TaskTreeItem } from './tasksTreeProvider';
+import { TaskTreeItem } from './tasksTreeProvider';
 import { COLUMN_IDS, COLUMN_LABELS } from './types/ColumnId';
 import { AgentOption } from './types/Messages';
 import { Logger } from './utils/logger';

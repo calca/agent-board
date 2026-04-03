@@ -1,8 +1,8 @@
 import * as vscode from 'vscode';
+import { SquadManager } from './copilot/SquadManager';
 import { ProviderRegistry } from './providers/ProviderRegistry';
 import { COLUMN_LABELS } from './types/ColumnId';
 import { KanbanTask } from './types/KanbanTask';
-import { SquadManager } from './copilot/SquadManager';
 
 export class OverviewItem extends vscode.TreeItem {
   constructor(
