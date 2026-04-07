@@ -39,6 +39,11 @@ export interface ProjectConfigData {
   worktree?: {
     /** Whether worktree creation is enabled.  Defaults to `true`. */
     enabled?: boolean;
+    /**
+     * When `true`, a confirmation dialog is shown before removing the worktree
+     * at the end of a session.  Defaults to `false` (auto-remove silently).
+     */
+    confirmCleanup?: boolean;
   };
   /**
    * Per-provider GenAI configuration.

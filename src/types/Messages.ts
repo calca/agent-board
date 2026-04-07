@@ -52,6 +52,7 @@ export type HostToWebView =
   | { type: 'mcpStatus'; enabled: boolean }
   | { type: 'showTaskForm'; columns: Column[] }
   | { type: 'streamOutput'; sessionId: string; text: string }
+  | { type: 'streamResume'; sessionId: string; log: string }
   | { type: 'fileChanges'; sessionId: string; files: FileChangeInfo[] }
   | { type: 'repoStatus'; isGit: boolean; isGitHub: boolean };
 
@@ -84,4 +85,5 @@ export type WebViewToHost =
   | { type: 'openDiff'; filePath: string }
   | { type: 'openFullDiff' }
   | { type: 'exportLog'; sessionId: string }
+  | { type: 'requestStreamResume'; sessionId: string }
   | { type: 'sendFollowUp'; sessionId: string; text: string };

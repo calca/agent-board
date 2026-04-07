@@ -21,7 +21,7 @@ interface KanbanTask {
   providerId: string;
   agent?: string;
   copilotSession?: {
-    state: string;
+    state: 'idle' | 'starting' | 'running' | 'paused' | 'done' | 'error';
     providerId?: string;
     startedAt?: string;
     finishedAt?: string;
@@ -233,6 +233,8 @@ function render(): void {
       sessionFileChanges = [];
       selectedTask = null;
       render();
+      // Request accumulated log replay from the host
+      vscode.postMessage({ type: 'requestStreamResume', sessionId: sessionPanelTaskId });
     }
   });
 
@@ -363,14 +365,26 @@ function renderCard(task: KanbanTask): string {
     ? task.assignee.slice(0, 2).toUpperCase()
     : '';
   const session = task.copilotSession;
+  const SESSION_BADGES: Record<string, { icon: string; label: string }> = {
+    idle:     { icon: '⏸', label: 'Idle' },
+    starting: { icon: '▶', label: 'Starting' },
+    running:  { icon: '⟳', label: 'Running' },
+    paused:   { icon: '⏸', label: 'Paused' },
+    done:     { icon: '✓', label: 'Done' },
+    error:    { icon: '✗', label: 'Error' },
+  };
   const sessionBadge = session
-    ? `<span class="task-card__session task-card__session--${session.state}" title="Session: ${session.state}">${session.state === 'running' ? '⟳' : session.state === 'completed' ? '✓' : '✗'}</span>`
+    ? (() => {
+        const b = SESSION_BADGES[session.state] ?? { icon: '●', label: session.state };
+        return `<span class="task-card__session task-card__session--${session.state}" title="Session: ${b.label}">${b.icon}</span>`;
+      })()
     : '';
+  const isActive = session?.state === 'running' || session?.state === 'starting';
   const agentBadge = task.agent
     ? `<span class="task-card__agent" title="Agent: ${escapeHtml(task.agent)}">🤖 ${escapeHtml(task.agent)}</span>`
     : '';
   return `
-    <div class="task-card${session?.state === 'running' ? ' task-card--running' : ''}" data-task-id="${escapeHtml(task.id)}">
+    <div class="task-card${isActive ? ' task-card--running' : ''}" data-task-id="${escapeHtml(task.id)}">
       <div class="task-card__title">${escapeHtml(task.title)}</div>
       <div class="task-card__meta">
         ${sessionBadge}
@@ -385,12 +399,14 @@ function renderCard(task: KanbanTask): string {
 
 function renderDetail(task: KanbanTask): string {
   const sessionInfo = task.copilotSession;
+  const isActiveSession = sessionInfo?.state === 'running' || sessionInfo?.state === 'starting';
   const sessionLine = sessionInfo
     ? `<div class="task-detail__session">
         Session: <strong>${sessionInfo.state}</strong>${sessionInfo.startedAt ? ` — started ${sessionInfo.startedAt}` : ''}
-        ${sessionInfo.state === 'running' ? `<button class="task-detail__reopen-btn" id="detail-reopen-session">↗ Open Session</button>` : ''}
-        ${sessionInfo.state === 'running' ? `<button class="task-detail__reopen-btn" id="detail-open-session-panel">📊 Session Panel</button>` : ''}
-        ${sessionInfo.state === 'running' ? `<button class="task-detail__reopen-btn task-detail__reopen-btn--stop" id="detail-cancel-session">■ Stop</button>` : ''}
+        ${isActiveSession ? `<button class="task-detail__reopen-btn" id="detail-reopen-session">↗ Open Session</button>` : ''}
+        ${isActiveSession ? `<button class="task-detail__reopen-btn" id="detail-open-session-panel">📊 Session Panel</button>` : ''}
+        ${isActiveSession ? `<button class="task-detail__reopen-btn task-detail__reopen-btn--stop" id="detail-cancel-session">■ Stop</button>` : ''}
+        ${!isActiveSession && sessionInfo.state !== 'idle' ? `<button class="task-detail__reopen-btn" id="detail-open-session-panel">📊 View Log</button>` : ''}
       </div>`
     : '';
   return `
@@ -638,6 +654,16 @@ window.addEventListener('message', (event: MessageEvent) => {
     case 'fileChanges':
       if (sessionPanelTaskId === msg.sessionId) {
         sessionFileChanges = msg.files ?? [];
+        render();
+      }
+      break;
+    case 'streamResume':
+      if (sessionPanelTaskId === msg.sessionId) {
+        // Populate buffer with full historic log, then re-render
+        sessionStreamLines = msg.log.split('\n');
+        if (sessionStreamLines.length > 500) {
+          sessionStreamLines = sessionStreamLines.slice(-500);
+        }
         render();
       }
       break;

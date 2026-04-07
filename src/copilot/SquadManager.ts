@@ -172,7 +172,7 @@ export class SquadManager {
 
     // Register the session
     const session: CopilotSessionInfo = {
-      state: 'running',
+      state: 'starting',
       providerId,
       startedAt: new Date().toISOString(),
     };
@@ -207,6 +207,13 @@ export class SquadManager {
     const provider = this.genAiRegistry?.get(providerId);
     const autoAdvance = !provider?.disableAutoAdvance;
 
+    // Transition to 'running' immediately
+    const session = this.activeSessions.get(taskId);
+    if (session) {
+      session.state = 'running';
+      this.fireStatusChange();
+    }
+
     this.copilotLauncher.launch(taskId, providerId, agentSlug)
       .then(async () => {
         if (autoAdvance) {
@@ -238,7 +245,7 @@ export class SquadManager {
   completeSession(taskId: string): void {
     const session = this.activeSessions.get(taskId);
     if (session) {
-      session.state = 'completed';
+      session.state = 'done';
       session.finishedAt = new Date().toISOString();
       this.activeSessions.delete(taskId);
       this.fireStatusChange();
@@ -249,7 +256,7 @@ export class SquadManager {
   failSession(taskId: string): void {
     const session = this.activeSessions.get(taskId);
     if (session) {
-      session.state = 'failed';
+      session.state = 'error';
       session.finishedAt = new Date().toISOString();
       this.activeSessions.delete(taskId);
       this.fireStatusChange();
@@ -272,7 +279,7 @@ export class SquadManager {
         cfg.sourceColumn,
       );
       for (const [taskId, session] of this.activeSessions) {
-        session.state = 'failed';
+        session.state = 'error';
         session.finishedAt = new Date().toISOString();
         // Best-effort: move task back (fire-and-forget — we're shutting down).
         const [providerId] = taskId.split(':');
@@ -341,11 +348,12 @@ export class SquadManager {
   private async launchSession(task: KanbanTask, cfg: SquadConfig, agentSlug?: string, genAiProviderId?: string): Promise<void> {
     const providerId = genAiProviderId ?? this.genAiProviderId();
     const session: CopilotSessionInfo = {
-      state: 'running',
+      state: 'starting',
       providerId,
       startedAt: new Date().toISOString(),
     };
     this.activeSessions.set(task.id, session);
+    this.fireStatusChange();
 
     // Move task to "active" column (e.g. inprogress)
     await this.moveTask(task, cfg.activeColumn);
@@ -358,6 +366,10 @@ export class SquadManager {
     }
 
     try {
+      // Transition to 'running' once the provider actually starts
+      session.state = 'running';
+      this.fireStatusChange();
+
       const launchPromise = this.copilotLauncher.launch(task.id, providerId, agentSlug);
 
       // Race the launch against the timeout (if configured)
@@ -368,6 +380,10 @@ export class SquadManager {
         });
         try {
           await Promise.race([launchPromise, timeoutPromise]);
+        } catch (err) {
+          // Auto-kill the provider on timeout
+          this.copilotLauncher.cancelSession(task.id);
+          throw err;
         } finally {
           if (timer !== undefined) {
             clearTimeout(timer);

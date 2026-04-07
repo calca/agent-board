@@ -114,9 +114,9 @@ export class CopilotLauncher {
       await provider.run(prompt, task, worktree?.path);
     } finally {
       this.activeProviders.delete(taskId);
-      // Auto-cleanup worktree after session completes or fails
+      // Cleanup worktree after session (optionally ask for confirmation)
       if (worktree) {
-        await this.tryRemoveWorktree(taskId);
+        await this.tryCleanupWorktree(taskId, worktree.path);
       }
       // Cleanup diff watcher (stream kept until explicit removal)
       const dw = this.diffWatchers.get(taskId);
@@ -128,6 +128,31 @@ export class CopilotLauncher {
   }
 
   // ── Private helpers ─────────────────────────────────────────────────
+
+  /**
+   * Optionally confirm with the user before removing the worktree.
+   * Controlled by `worktree.confirmCleanup` in the project config.
+   */
+  private async tryCleanupWorktree(taskId: string, worktreePath: string): Promise<void> {
+    const projectCfg = ProjectConfig.getProjectConfig();
+    const confirm = projectCfg?.worktree?.confirmCleanup
+      ?? vscode.workspace.getConfiguration('agentBoard').get<boolean>('worktree.confirmCleanup', false);
+
+    if (confirm) {
+      const answer = await vscode.window.showInformationMessage(
+        `Session complete. Remove worktree at:\n${worktreePath}?`,
+        { modal: true },
+        'Remove',
+        'Keep',
+      );
+      if (answer !== 'Remove') {
+        this.logger.info(`CopilotLauncher: worktree kept at ${worktreePath} (user chose to keep)`);
+        return;
+      }
+    }
+
+    await this.tryRemoveWorktree(taskId);
+  }
 
   private async tryRemoveWorktree(taskId: string): Promise<void> {
     const folders = vscode.workspace.workspaceFolders;

@@ -293,21 +293,41 @@ html, body, #root {
   font-weight: 700;
 }
 
+.task-card__session--idle {
+  background: var(--vscode-descriptionForeground, #888);
+  color: var(--vscode-button-foreground, #fff);
+}
+
+.task-card__session--starting {
+  background: var(--vscode-terminal-ansiYellow, #d9a500);
+  color: var(--vscode-button-foreground, #fff);
+  animation: pulse 1s ease-in-out infinite;
+}
+
 .task-card__session--running {
   background: var(--vscode-progressBar-background, #0078d4);
   color: var(--vscode-button-foreground, #fff);
   animation: pulse 1.5s ease-in-out infinite;
 }
 
-.task-card__session--completed {
+.task-card__session--paused {
+  background: var(--vscode-terminal-ansiCyan, #11a8cd);
+  color: var(--vscode-button-foreground, #fff);
+}
+
+.task-card__session--done {
   background: var(--vscode-terminal-ansiGreen, #16825d);
   color: var(--vscode-button-foreground, #fff);
 }
 
-.task-card__session--failed {
+.task-card__session--error {
   background: var(--vscode-errorForeground, #f44747);
   color: var(--vscode-button-foreground, #fff);
 }
+
+/* legacy aliases kept for safety */
+.task-card__session--completed { background: var(--vscode-terminal-ansiGreen, #16825d); color: var(--vscode-button-foreground, #fff); }
+.task-card__session--failed    { background: var(--vscode-errorForeground, #f44747);    color: var(--vscode-button-foreground, #fff); }
 
 @keyframes pulse {
   0%, 100% { opacity: 1; }

@@ -423,6 +423,14 @@ export function activate(context: vscode.ExtensionContext): void {
           }
           break;
         }
+        case 'requestStreamResume': {
+          // Replay the accumulated log buffer so the webview can restore the session panel
+          const stream = copilotLauncher.getStreamRegistry().get(msg.sessionId);
+          if (stream) {
+            panel.postMessage({ type: 'streamResume', sessionId: msg.sessionId, log: stream.exportLog() });
+          }
+          break;
+        }
         case 'sendFollowUp': {
           // Open chat with the follow-up text
           await vscode.commands.executeCommand('workbench.action.chat.open', { query: msg.text });
