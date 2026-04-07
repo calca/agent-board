@@ -99,7 +99,7 @@ export class OverviewTreeProvider implements vscode.TreeDataProvider<OverviewIte
     if (this.squadManager) {
       const s = this.squadManager.getStatus();
       items.push(new OverviewItem(
-        '$(dash)  Sessions',
+        'Sessions',
         `${s.activeCount} active`,
         new vscode.ThemeIcon(
           s.activeCount > 0 ? 'vm-running' : 'vm-outline',
