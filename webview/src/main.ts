@@ -23,7 +23,7 @@ interface KanbanTask {
   /** Arbitrary provider metadata (e.g. avatarUrl from GitHub). */
   meta?: Record<string, unknown>;
   copilotSession?: {
-    state: 'idle' | 'starting' | 'running' | 'paused' | 'done' | 'error';
+    state: 'idle' | 'starting' | 'running' | 'paused' | 'done' | 'error' | 'interrupted';
     providerId?: string;
     startedAt?: string;
     finishedAt?: string;
@@ -90,6 +90,16 @@ const toolCallStatus = new Map<string, string>();
 interface ChatMessage { role: 'user' | 'assistant' | 'tool'; text: string; ts: string }
 let sessionChatMessages: ChatMessage[] = [];
 
+// ── Full view state ────────────────────────────────────────────────
+interface TaskLogEntry {
+  ts: string;
+  source: 'board' | 'agent' | 'tool' | 'system';
+  text: string;
+}
+let fullViewTaskId: string | null = null;
+const taskEventLogs = new Map<string, TaskLogEntry[]>();
+let fullViewAutoScroll = true;
+
 // ── Render ─────────────────────────────────────────────────────────────
 
 function render(): void {
@@ -154,6 +164,7 @@ function render(): void {
     ${editingTask ? renderEditForm(editingTask) : ''}
     ${showTaskForm && !editingTask ? renderTaskForm() : ''}
     ${sessionPanelTaskId ? renderSessionPanel() : ''}
+    ${fullViewTaskId ? renderFullView() : ''}
   `;
 
   // Event listeners
@@ -329,6 +340,71 @@ function render(): void {
       const filePath = (item as HTMLElement).dataset.filePath;
       if (filePath && sessionPanelTaskId) {
         vscode.postMessage({ type: 'openDiff', sessionId: sessionPanelTaskId, filePath });
+      }
+    });
+  });
+
+  // ── Full view listeners ────────────────────────────────────────────
+  document.getElementById('detail-open-full-view')?.addEventListener('click', () => {
+    if (selectedTask) { openFullView(selectedTask.id); }
+  });
+
+  document.getElementById('fv-close')?.addEventListener('click', () => {
+    fullViewTaskId = null;
+    fullViewAutoScroll = true;
+    render();
+  });
+
+  // Double-click on card → full view
+  document.querySelectorAll('.task-card').forEach(card => {
+    card.addEventListener('dblclick', (e: Event) => {
+      e.preventDefault();
+      const taskId = (card as HTMLElement).dataset.taskId;
+      if (taskId) { openFullView(taskId); }
+    });
+  });
+
+  const fvScrollEl = document.getElementById('fv-log-scroll');
+  if (fvScrollEl) {
+    fvScrollEl.addEventListener('scroll', () => {
+      const atBottom = fvScrollEl.scrollHeight - fvScrollEl.scrollTop - fvScrollEl.clientHeight < 40;
+      fullViewAutoScroll = atBottom;
+    }, { passive: true });
+  }
+
+  document.getElementById('fv-btn-stop')?.addEventListener('click', () => {
+    if (fullViewTaskId) { vscode.postMessage({ type: 'cancelSession', taskId: fullViewTaskId }); }
+  });
+  document.getElementById('fv-btn-terminal')?.addEventListener('click', () => {
+    if (fullViewTaskId) { vscode.postMessage({ type: 'openTerminalInWorktree', sessionId: fullViewTaskId }); }
+  });
+  document.getElementById('fv-btn-export')?.addEventListener('click', () => {
+    if (fullViewTaskId) { vscode.postMessage({ type: 'exportLog', sessionId: fullViewTaskId }); }
+  });
+  document.getElementById('fv-btn-diff')?.addEventListener('click', () => {
+    if (fullViewTaskId) { vscode.postMessage({ type: 'openFullDiff', sessionId: fullViewTaskId }); }
+  });
+  document.getElementById('fv-follow-up-form')?.addEventListener('submit', (e: Event) => {
+    e.preventDefault();
+    const input = document.getElementById('fv-follow-up-input') as HTMLInputElement | null;
+    if (input && fullViewTaskId && input.value.trim()) {
+      vscode.postMessage({ type: 'sendFollowUp', sessionId: fullViewTaskId, text: input.value.trim() });
+      input.value = '';
+    }
+  });
+  document.querySelectorAll('.fv-file-item').forEach(item => {
+    item.addEventListener('click', () => {
+      const filePath = (item as HTMLElement).dataset.filePath;
+      if (filePath && fullViewTaskId) {
+        vscode.postMessage({ type: 'openDiff', sessionId: fullViewTaskId, filePath });
+      }
+    });
+  });
+  document.querySelectorAll('.fv-launch-provider').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const providerId = (btn as HTMLElement).dataset.providerId;
+      if (fullViewTaskId && providerId) {
+        vscode.postMessage({ type: 'launchProvider', taskId: fullViewTaskId, genAiProviderId: providerId });
       }
     });
   });
@@ -511,6 +587,7 @@ function renderDetail(task: KanbanTask): string {
           </button>
         `).join('')}
       </div>
+      <button class="task-detail__copilot-btn" id="detail-open-full-view" style="margin-top:12px;width:100%">📋 Full View</button>
     </div>
   `;
 }
@@ -754,13 +831,180 @@ function escapeHtml(str: string): string {
     .replace(/"/g, '&quot;');
 }
 
+// ── Full view helpers ──────────────────────────────────────────────────
+
+function openFullView(taskId: string): void {
+  fullViewTaskId = taskId;
+  selectedTask = null;
+  editingTask = null;
+  showTaskForm = false;
+  sessionPanelTaskId = null;
+  fullViewAutoScroll = true;
+  render();
+  vscode.postMessage({ type: 'requestStreamResume', sessionId: taskId });
+}
+
+function addTaskLog(taskId: string, source: TaskLogEntry['source'], text: string): void {
+  if (!taskEventLogs.has(taskId)) { taskEventLogs.set(taskId, []); }
+  const logs = taskEventLogs.get(taskId)!;
+  const ts = new Date().toISOString().slice(11, 19);
+  logs.push({ ts, source, text });
+  if (logs.length > 2000) { taskEventLogs.set(taskId, logs.slice(-2000)); }
+  if (fullViewTaskId === taskId) {
+    const logEl = document.getElementById('fv-log-entries');
+    const scrollEl = document.getElementById('fv-log-scroll');
+    if (logEl) {
+      logEl.insertAdjacentHTML('beforeend', renderLogEntry({ ts, source, text }));
+      // Remove the empty placeholder if present
+      const emptyEl = logEl.querySelector('.fv-log__empty');
+      if (emptyEl) { emptyEl.remove(); }
+      if (fullViewAutoScroll && scrollEl) {
+        scrollEl.scrollTop = scrollEl.scrollHeight;
+      }
+    }
+  }
+}
+
+function renderLogEntry(entry: TaskLogEntry): string {
+  const sourceIcons: Record<string, string> = {
+    board: '📋',
+    agent: '🤖',
+    tool: '🔧',
+    system: 'ℹ️',
+  };
+  const icon = sourceIcons[entry.source] ?? '●';
+  return `<div class="fv-log__entry fv-log__entry--${entry.source}"><span class="fv-log__ts">[${escapeHtml(entry.ts)}]</span> <span class="fv-log__icon">${icon}</span> <span class="fv-log__text">${escapeHtml(entry.text)}</span></div>`;
+}
+
+function renderFullView(): string {
+  const task = currentTasks.find(t => t.id === fullViewTaskId);
+  if (!task) { return ''; }
+
+  const sessionInfo = task.copilotSession;
+  const isRunning = sessionInfo?.state === 'running' || sessionInfo?.state === 'starting';
+  const isInterrupted = sessionInfo?.state === 'interrupted';
+  const logs = taskEventLogs.get(task.id) ?? [];
+  const files = fileChangeLists.get(task.id) ?? [];
+  const statusIcons: Record<string, string> = { added: '＋', modified: '✎', deleted: '✕' };
+  const statusCol = currentColumns.find(c => c.id === task.status);
+
+  return `
+    <div class="full-view">
+      <div class="full-view__header">
+        <span class="full-view__title">${escapeHtml(task.title)}</span>
+        <div class="full-view__header-actions">
+          ${genAiProviders.filter(p => !p.disabled).map(p => `
+            <button class="toolbar__btn toolbar__btn--small fv-launch-provider" data-provider-id="${escapeHtml(p.id)}" title="${escapeHtml(p.displayName)}">🤖 ${escapeHtml(p.displayName)}</button>
+          `).join('')}
+          ${isRunning ? `<button class="toolbar__btn toolbar__btn--small toolbar__btn--danger" id="fv-btn-stop">■ Stop</button>` : ''}
+          <button class="toolbar__btn toolbar__btn--small" id="fv-btn-terminal" title="Terminal">⌨</button>
+          <button class="toolbar__btn toolbar__btn--small" id="fv-btn-diff" title="Full Diff">Diff</button>
+          <button class="toolbar__btn toolbar__btn--small" id="fv-btn-export" title="Export Log">Export</button>
+          <button class="full-view__close" id="fv-close">✕</button>
+        </div>
+      </div>
+      <div class="full-view__content">
+        <aside class="full-view__info">
+          <div class="full-view__section">
+            <div class="full-view__section-label">Status</div>
+            <div>${escapeHtml(statusCol?.label ?? task.status)}</div>
+          </div>
+          ${sessionInfo ? `
+            <div class="full-view__section">
+              <div class="full-view__section-label">Session</div>
+              <span class="task-card__session task-card__session--${sessionInfo.state}">${escapeHtml(sessionInfo.state)}</span>
+              ${sessionInfo.startedAt ? `<div class="full-view__meta">Started ${escapeHtml(sessionInfo.startedAt)}</div>` : ''}
+              ${sessionInfo.finishedAt ? `<div class="full-view__meta">Finished ${escapeHtml(sessionInfo.finishedAt)}</div>` : ''}
+              ${sessionInfo.prUrl ? `<a class="task-card__pr-badge task-card__pr-badge--${sessionInfo.prState ?? 'open'}" href="${escapeHtml(sessionInfo.prUrl)}">PR #${sessionInfo.prNumber ?? ''}</a>` : ''}
+            </div>
+          ` : ''}
+          ${task.labels.length > 0 ? `
+            <div class="full-view__section">
+              <div class="full-view__section-label">Labels</div>
+              <div class="full-view__labels">${task.labels.map(l => `<span class="task-card__label">${escapeHtml(l)}</span>`).join('')}</div>
+            </div>
+          ` : ''}
+          ${task.assignee ? `
+            <div class="full-view__section">
+              <div class="full-view__section-label">Assignee</div>
+              <div>${escapeHtml(task.assignee)}</div>
+            </div>
+          ` : ''}
+          ${task.agent ? `
+            <div class="full-view__section">
+              <div class="full-view__section-label">Agent</div>
+              <div>🤖 ${escapeHtml(task.agent)}</div>
+            </div>
+          ` : ''}
+          <div class="full-view__section">
+            <div class="full-view__section-label">Description</div>
+            <div class="full-view__body">${task.body ? escapeHtml(task.body) : '<span style="opacity:0.5">No description</span>'}</div>
+          </div>
+          ${task.url ? `
+            <div class="full-view__section">
+              <a class="task-detail__link" href="${escapeHtml(task.url)}">Open source ↗</a>
+            </div>
+          ` : ''}
+          <div class="full-view__section">
+            <div class="full-view__section-label">Changed Files (${files.length})</div>
+            ${files.length === 0
+              ? '<div class="file-list__empty">No changes yet</div>'
+              : files.map(f => `
+                <div class="fv-file-item file-list__item file-list__item--${f.status}" data-file-path="${escapeHtml(f.path)}">
+                  <span class="file-list__icon">${statusIcons[f.status] || '?'}</span>
+                  <span class="file-list__path">${escapeHtml(f.path)}</span>
+                </div>
+              `).join('')}
+          </div>
+          <div class="full-view__section">
+            <span class="task-card__provider">${escapeHtml(task.providerId)}</span>
+          </div>
+        </aside>
+        <div class="full-view__log">
+          <div class="full-view__log-header">
+            <span>Activity Log</span>
+            <span class="full-view__log-count">${logs.length} entries</span>
+          </div>
+          ${isInterrupted ? `<div class="session-interrupted-banner">⚡ Session interrupted. Log is read-only.</div>` : ''}
+          <div class="full-view__log-scroll" id="fv-log-scroll">
+            <div class="full-view__log-entries" id="fv-log-entries">
+              ${logs.map(e => renderLogEntry(e)).join('')}
+              ${logs.length === 0 ? '<div class="fv-log__empty">No activity yet. Events will appear here in real time.</div>' : ''}
+            </div>
+          </div>
+          <form class="full-view__follow-up" id="fv-follow-up-form">
+            <input class="task-form__input" id="fv-follow-up-input" type="text"
+              placeholder="${isInterrupted ? 'Session interrupted' : (isRunning ? 'Send message to agent…' : 'Agent not running')}"
+              ${!isRunning ? 'disabled' : ''} />
+            <button type="submit" class="toolbar__btn toolbar__btn--primary" ${!isRunning ? 'disabled' : ''}>Send</button>
+          </form>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
 // ── Message handling ───────────────────────────────────────────────────
 
 window.addEventListener('message', (event: MessageEvent) => {
   const msg = event.data;
   switch (msg.type) {
-    case 'tasksUpdate':
-      currentTasks = msg.tasks ?? [];
+    case 'tasksUpdate': {
+      const newTasks = msg.tasks ?? [];
+      // Track state transitions for per-task logs
+      for (const nt of newTasks) {
+        const ot = currentTasks.find(t => t.id === nt.id);
+        if (ot) {
+          if (ot.status !== nt.status) {
+            const colLabel = (msg.columns ?? currentColumns).find((c: Column) => c.id === nt.status)?.label ?? nt.status;
+            addTaskLog(nt.id, 'board', `Moved to "${colLabel}"`);
+          }
+          if (ot.copilotSession?.state !== nt.copilotSession?.state && nt.copilotSession) {
+            addTaskLog(nt.id, 'board', `Session → ${nt.copilotSession.state}`);
+          }
+        }
+      }
+      currentTasks = newTasks;
       currentColumns = msg.columns ?? [];
       editableProviderIds = msg.editableProviderIds ?? [];
       genAiProviders = msg.genAiProviders ?? [];
@@ -779,6 +1023,7 @@ window.addEventListener('message', (event: MessageEvent) => {
       }
       render();
       break;
+    }
     case 'agentsAvailable':
       availableAgents = msg.agents ?? [];
       // Reset selected agent if it was removed
@@ -802,6 +1047,7 @@ window.addEventListener('message', (event: MessageEvent) => {
       render();
       break;
     case 'streamOutput':
+      addTaskLog(msg.sessionId, 'agent', msg.text);
       if (sessionPanelTaskId === msg.sessionId) {
         const newLines = msg.text.split('\n');
         sessionStreamLines.push(...newLines);
@@ -845,6 +1091,7 @@ window.addEventListener('message', (event: MessageEvent) => {
       break;
     case 'toolCall':
       toolCallStatus.set(msg.sessionId, msg.status);
+      addTaskLog(msg.sessionId, 'tool', msg.status);
       if (sessionPanelTaskId === msg.sessionId) {
         // Append tool-call line to stream output
         const outputEl3 = document.getElementById('stream-output');
@@ -859,14 +1106,36 @@ window.addEventListener('message', (event: MessageEvent) => {
       // Trigger card re-render to show/update the tool-call badge
       render();
       break;
-    case 'fileChanges':
-      fileChangeLists.set(msg.sessionId, msg.files ?? []);
+    case 'fileChanges': {
+      const prevCount = fileChangeLists.get(msg.sessionId)?.length ?? 0;
+      const newFiles = msg.files ?? [];
+      fileChangeLists.set(msg.sessionId, newFiles);
+      if (newFiles.length !== prevCount) {
+        addTaskLog(msg.sessionId, 'system', `${newFiles.length} file(s) changed`);
+      }
       if (sessionPanelTaskId === msg.sessionId) {
         sessionFileChanges = msg.files ?? [];
       }
       render();
       break;
+    }
     case 'streamResume':
+      // Populate full-view log from historic data
+      if (msg.log && fullViewTaskId === msg.sessionId) {
+        const histLines = msg.log.split('\n').filter((l: string) => l.trim());
+        const existing = taskEventLogs.get(msg.sessionId) ?? [];
+        const nonAgent = existing.filter(e => e.source !== 'agent');
+        const histEntries: TaskLogEntry[] = histLines.map((line: string) => {
+          const tsMatch = line.match(/^\[(\d{2}:\d{2}:\d{2})\] (.*)/s);
+          return {
+            ts: tsMatch ? tsMatch[1] : '',
+            source: 'agent' as const,
+            text: tsMatch ? tsMatch[2] : line,
+          };
+        });
+        taskEventLogs.set(msg.sessionId, [...histEntries, ...nonAgent]);
+        render();
+      }
       if (sessionPanelTaskId === msg.sessionId) {
         // Populate buffer with full historic log, then re-render
         sessionStreamLines = msg.log.split('\n');
