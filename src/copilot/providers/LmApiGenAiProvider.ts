@@ -29,14 +29,16 @@ export class LmApiGenAiProvider implements IGenAiProvider {
 
   private readonly logger = Logger.getInstance();
   private readonly yolo: boolean;
+  private readonly autopilot: boolean;
   private cts: vscode.CancellationTokenSource | undefined;
   /** Conversation history for multi-turn sessions. */
   private messages: vscode.LanguageModelChatMessage[] = [];
   /** Root path of the active worktree or workspace. */
   private activeRoot: string | undefined;
 
-  constructor(config?: { yolo?: boolean }) {
+  constructor(config?: { yolo?: boolean; autopilot?: boolean }) {
     this.yolo = config?.yolo ?? false;
+    this.autopilot = config?.autopilot ?? config?.yolo ?? false;
   }
 
   /** Event emitter for streaming chunks (consumed by StreamController). */
@@ -73,9 +75,13 @@ export class LmApiGenAiProvider implements IGenAiProvider {
     this.cts = new vscode.CancellationTokenSource();
 
     // Build the system prompt with task context, using the worktree path when available
-    const systemPrompt = task
+    let systemPrompt = task
       ? await ContextBuilder.buildFull(task, worktreePath)
       : 'You are a helpful coding assistant.';
+
+    if (this.autopilot) {
+      systemPrompt += '\n\n## Autopilot Mode\nYou are in autopilot mode. Continue working autonomously until the task is fully completed. Do NOT ask for confirmation — read files, write files, run commands, and iterate until done. If a command fails, diagnose and fix the issue yourself. When finished, summarize what you did.';
+    }
 
     this.messages = [
       vscode.LanguageModelChatMessage.User(systemPrompt),
@@ -159,7 +165,7 @@ export class LmApiGenAiProvider implements IGenAiProvider {
     const token = this.cts?.token;
     if (!token) { return; }
 
-    const MAX_TOOL_ROUNDS = 20;
+    const MAX_TOOL_ROUNDS = this.autopilot ? 100 : 20;
 
     // Build vscode.lm tool definitions when tools are available
     const toolDefs: vscode.LanguageModelChatTool[] | undefined = tools

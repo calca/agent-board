@@ -481,6 +481,16 @@ function render(): void {
       }
     });
   });
+
+  // ── Post-render auto-scroll for full view and session panel ────────
+  if (fullViewAutoScroll) {
+    const fvScroll = document.getElementById('fv-log-scroll');
+    if (fvScroll) { fvScroll.scrollTop = fvScroll.scrollHeight; }
+  }
+  if (streamAutoScroll) {
+    const ssScroll = document.getElementById('session-stream-scroll');
+    if (ssScroll) { ssScroll.scrollTop = ssScroll.scrollHeight; }
+  }
 }
 
 function renderColumn(col: Column, tasks: KanbanTask[]): string {

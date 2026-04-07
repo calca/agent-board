@@ -56,8 +56,10 @@ export function activate(context: vscode.ExtensionContext): void {
   genAiRegistry.register(new ChatGenAiProvider());
   genAiRegistry.register(new CloudGenAiProvider());
   const copilotLmCfg = ProjectConfig.getProjectConfig()?.genAiProviders?.['copilot-lm'];
+  const lmYolo = copilotLmCfg?.yolo ?? vscode.workspace.getConfiguration('agentBoard').get<boolean>('copilotCli.yolo', true);
   genAiRegistry.register(new LmApiGenAiProvider({
-    yolo: copilotLmCfg?.yolo ?? vscode.workspace.getConfiguration('agentBoard').get<boolean>('copilotCli.yolo', true),
+    yolo: lmYolo,
+    autopilot: lmYolo,
   }));
 
   // Copilot CLI — pass per-project config (yolo / fleet), falling back to VS Code settings
