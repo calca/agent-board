@@ -3,6 +3,13 @@ import * as vscode from 'vscode';
 /** Default maximum number of lines kept in the circular buffer. */
 export const DEFAULT_MAX_LINES = 10_000;
 
+/** A stream chunk with an attached wall-clock timestamp (HH:MM:SS). */
+export interface StreamChunk {
+  sessionId: string;
+  text: string;
+  ts: string;
+}
+
 /**
  * Circular-buffer log controller for a single session.
  *
@@ -23,11 +30,13 @@ export class StreamController implements vscode.Disposable {
     this.maxLines = maxLines;
   }
 
-  /** Append one or more lines of output. */
+  /** Append one or more lines of output (stores raw text; timestamp prefix in export). */
   append(text: string): void {
+    const ts = new Date().toISOString().slice(11, 19); // HH:MM:SS
     const lines = text.split('\n');
     for (const line of lines) {
-      this.buffer.push(line);
+      // Store with timestamp prefix so export is self-documenting
+      this.buffer.push(`[${ts}] ${line}`);
     }
     // Trim from the front when over capacity
     while (this.buffer.length > this.maxLines) {
@@ -65,11 +74,20 @@ export class StreamController implements vscode.Disposable {
 export class StreamRegistry implements vscode.Disposable {
   private readonly controllers = new Map<string, StreamController>();
 
+  private readonly _onDidAppendAny = new vscode.EventEmitter<StreamChunk>();
+  /** Fires whenever any session appends new text. */
+  readonly onDidAppendAny: vscode.Event<StreamChunk> = this._onDidAppendAny.event;
+
   /** Get or lazily create a controller for the given session. */
   getOrCreate(sessionId: string, maxLines?: number): StreamController {
     let ctrl = this.controllers.get(sessionId);
     if (!ctrl) {
       ctrl = new StreamController(maxLines);
+      // Forward all appends from this session to the registry-level event
+      ctrl.onDidAppend(text => {
+        const ts = new Date().toISOString().slice(11, 19);
+        this._onDidAppendAny.fire({ sessionId, text, ts });
+      });
       this.controllers.set(sessionId, ctrl);
     }
     return ctrl;
@@ -99,5 +117,6 @@ export class StreamRegistry implements vscode.Disposable {
       ctrl.dispose();
     }
     this.controllers.clear();
+    this._onDidAppendAny.dispose();
   }
 }

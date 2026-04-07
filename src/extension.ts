@@ -266,6 +266,26 @@ export function activate(context: vscode.ExtensionContext): void {
     });
     panel.onDispose(() => squadSub.dispose());
 
+    // Forward stream output from any session → webview
+    const streamSub = copilotLauncher.getStreamRegistry().onDidAppendAny(({ sessionId, text, ts }) => {
+      panel.appendStreamOutput(sessionId, text, ts);
+    });
+    panel.onDispose(() => streamSub.dispose());
+
+    // Forward DiffWatcher file-change events → webview (poll all active watchers)
+    const diffPollSub = squadManager.onDidChangeStatus(() => {
+      for (const sid of copilotLauncher.getStreamRegistry().sessionIds) {
+        const dw = copilotLauncher.getDiffWatcher(sid);
+        if (dw) {
+          const files = dw.getChanges();
+          if (files.length > 0) {
+            panel.updateFileChanges(sid, files);
+          }
+        }
+      }
+    });
+    panel.onDispose(() => diffPollSub.dispose());
+
     // Wire WebView messages
     panel.onMessage(async (msg) => {
       switch (msg.type) {
@@ -413,6 +433,18 @@ export function activate(context: vscode.ExtensionContext): void {
         }
         case 'openFullDiff': {
           await vscode.commands.executeCommand('workbench.view.scm');
+          break;
+        }
+        case 'openTerminalInWorktree': {
+          const dw = copilotLauncher.getDiffWatcher(msg.sessionId);
+          const worktreeRoot = dw?.rootPath ?? vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
+          if (worktreeRoot) {
+            const terminal = vscode.window.createTerminal({
+              name: `Worktree: ${msg.sessionId.split(':').pop() ?? msg.sessionId}`,
+              cwd: worktreeRoot,
+            });
+            terminal.show();
+          }
           break;
         }
         case 'exportLog': {

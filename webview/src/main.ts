@@ -66,6 +66,8 @@ let sessionStreamLines: string[] = [];
 let sessionFileChanges: FileChangeInfo[] = [];
 let repoIsGit = true;
 let repoIsGitHub = true;
+/** When true, auto-scroll to bottom on new output. Disabled when user scrolls up. */
+let streamAutoScroll = true;
 
 // ── Render ─────────────────────────────────────────────────────────────
 
@@ -243,7 +245,26 @@ function render(): void {
     sessionPanelTaskId = null;
     sessionStreamLines = [];
     sessionFileChanges = [];
+    streamAutoScroll = true;
     render();
+  });
+  // Auto-scroll override: if user scrolls up, disable; if they reach the bottom, re-enable
+  const scrollEl = document.getElementById('session-stream-scroll');
+  if (scrollEl) {
+    scrollEl.addEventListener('scroll', () => {
+      const atBottom = scrollEl.scrollHeight - scrollEl.scrollTop - scrollEl.clientHeight < 40;
+      streamAutoScroll = atBottom;
+    }, { passive: true });
+  }
+  document.getElementById('session-btn-terminal')?.addEventListener('click', () => {
+    if (sessionPanelTaskId) {
+      vscode.postMessage({ type: 'openTerminalInWorktree', sessionId: sessionPanelTaskId });
+    }
+  });
+  document.getElementById('session-btn-stop')?.addEventListener('click', () => {
+    if (sessionPanelTaskId) {
+      vscode.postMessage({ type: 'cancelSession', taskId: sessionPanelTaskId });
+    }
   });
   document.getElementById('session-btn-full-diff')?.addEventListener('click', () => {
     vscode.postMessage({ type: 'openFullDiff' });
@@ -252,6 +273,24 @@ function render(): void {
     if (sessionPanelTaskId) {
       vscode.postMessage({ type: 'exportLog', sessionId: sessionPanelTaskId });
     }
+  });
+  // "Run in terminal" buttons inside bash blocks
+  document.querySelectorAll('.stream-run-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const cmd = (btn as HTMLElement).dataset.cmd ?? '';
+      if (cmd && sessionPanelTaskId) {
+        vscode.postMessage({ type: 'openTerminalInWorktree', sessionId: sessionPanelTaskId });
+      }
+    });
+  });
+  // FILE links inside stream output
+  document.querySelectorAll('.stream-file-link').forEach(link => {
+    link.addEventListener('click', () => {
+      const filePath = (link as HTMLElement).dataset.filePath;
+      if (filePath) {
+        vscode.postMessage({ type: 'openDiff', filePath });
+      }
+    });
   });
   document.getElementById('session-follow-up-form')?.addEventListener('submit', (e: Event) => {
     e.preventDefault();
@@ -543,23 +582,85 @@ function renderRepoBanners(): string {
   return `<div class="repo-banners">${banners.join('')}</div>`;
 }
 
+// ── Stream output rich rendering ───────────────────────────────────
+
+/** Lightweight client-side parser state for fenced blocks. */
+let _fenceMode: 'none' | 'diff' | 'bash' | 'code' = 'none';
+
+/**
+ * Convert a single raw stream line to an HTML string with appropriate
+ * class/markup for diffs, bash blocks, file links, and timestamps.
+ */
+function renderStreamLine(rawLine: string): string {
+  // Strip leading timestamp prefix stored by StreamController (e.g. "[12:34:56] ")
+  const tsMatch = rawLine.match(/^\[(\d{2}:\d{2}:\d{2})\] (.*)/s);
+  const ts = tsMatch ? tsMatch[1] : '';
+  const line = tsMatch ? tsMatch[2] : rawLine;
+
+  const tsHtml = ts ? `<span class="stream-ts">[${escapeHtml(ts)}]</span> ` : '';
+
+  // Fence open / close
+  const fenceMatch = line.match(/^```(\w*)$/);
+  if (fenceMatch) {
+    if (_fenceMode !== 'none') {
+      // Close – emit a separator
+      _fenceMode = 'none';
+      return `<div class="stream-output__line stream-fence-close"></div>`;
+    }
+    const lang = (fenceMatch[1] || 'text').toLowerCase();
+    _fenceMode = lang === 'diff' ? 'diff' : (lang === 'bash' || lang === 'sh' || lang === 'shell') ? 'bash' : 'code';
+    return `<div class="stream-output__line stream-fence-open stream-fence-open--${_fenceMode}">${tsHtml}<span class="stream-fence-lang">${escapeHtml(lang || 'code')}</span></div>`;
+  }
+
+  if (_fenceMode === 'diff') {
+    if (line.startsWith('+')) {
+      return `<div class="stream-output__line stream-output__line--diff-add">${tsHtml}${escapeHtml(line)}</div>`;
+    }
+    if (line.startsWith('-')) {
+      return `<div class="stream-output__line stream-output__line--diff-del">${tsHtml}${escapeHtml(line)}</div>`;
+    }
+    return `<div class="stream-output__line stream-output__line--diff-ctx">${tsHtml}${escapeHtml(line)}</div>`;
+  }
+
+  if (_fenceMode === 'bash') {
+    return `<div class="stream-output__line stream-output__line--bash">${tsHtml}<code>${escapeHtml(line)}</code>` +
+      `<button class="stream-run-btn" data-cmd="${escapeHtml(line)}" title="Run in terminal">▶</button></div>`;
+  }
+
+  // FILE: path pattern → clickable link
+  const fileMatch = line.match(/^FILE:\s*(.+)$/);
+  if (fileMatch) {
+    const filePath = fileMatch[1].trim();
+    return `<div class="stream-output__line stream-output__line--file">${tsHtml}` +
+      `<span class="stream-file-link" data-file-path="${escapeHtml(filePath)}" title="Open diff">📄 ${escapeHtml(filePath)}</span></div>`;
+  }
+
+  return `<div class="stream-output__line">${tsHtml}${escapeHtml(line)}</div>`;
+}
+
 function renderSessionPanel(): string {
   const task = currentTasks.find(t => t.id === sessionPanelTaskId);
   const title = task ? escapeHtml(task.title) : sessionPanelTaskId ?? '';
+  const isRunning = task?.copilotSession?.state === 'running' || task?.copilotSession?.state === 'starting';
   const statusIcons: Record<string, string> = { added: '＋', modified: '✎', deleted: '✕' };
+  // Reset fence parser state on full render
+  _fenceMode = 'none';
+  const renderedLines = sessionStreamLines.map(renderStreamLine).join('');
   return `
     <div class="session-panel">
       <div class="session-panel__header">
         <span class="session-panel__title">${title}</span>
         <div class="session-panel__action-bar">
+          <button class="toolbar__btn toolbar__btn--small" id="session-btn-terminal" title="Open in Terminal">⌨ Terminal</button>
           <button class="toolbar__btn toolbar__btn--small" id="session-btn-full-diff" title="Full Diff">Diff</button>
           <button class="toolbar__btn toolbar__btn--small" id="session-btn-export" title="Export Log">Export</button>
+          ${isRunning ? `<button class="toolbar__btn toolbar__btn--small toolbar__btn--danger" id="session-btn-stop" title="Stop Agent">■ Stop</button>` : ''}
           <button class="session-panel__close" id="session-panel-close">✕</button>
         </div>
       </div>
       <div class="session-panel__body">
-        <div class="session-panel__stream">
-          <div class="stream-output" id="stream-output">${sessionStreamLines.map(l => `<div class="stream-output__line">${escapeHtml(l)}</div>`).join('')}</div>
+        <div class="session-panel__stream" id="session-stream-scroll">
+          <div class="stream-output" id="stream-output">${renderedLines}</div>
         </div>
         <div class="session-panel__files">
           <div class="file-list__header">Changed files (${sessionFileChanges.length})</div>
@@ -631,21 +732,23 @@ window.addEventListener('message', (event: MessageEvent) => {
       break;
     case 'streamOutput':
       if (sessionPanelTaskId === msg.sessionId) {
-        sessionStreamLines.push(...msg.text.split('\n'));
+        const newLines = msg.text.split('\n');
+        sessionStreamLines.push(...newLines);
         // Cap to last 500 lines in the UI for performance
         if (sessionStreamLines.length > 500) {
           sessionStreamLines = sessionStreamLines.slice(-500);
         }
         const outputEl = document.getElementById('stream-output');
+        const scrollEl2 = document.getElementById('session-stream-scroll');
         if (outputEl) {
-          const lines = msg.text.split('\n');
-          for (const l of lines) {
-            const div = document.createElement('div');
-            div.className = 'stream-output__line';
-            div.textContent = l;
-            outputEl.appendChild(div);
+          for (const l of newLines) {
+            // Synthesise the stored form (with timestamp) for rendering
+            const stored = `[${msg.ts}] ${l}`;
+            outputEl.insertAdjacentHTML('beforeend', renderStreamLine(stored));
           }
-          outputEl.scrollTop = outputEl.scrollHeight;
+          if (streamAutoScroll && scrollEl2) {
+            scrollEl2.scrollTop = scrollEl2.scrollHeight;
+          }
         } else {
           render();
         }

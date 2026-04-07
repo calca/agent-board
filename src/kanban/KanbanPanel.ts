@@ -118,8 +118,8 @@ export class KanbanPanel {
   }
 
   /** Push a stream-output chunk for a session to the WebView. */
-  appendStreamOutput(sessionId: string, text: string): void {
-    this.postMessage({ type: 'streamOutput', sessionId, text });
+  appendStreamOutput(sessionId: string, text: string, ts: string): void {
+    this.postMessage({ type: 'streamOutput', sessionId, text, ts });
   }
 
   /** Push the latest file-change list for a session to the WebView. */

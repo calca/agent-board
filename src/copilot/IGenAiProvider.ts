@@ -62,6 +62,11 @@ export interface IGenAiProvider {
    */
   readonly disableAutoAdvance?: boolean;
 
+  /**
+   * Optional streaming event. When present, `CopilotLauncher` automatically
+   * subscribes and forwards chunks to the `StreamController` / KanbanPanel.
+   */
+  readonly onDidStream?: vscode.Event<string>;
   /** Check whether the provider can be used in the current environment. */
   isAvailable(): Promise<boolean>;
   /**

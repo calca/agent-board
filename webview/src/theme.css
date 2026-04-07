@@ -773,13 +773,84 @@ html, body, #root {
   padding: 1px 0;
 }
 
+/* Timestamp prefix */
+.stream-ts {
+  opacity: 0.45;
+  font-size: 0.78em;
+  user-select: none;
+  margin-right: 4px;
+}
+
+/* Fenced block open/close markers */
+.stream-fence-open {
+  margin-top: 6px;
+  padding: 2px 6px;
+  border-radius: 3px 3px 0 0;
+  font-size: 0.8em;
+  opacity: 0.75;
+  font-style: italic;
+}
+.stream-fence-open--diff  { background: rgba(100,180,100,0.12); }
+.stream-fence-open--bash  { background: rgba(100,150,255,0.12); }
+.stream-fence-open--code  { background: rgba(200,200,200,0.08); }
+.stream-fence-close       { border-bottom: 1px solid var(--vscode-panel-border); margin-bottom: 6px; }
+
 /* Coloured blocks inside stream output */
 .stream-output__line--diff-add {
   color: var(--vscode-gitDecoration-addedResourceForeground, #81b88b);
+  background: rgba(100,180,100,0.07);
 }
 
 .stream-output__line--diff-del {
   color: var(--vscode-gitDecoration-deletedResourceForeground, #c74e39);
+  background: rgba(200,80,80,0.07);
+}
+
+.stream-output__line--diff-ctx {
+  opacity: 0.7;
+}
+
+/* Bash lines */
+.stream-output__line--bash {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(100,150,255,0.08);
+  padding: 2px 4px;
+  border-radius: 3px;
+  margin: 1px 0;
+}
+.stream-output__line--bash code {
+  flex: 1;
+  font-family: inherit;
+}
+.stream-run-btn {
+  background: var(--vscode-button-background, #0078d4);
+  color: var(--vscode-button-foreground, #fff);
+  border: none;
+  border-radius: 3px;
+  padding: 1px 6px;
+  font-size: 0.78em;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+.stream-run-btn:hover { opacity: 0.85; }
+
+/* FILE links */
+.stream-output__line--file {
+  padding: 2px 0;
+}
+.stream-file-link {
+  cursor: pointer;
+  color: var(--vscode-textLink-foreground, #3794ff);
+  text-decoration: underline;
+}
+.stream-file-link:hover { opacity: 0.8; }
+
+/* Danger button variant */
+.toolbar__btn--danger {
+  background: var(--vscode-statusBarItem-errorBackground, #c72e0f);
+  color: var(--vscode-button-foreground, #fff);
 }
 
 .session-panel__files {

@@ -28,7 +28,7 @@ export class DiffWatcher implements vscode.Disposable {
   private latestChanges: FileChange[] = [];
 
   constructor(
-    private readonly rootPath: string,
+    readonly rootPath: string,
     private readonly debounceMs: number = 500,
   ) {
     const pattern = new vscode.RelativePattern(rootPath, '**/*');

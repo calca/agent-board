@@ -51,7 +51,7 @@ export type HostToWebView =
   | { type: 'agentsAvailable'; agents: AgentOption[] }
   | { type: 'mcpStatus'; enabled: boolean }
   | { type: 'showTaskForm'; columns: Column[] }
-  | { type: 'streamOutput'; sessionId: string; text: string }
+  | { type: 'streamOutput'; sessionId: string; text: string; ts: string }
   | { type: 'streamResume'; sessionId: string; log: string }
   | { type: 'fileChanges'; sessionId: string; files: FileChangeInfo[] }
   | { type: 'repoStatus'; isGit: boolean; isGitHub: boolean };
@@ -84,6 +84,7 @@ export type WebViewToHost =
   | { type: 'toggleMcp' }
   | { type: 'openDiff'; filePath: string }
   | { type: 'openFullDiff' }
+  | { type: 'openTerminalInWorktree'; sessionId: string }
   | { type: 'exportLog'; sessionId: string }
   | { type: 'requestStreamResume'; sessionId: string }
   | { type: 'sendFollowUp'; sessionId: string; text: string };

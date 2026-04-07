@@ -103,6 +103,9 @@ export class CopilotLauncher {
 
     // ── Stream + DiffWatcher ──────────────────────────────────────────
     const stream = this.streamRegistry.getOrCreate(taskId);
+    // Wire provider streaming → StreamController so output flows to the webview
+    const streamSub = provider.onDidStream?.(text => stream.append(text));
+
     const watchRoot = worktree?.path ?? vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
     if (watchRoot) {
       const dw = new DiffWatcher(watchRoot);
@@ -113,6 +116,7 @@ export class CopilotLauncher {
     try {
       await provider.run(prompt, task, worktree?.path);
     } finally {
+      streamSub?.dispose();
       this.activeProviders.delete(taskId);
       // Cleanup worktree after session (optionally ask for confirmation)
       if (worktree) {
