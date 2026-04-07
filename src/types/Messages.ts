@@ -77,8 +77,8 @@ export type WebViewToHost =
   | { type: 'launchProvider'; taskId: string; genAiProviderId: string }
   | { type: 'reopenSession'; taskId: string }
   | { type: 'cancelTaskForm' }
-  | { type: 'startSquad'; agentSlug?: string }
-  | { type: 'toggleAutoSquad'; agentSlug?: string }
+  | { type: 'startSquad'; agentSlug?: string; genAiProviderId?: string }
+  | { type: 'toggleAutoSquad'; agentSlug?: string; genAiProviderId?: string }
   | { type: 'toggleMcp' }
   | { type: 'openDiff'; filePath: string }
   | { type: 'openFullDiff' }

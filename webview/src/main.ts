@@ -51,6 +51,7 @@ interface SquadStatus {
 }
 let availableAgents: AgentOption[] = [];
 let selectedAgentSlug = '';
+let selectedSquadProviderId = '';
 let mcpEnabled = false;
 let squadStatus: SquadStatus = { activeCount: 0, maxSessions: 10, autoSquadEnabled: false };
 let showTaskForm = false;
@@ -97,6 +98,13 @@ function render(): void {
         <div class="toolbar__separator"></div>
 
         <div class="toolbar__group" data-label="Squad">
+          <select class="toolbar__select" id="squad-provider-select" title="Provider">
+            <option value="">Provider: default</option>
+            ${genAiProviders
+              .filter(p => !p.disabled)
+              .map(p => `<option value="${escapeHtml(p.id)}"${p.id === selectedSquadProviderId ? ' selected' : ''}>${escapeHtml(p.displayName)}</option>`)
+              .join('')}
+          </select>
           <select class="toolbar__select" id="agent-select" title="Agent">
             <option value="">Agent: any</option>
             ${availableAgents.map(a => `<option value="${escapeHtml(a.slug)}"${a.slug === selectedAgentSlug ? ' selected' : ''}>${escapeHtml(a.displayName)}</option>`).join('')}
@@ -145,16 +153,20 @@ function render(): void {
     render();
   });
 
+  document.getElementById('squad-provider-select')?.addEventListener('change', (e: Event) => {
+    selectedSquadProviderId = (e.target as HTMLSelectElement).value;
+  });
+
   document.getElementById('agent-select')?.addEventListener('change', (e: Event) => {
     selectedAgentSlug = (e.target as HTMLSelectElement).value;
   });
 
   document.getElementById('btn-start-squad')?.addEventListener('click', () => {
-    vscode.postMessage({ type: 'startSquad', agentSlug: selectedAgentSlug || undefined });
+    vscode.postMessage({ type: 'startSquad', agentSlug: selectedAgentSlug || undefined, genAiProviderId: selectedSquadProviderId || undefined });
   });
 
   document.getElementById('btn-toggle-auto')?.addEventListener('click', () => {
-    vscode.postMessage({ type: 'toggleAutoSquad', agentSlug: selectedAgentSlug || undefined });
+    vscode.postMessage({ type: 'toggleAutoSquad', agentSlug: selectedAgentSlug || undefined, genAiProviderId: selectedSquadProviderId || undefined });
   });
 
   document.querySelectorAll('.task-card').forEach(card => {

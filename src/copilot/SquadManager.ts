@@ -48,6 +48,8 @@ export class SquadManager {
   private launching = false;
   /** Agent slug used during auto-squad polling. */
   private autoSquadAgentSlug: string | undefined;
+  /** GenAI provider override used during auto-squad polling. */
+  private autoSquadGenAiProviderId: string | undefined;
 
   private readonly logger = Logger.getInstance();
 
@@ -65,7 +67,7 @@ export class SquadManager {
   // ── Public API ──────────────────────────────────────────────────────
 
   /** One-shot: launch copilot sessions for available tasks up to maxSessions. */
-  async startSquad(agentSlug?: string): Promise<number> {
+  async startSquad(agentSlug?: string, genAiProviderId?: string): Promise<number> {
     // Concurrency guard: skip if a launch cycle is already running
     if (this.launching) {
       this.logger.info('SquadManager: launch cycle already in progress — skipping');
@@ -73,13 +75,13 @@ export class SquadManager {
     }
     this.launching = true;
     try {
-      return await this.doStartSquad(agentSlug);
+      return await this.doStartSquad(agentSlug, genAiProviderId);
     } finally {
       this.launching = false;
     }
   }
 
-  private async doStartSquad(agentSlug?: string): Promise<number> {
+  private async doStartSquad(agentSlug?: string, genAiProviderId?: string): Promise<number> {
     const cfg = this.getConfig();
     const available = cfg.maxSessions - this.activeSessions.size;
     if (available <= 0) {
@@ -97,7 +99,7 @@ export class SquadManager {
       if (launched > 0 && cfg.cooldownMs > 0) {
         await this.delay(cfg.cooldownMs);
       }
-      await this.launchSession(task, cfg, agentSlug);
+      await this.launchSession(task, cfg, agentSlug, genAiProviderId);
       launched++;
     }
 
@@ -106,18 +108,20 @@ export class SquadManager {
   }
 
   /** Toggle auto-squad mode. Returns the new state. */
-  toggleAutoSquad(agentSlug?: string): boolean {
+  toggleAutoSquad(agentSlug?: string, genAiProviderId?: string): boolean {
     this.autoSquadEnabled = !this.autoSquadEnabled;
 
     if (this.autoSquadEnabled) {
       this.autoSquadAgentSlug = agentSlug;
+      this.autoSquadGenAiProviderId = genAiProviderId;
       this.logger.info('SquadManager: auto-squad ENABLED');
       // Immediately try to fill slots, then poll
-      void this.startSquad(agentSlug);
+      void this.startSquad(agentSlug, genAiProviderId);
       const cfg = this.getConfig();
-      this.autoSquadTimer = setInterval(() => void this.startSquad(this.autoSquadAgentSlug), cfg.autoSquadInterval);
+      this.autoSquadTimer = setInterval(() => void this.startSquad(this.autoSquadAgentSlug, this.autoSquadGenAiProviderId), cfg.autoSquadInterval);
     } else {
       this.autoSquadAgentSlug = undefined;
+      this.autoSquadGenAiProviderId = undefined;
       this.logger.info('SquadManager: auto-squad DISABLED');
       if (this.autoSquadTimer) {
         clearInterval(this.autoSquadTimer);
@@ -334,8 +338,8 @@ export class SquadManager {
     }
   }
 
-  private async launchSession(task: KanbanTask, cfg: SquadConfig, agentSlug?: string): Promise<void> {
-    const providerId = this.genAiProviderId();
+  private async launchSession(task: KanbanTask, cfg: SquadConfig, agentSlug?: string, genAiProviderId?: string): Promise<void> {
+    const providerId = genAiProviderId ?? this.genAiProviderId();
     const session: CopilotSessionInfo = {
       state: 'running',
       providerId,

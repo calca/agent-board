@@ -314,7 +314,7 @@ export function activate(context: vscode.ExtensionContext): void {
             vscode.window.showWarningMessage('Agent Board: squad requires a git repository.');
             break;
           }
-          await handleStartSquad(squadManager, msg.agentSlug);
+          await handleStartSquad(squadManager, msg.agentSlug, msg.genAiProviderId);
           panel.updateSquadStatus(squadManager.getStatus());
           await sendTasksToPanel(panel, providerRegistry, genAiRegistry, squadManager);
           break;
@@ -324,7 +324,7 @@ export function activate(context: vscode.ExtensionContext): void {
             vscode.window.showWarningMessage('Agent Board: squad requires a git repository.');
             break;
           }
-          handleToggleAutoSquad(squadManager, msg.agentSlug);
+          handleToggleAutoSquad(squadManager, msg.agentSlug, msg.genAiProviderId);
           panel.updateSquadStatus(squadManager.getStatus());
           break;
         }
@@ -445,8 +445,12 @@ export function activate(context: vscode.ExtensionContext): void {
       vscode.window.showWarningMessage('Agent Board: squad requires a git repository.');
       return;
     }
+    const isGit = await isGitRepository();
+    const isGitHub = await isGitHubRepository();
+    const genAiProviderId = await pickGenAiProvider(genAiRegistry, isGit, isGitHub);
+    if (genAiProviderId === undefined) { return; }
     const agentSlug = await pickAgent(discoveredAgents);
-    await handleStartSquad(squadManager, agentSlug);
+    await handleStartSquad(squadManager, agentSlug, genAiProviderId);
   });
 
   const toggleAutoSquad = vscode.commands.registerCommand('agentBoard.toggleAutoSquad', async () => {
@@ -455,8 +459,12 @@ export function activate(context: vscode.ExtensionContext): void {
       vscode.window.showWarningMessage('Agent Board: squad requires a git repository.');
       return;
     }
+    const isGit = await isGitRepository();
+    const isGitHub = await isGitHubRepository();
+    const genAiProviderId = await pickGenAiProvider(genAiRegistry, isGit, isGitHub);
+    if (genAiProviderId === undefined) { return; }
     const agentSlug = await pickAgent(discoveredAgents);
-    handleToggleAutoSquad(squadManager, agentSlug);
+    handleToggleAutoSquad(squadManager, agentSlug, genAiProviderId);
   });
 
   const toggleMaximize = vscode.commands.registerCommand('agentBoard.toggleMaximize', () => {
@@ -630,8 +638,8 @@ const GLOBAL_GENAI_PROVIDER_IDS = ['chat', 'cloud', 'copilot-cli'];
 /**
  * Handle starting a squad session — shared between command and WebView handler.
  */
-async function handleStartSquad(squadManager: SquadManager, agentSlug?: string): Promise<void> {
-  const launched = await squadManager.startSquad(agentSlug);
+async function handleStartSquad(squadManager: SquadManager, agentSlug?: string, genAiProviderId?: string): Promise<void> {
+  const launched = await squadManager.startSquad(agentSlug, genAiProviderId);
   vscode.window.showInformationMessage(
     `Squad: launched ${launched} session${launched === 1 ? '' : 's'}.`,
   );
@@ -640,11 +648,38 @@ async function handleStartSquad(squadManager: SquadManager, agentSlug?: string):
 /**
  * Handle toggling auto-squad — shared between command and WebView handler.
  */
-function handleToggleAutoSquad(squadManager: SquadManager, agentSlug?: string): void {
-  const enabled = squadManager.toggleAutoSquad(agentSlug);
+function handleToggleAutoSquad(squadManager: SquadManager, agentSlug?: string, genAiProviderId?: string): void {
+  const enabled = squadManager.toggleAutoSquad(agentSlug, genAiProviderId);
   vscode.window.showInformationMessage(
     `Auto-squad ${enabled ? 'enabled' : 'disabled'}.`,
   );
+}
+
+/**
+ * Show a Quick Pick for selecting the GenAI provider for the squad.
+ * Filters out providers that are disabled for the current repo.
+ * Returns `undefined` if the user cancels.
+ */
+async function pickGenAiProvider(
+  registry: import('./copilot/GenAiProviderRegistry').GenAiProviderRegistry,
+  isGit: boolean,
+  isGitHub: boolean,
+): Promise<string | undefined> {
+  const items = registry.getAll()
+    .filter(p => {
+      const noGitRequired = p.id === 'copilot-cli' || p.id === 'cloud' || p.id === 'copilot-lm';
+      if (!isGit && noGitRequired) { return false; }
+      if (!isGitHub && p.id === 'cloud') { return false; }
+      return true;
+    })
+    .map(p => ({
+      label: `$(${p.icon}) ${p.displayName}`,
+      description: p.scope === 'global' ? 'VS Code integrated' : 'Project provider',
+      providerId: p.id,
+    }));
+
+  const selected = await vscode.window.showQuickPick(items, { placeHolder: 'Select GenAI provider for squad' });
+  return selected?.providerId;
 }
 
 /**
