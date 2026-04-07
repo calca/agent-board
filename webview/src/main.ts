@@ -687,6 +687,7 @@ function renderRepoBanners(): string {
           <span class="repo-banner__provider">Copilot LM API</span>,
           <span class="repo-banner__provider">Copilot CLI</span> e
           <span class="repo-banner__provider">Cloud</span> sono disabilitati.
+          <br/><small>Installa: <code>npm install -g @github/copilot</code></small>
         </span>
       </div>
     `);

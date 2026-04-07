@@ -29,8 +29,11 @@ export interface ToolResult {
  */
 export class AgentTools {
   private readonly logger = Logger.getInstance();
+  private readonly yolo: boolean;
 
-  constructor(private readonly workspaceRoot: string) {}
+  constructor(private readonly workspaceRoot: string, options?: { yolo?: boolean }) {
+    this.yolo = options?.yolo ?? false;
+  }
 
   /** Return the tool definitions for the vscode.lm API. */
   getToolDefinitions(): AgentToolDefinition[] {
@@ -142,15 +145,19 @@ export class AgentTools {
   }
 
   private async runCommand(command: string): Promise<ToolResult> {
-    // Security: require explicit user confirmation before executing shell commands
-    const confirm = await vscode.window.showWarningMessage(
-      `Agent Board: l'agente vuole eseguire:\n\n\`${command}\``,
-      { modal: true },
-      'Esegui',
-      'Annulla',
-    );
-    if (confirm !== 'Esegui') {
-      return { content: 'Command cancelled by user.', isError: true };
+    if (!this.yolo) {
+      // Security: require explicit user confirmation before executing shell commands
+      const confirm = await vscode.window.showWarningMessage(
+        `Agent Board: l'agente vuole eseguire:\n\n\`${command}\``,
+        { modal: true },
+        'Esegui',
+        'Annulla',
+      );
+      if (confirm !== 'Esegui') {
+        return { content: 'Command cancelled by user.', isError: true };
+      }
+    } else {
+      this.logger.info('AgentTools: YOLO — auto-approving: %s', command);
     }
 
     return new Promise(resolve => {

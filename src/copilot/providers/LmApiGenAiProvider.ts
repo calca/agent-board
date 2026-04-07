@@ -28,11 +28,16 @@ export class LmApiGenAiProvider implements IGenAiProvider {
   readonly supportsWorktree = true;
 
   private readonly logger = Logger.getInstance();
+  private readonly yolo: boolean;
   private cts: vscode.CancellationTokenSource | undefined;
   /** Conversation history for multi-turn sessions. */
   private messages: vscode.LanguageModelChatMessage[] = [];
   /** Root path of the active worktree or workspace. */
   private activeRoot: string | undefined;
+
+  constructor(config?: { yolo?: boolean }) {
+    this.yolo = config?.yolo ?? false;
+  }
 
   /** Event emitter for streaming chunks (consumed by StreamController). */
   private readonly onDidStreamEmitter = new vscode.EventEmitter<string>();
@@ -80,7 +85,7 @@ export class LmApiGenAiProvider implements IGenAiProvider {
     // Initialise AgentTools with worktree root (or workspace root as fallback)
     const root = worktreePath ?? vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
     this.activeRoot = root;
-    const tools = root ? new AgentTools(root) : undefined;
+    const tools = root ? new AgentTools(root, { yolo: this.yolo }) : undefined;
 
     await this.runConversationLoop(model, tools);
   }
@@ -94,7 +99,7 @@ export class LmApiGenAiProvider implements IGenAiProvider {
     this.messages.push(vscode.LanguageModelChatMessage.User(text));
 
     const root = this.activeRoot ?? vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
-    const tools = root ? new AgentTools(root) : undefined;
+    const tools = root ? new AgentTools(root, { yolo: this.yolo }) : undefined;
 
     await this.runConversationLoop(model, tools);
   }
