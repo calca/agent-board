@@ -1,6 +1,6 @@
 import * as vscode from 'vscode';
-import { GitHubIssueManager } from '../github/GitHubIssueManager';
 import { ProjectConfig } from '../config/ProjectConfig';
+import { GitHubIssueManager } from '../github/GitHubIssueManager';
 import { ColumnId } from '../types/ColumnId';
 import { KanbanTask } from '../types/KanbanTask';
 import { ITaskProvider } from './ITaskProvider';
