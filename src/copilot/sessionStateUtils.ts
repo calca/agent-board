@@ -66,6 +66,7 @@ export function toCopilotSessionInfo(session: PersistedSession): CopilotSessionI
     providerId: session.providerId,
     startedAt: session.startedAt,
     finishedAt: session.finishedAt,
+    worktreePath: session.worktreePath,
   };
 }
 

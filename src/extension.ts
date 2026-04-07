@@ -541,6 +541,11 @@ export function activate(context: vscode.ExtensionContext): void {
           await copilotLauncher.sendFollowUp(msg.sessionId, msg.text);
           break;
         }
+        case 'openWorktree': {
+          const wtUri = vscode.Uri.file(msg.worktreePath);
+          await vscode.commands.executeCommand('vscode.openFolder', wtUri, { forceNewWindow: true });
+          break;
+        }
       }
     });
   });

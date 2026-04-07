@@ -25,6 +25,8 @@ export interface CopilotSessionInfo {
   prState?: 'open' | 'closed' | 'merged';
   /** Files changed during the session. */
   changedFiles?: string[];
+  /** Relative path to the worktree directory (if created). */
+  worktreePath?: string;
 }
 
 /**

@@ -35,6 +35,8 @@ interface KanbanTask {
     prState?: 'open' | 'merged' | 'closed';
     /** Files changed during the session. */
     changedFiles?: string[];
+    /** Relative path to worktree directory. */
+    worktreePath?: string;
   };
 }
 interface AgentOption {
@@ -409,6 +411,16 @@ function render(): void {
     });
   });
 
+  // ── Open worktree in VS Code (all views) ──────────────────────────
+  document.querySelectorAll('.detail-open-worktree, .fv-open-worktree').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const wtPath = (btn as HTMLElement).dataset.wtPath;
+      if (wtPath) {
+        vscode.postMessage({ type: 'openWorktree', worktreePath: wtPath });
+      }
+    });
+  });
+
   // ── Task form listeners ──────────────────────────────────────────
   document.getElementById('task-form-close')?.addEventListener('click', () => {
     showTaskForm = false;
@@ -551,6 +563,9 @@ function renderCard(task: KanbanTask): string {
   const assigneeHtml = avatarUrl
     ? `<img class="task-card__avatar" src="${escapeHtml(avatarUrl)}" alt="${escapeHtml(task.assignee ?? '')}" title="${escapeHtml(task.assignee ?? '')}" />`
     : (initials ? `<span class="task-card__assignee">${initials}</span>` : '');
+  const wtBadge = session?.worktreePath
+    ? `<span class="task-card__wt-badge" title="${escapeHtml(session.worktreePath)}">🌿</span>`
+    : '';
   return `
     <div class="task-card${isActive ? ' task-card--running' : ''}" data-task-id="${escapeHtml(task.id)}">
       <div class="task-card__title">${escapeHtml(task.title)}</div>
@@ -561,6 +576,7 @@ function renderCard(task: KanbanTask): string {
         <span class="task-card__provider">${escapeHtml(task.providerId)}</span>
         ${diffBadge}
         ${pr}
+        ${wtBadge}
       </div>
       ${toolCallBadge}
       ${agentBadge ? `<div class="task-card__footer">${agentBadge}</div>` : ''}
@@ -589,6 +605,13 @@ function renderDetail(task: KanbanTask): string {
       </div>
       <div class="task-detail__body">${escapeHtml(task.body)}</div>
       ${sessionLine}
+      ${sessionInfo?.worktreePath ? `
+        <div class="task-detail__worktree">
+          <span class="task-detail__wt-label">Worktree:</span>
+          <code class="task-detail__wt-path">${escapeHtml(sessionInfo.worktreePath)}</code>
+          <button class="task-detail__reopen-btn detail-open-worktree" data-wt-path="${escapeHtml(sessionInfo.worktreePath)}">↗ Apri in VS Code</button>
+        </div>
+      ` : ''}
       ${task.url ? `<a class="task-detail__link" href="${escapeHtml(task.url)}">Open source ↗</a>` : ''}
       <div class="task-detail__actions">
         ${genAiProviders.map(p => `
@@ -945,6 +968,13 @@ function renderFullView(): string {
             <div class="full-view__section">
               <div class="full-view__section-label">Agent</div>
               <div>🤖 ${escapeHtml(task.agent)}</div>
+            </div>
+          ` : ''}
+          ${sessionInfo?.worktreePath ? `
+            <div class="full-view__section">
+              <div class="full-view__section-label">Worktree</div>
+              <code class="full-view__wt-path">${escapeHtml(sessionInfo.worktreePath)}</code>
+              <button class="toolbar__btn toolbar__btn--small fv-open-worktree" data-wt-path="${escapeHtml(sessionInfo.worktreePath)}" style="margin-top:4px;width:100%">↗ Apri in VS Code</button>
             </div>
           ` : ''}
           <div class="full-view__section">
