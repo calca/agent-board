@@ -80,6 +80,15 @@ let repoIsGitHub = true;
 let streamAutoScroll = true;
 /** Per-session file change lists (all sessions, not just the open panel). */
 const fileChangeLists = new Map<string, FileChangeInfo[]>();
+/** Per-session tool-call status string currently shown in the card. */
+const toolCallStatus = new Map<string, string>();
+
+/**
+ * Chat messages stored for multi-turn display.
+ * role: 'user' | 'assistant' | 'tool'
+ */
+interface ChatMessage { role: 'user' | 'assistant' | 'tool'; text: string; ts: string }
+let sessionChatMessages: ChatMessage[] = [];
 
 // ── Render ─────────────────────────────────────────────────────────────
 
@@ -244,6 +253,7 @@ function render(): void {
     if (selectedTask) {
       sessionPanelTaskId = selectedTask.id;
       sessionStreamLines = [];
+      sessionChatMessages = [];
       sessionFileChanges = fileChangeLists.get(selectedTask.id) ?? [];
       selectedTask = null;
       render();
@@ -256,6 +266,7 @@ function render(): void {
   document.getElementById('session-panel-close')?.addEventListener('click', () => {
     sessionPanelTaskId = null;
     sessionStreamLines = [];
+    sessionChatMessages = [];
     sessionFileChanges = [];
     streamAutoScroll = true;
     render();
@@ -443,6 +454,11 @@ function renderCard(task: KanbanTask): string {
   const pr = session?.prUrl
     ? `<a class="task-card__pr-badge task-card__pr-badge--${session.prState ?? 'open'}" href="${escapeHtml(session.prUrl)}" title="PR #${session.prNumber ?? ''}: ${session.prState ?? 'open'}">⤴ PR${session.prNumber ? ` #${session.prNumber}` : ''}</a>`
     : '';
+  // Tool-call status badge (shown while session is running)
+  const tcs = toolCallStatus.get(task.id);
+  const toolCallBadge = tcs && isActive
+    ? `<div class="task-card__tool-status" title="${escapeHtml(tcs)}">🔧 ${escapeHtml(tcs)}</div>`
+    : '';
   // Avatar: prefer meta.avatarUrl populated by GitHubProvider, fallback to initials
   const avatarUrl = (task.meta as Record<string, unknown>)?.avatarUrl as string | undefined;
   const assigneeHtml = avatarUrl
@@ -459,6 +475,7 @@ function renderCard(task: KanbanTask): string {
         ${diffBadge}
         ${pr}
       </div>
+      ${toolCallBadge}
       ${agentBadge ? `<div class="task-card__footer">${agentBadge}</div>` : ''}
     </div>
   `;
@@ -619,7 +636,7 @@ let _fenceMode: 'none' | 'diff' | 'bash' | 'code' = 'none';
  * Convert a single raw stream line to an HTML string with appropriate
  * class/markup for diffs, bash blocks, file links, and timestamps.
  */
-function renderStreamLine(rawLine: string): string {
+function renderStreamLine(rawLine: string, role?: 'user' | 'assistant' | 'tool'): string {
   // Strip leading timestamp prefix stored by StreamController (e.g. "[12:34:56] ")
   const tsMatch = rawLine.match(/^\[(\d{2}:\d{2}:\d{2})\] (.*)/s);
   const ts = tsMatch ? tsMatch[1] : '';
@@ -663,7 +680,8 @@ function renderStreamLine(rawLine: string): string {
       `<span class="stream-file-link" data-file-path="${escapeHtml(filePath)}" title="Open diff">📄 ${escapeHtml(filePath)}</span></div>`;
   }
 
-  return `<div class="stream-output__line">${tsHtml}${escapeHtml(line)}</div>`;
+  const roleClass = role && role !== 'assistant' ? ` stream-output__line--${role}` : '';
+  return `<div class="stream-output__line${roleClass}">${tsHtml}${escapeHtml(line)}</div>`;
 }
 
 function renderSessionPanel(): string {
@@ -673,7 +691,18 @@ function renderSessionPanel(): string {
   const statusIcons: Record<string, string> = { added: '＋', modified: '✎', deleted: '✕' };
   // Reset fence parser state on full render
   _fenceMode = 'none';
-  const renderedLines = sessionStreamLines.map(renderStreamLine).join('');
+  const renderedLines = sessionStreamLines.map(l => renderStreamLine(l)).join('');
+
+  // Chat bubbles from accumulated messages
+  const chatHtml = sessionChatMessages.map(m => {
+    const cls = m.role === 'user'
+      ? 'chat-bubble chat-bubble--user'
+      : m.role === 'tool'
+        ? 'chat-bubble chat-bubble--tool'
+        : 'chat-bubble chat-bubble--assistant';
+    const icon = m.role === 'user' ? '👤' : m.role === 'tool' ? '🔧' : '🤖';
+    return `<div class="${cls}"><span class="chat-bubble__icon">${icon}</span><div class="chat-bubble__body">${escapeHtml(m.text)}</div></div>`;
+  }).join('');
   return `
     <div class="session-panel">
       <div class="session-panel__header">
@@ -686,7 +715,9 @@ function renderSessionPanel(): string {
           <button class="session-panel__close" id="session-panel-close">✕</button>
         </div>
       </div>
+      ${isRunning ? `<div id="tool-status-${sessionPanelTaskId}" class="session-tool-status"></div>` : ''}
       <div class="session-panel__body">
+        ${sessionChatMessages.length > 0 ? `<div class="session-chat" id="session-chat">${chatHtml}</div>` : ''}
         <div class="session-panel__stream" id="session-stream-scroll">
           <div class="stream-output" id="stream-output">${renderedLines}</div>
         </div>
@@ -703,8 +734,8 @@ function renderSessionPanel(): string {
         </div>
       </div>
       <form class="session-panel__follow-up" id="session-follow-up-form">
-        <input class="task-form__input" id="session-follow-up-input" type="text" placeholder="Send follow-up…" />
-        <button type="submit" class="toolbar__btn toolbar__btn--primary">Send</button>
+        <input class="task-form__input" id="session-follow-up-input" type="text" placeholder="Invia messaggio all'agente…" />
+        <button type="submit" class="toolbar__btn toolbar__btn--primary">Invia</button>
       </form>
     </div>
   `;
@@ -733,6 +764,13 @@ window.addEventListener('message', (event: MessageEvent) => {
         const updated = currentTasks.find(t => t.id === editingTask!.id);
         if (updated) { editingTask = updated; }
         else { editingTask = null; }
+      }
+      // Clear toolCallStatus for sessions that are no longer active
+      for (const [id] of toolCallStatus) {
+        const t = currentTasks.find(t2 => t2.id === id);
+        if (!t || (t.copilotSession?.state !== 'running' && t.copilotSession?.state !== 'starting')) {
+          toolCallStatus.delete(id);
+        }
       }
       render();
       break;
@@ -766,13 +804,31 @@ window.addEventListener('message', (event: MessageEvent) => {
         if (sessionStreamLines.length > 500) {
           sessionStreamLines = sessionStreamLines.slice(-500);
         }
+
+        // Accumulate chat messages for multi-turn view
+        const chatRole = msg.role ?? 'assistant';
+        if (chatRole === 'user' || chatRole === 'tool') {
+          sessionChatMessages.push({ role: chatRole, text: msg.text, ts: msg.ts });
+        } else {
+          // Merge consecutive assistant chunks into the last assistant message
+          const last = sessionChatMessages[sessionChatMessages.length - 1];
+          if (last && last.role === 'assistant') {
+            last.text += msg.text;
+          } else {
+            sessionChatMessages.push({ role: 'assistant', text: msg.text, ts: msg.ts });
+          }
+        }
+        if (sessionChatMessages.length > 200) {
+          sessionChatMessages = sessionChatMessages.slice(-200);
+        }
+
         const outputEl = document.getElementById('stream-output');
         const scrollEl2 = document.getElementById('session-stream-scroll');
         if (outputEl) {
           for (const l of newLines) {
             // Synthesise the stored form (with timestamp) for rendering
             const stored = `[${msg.ts}] ${l}`;
-            outputEl.insertAdjacentHTML('beforeend', renderStreamLine(stored));
+            outputEl.insertAdjacentHTML('beforeend', renderStreamLine(stored, msg.role));
           }
           if (streamAutoScroll && scrollEl2) {
             scrollEl2.scrollTop = scrollEl2.scrollHeight;
@@ -781,6 +837,22 @@ window.addEventListener('message', (event: MessageEvent) => {
           render();
         }
       }
+      break;
+    case 'toolCall':
+      toolCallStatus.set(msg.sessionId, msg.status);
+      if (sessionPanelTaskId === msg.sessionId) {
+        // Append tool-call line to stream output
+        const outputEl3 = document.getElementById('stream-output');
+        if (outputEl3) {
+          const ts = new Date().toISOString().slice(11, 19);
+          outputEl3.insertAdjacentHTML('beforeend',
+            `<div class="stream-output__line stream-output__line--tool">🔧 ${escapeHtml(msg.status)}</div>`);
+          const scrollEl3 = document.getElementById('session-stream-scroll');
+          if (streamAutoScroll && scrollEl3) { scrollEl3.scrollTop = scrollEl3.scrollHeight; }
+        }
+      }
+      // Trigger card re-render to show/update the tool-call badge
+      render();
       break;
     case 'fileChanges':
       fileChangeLists.set(msg.sessionId, msg.files ?? []);

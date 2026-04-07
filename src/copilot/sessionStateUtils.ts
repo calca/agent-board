@@ -51,8 +51,8 @@ export function mapStateToCopilot(state: SessionState): CopilotSessionState {
     case 'running':
     case 'paused':
       return 'running';
-    case 'done': return 'completed';
-    case 'error': return 'failed';
+    case 'done': return 'done';
+    case 'error': return 'error';
   }
 }
 

@@ -1,6 +1,7 @@
 import { exec } from 'child_process';
 import * as fs from 'fs';
 import * as path from 'path';
+import * as vscode from 'vscode';
 import { Logger } from '../utils/logger';
 
 /** Maximum command execution time in ms. */
@@ -140,7 +141,18 @@ export class AgentTools {
     return { content: `Written ${relativePath}` };
   }
 
-  private runCommand(command: string): Promise<ToolResult> {
+  private async runCommand(command: string): Promise<ToolResult> {
+    // Security: require explicit user confirmation before executing shell commands
+    const confirm = await vscode.window.showWarningMessage(
+      `Agent Board: l'agente vuole eseguire:\n\n\`${command}\``,
+      { modal: true },
+      'Esegui',
+      'Annulla',
+    );
+    if (confirm !== 'Esegui') {
+      return { content: 'Command cancelled by user.', isError: true };
+    }
+
     return new Promise(resolve => {
       exec(
         command,

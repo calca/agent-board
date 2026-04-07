@@ -67,6 +67,25 @@ export class ContextBuilder {
       }
     }
 
+    // Inject content of files explicitly mentioned in task body (standard + full)
+    const mentionedFiles = ContextBuilder.extractFilePaths(task.body);
+    if (mentionedFiles.length > 0 && workspacePath) {
+      for (const relPath of mentionedFiles.slice(0, 5)) { // cap at 5 files
+        try {
+          const absPath: string = require('path').resolve(workspacePath, relPath);
+          // Only read files inside the workspace root (traversal guard)
+          if (!absPath.startsWith(workspacePath)) { continue; }
+          const content = require('fs').readFileSync(absPath, 'utf-8') as string;
+          const preview = content.length > 4_000 ? content.slice(0, 4_000) + '\n…(truncated)' : content;
+          parts.push('');
+          parts.push(`## File: \`${relPath}\``);
+          parts.push('```');
+          parts.push(preview);
+          parts.push('```');
+        } catch { /* file not found — skip */ }
+      }
+    }
+
     // Active editor selection (standard + full)
     const editor = vscode.window.activeTextEditor;
     if (editor) {
@@ -85,14 +104,24 @@ export class ContextBuilder {
   }
 
   /**
+   * Extract relative file paths mentioned in text.
+   * Matches patterns like `src/foo/bar.ts`, `lib/utils.js`, etc.
+   */
+  static extractFilePaths(text: string): string[] {
+    const matches = text.match(/\b[\w.-]+(?:\/[\w.-]+)+\.\w{1,10}\b/g) ?? [];
+    // Deduplicate and filter out URLs
+    return [...new Set(matches)].filter(p => !p.startsWith('http'));
+  }
+
+  /**
    * Async build that includes full context (file tree + git metadata).
-   * Used when `contextDepth` is `full`.
+   * Used when `contextDepth` is `full` or `standard`.
    */
   static async buildFull(task: KanbanTask, worktreePath?: string): Promise<string> {
     const base = ContextBuilder.build(task, worktreePath);
     const depth = ContextBuilder.getContextDepth();
 
-    if (depth !== 'full') {
+    if (depth === 'minimal') {
       return base;
     }
 
@@ -102,7 +131,23 @@ export class ContextBuilder {
       return base;
     }
 
-    // File tree (top-level, depth 2)
+    // Branch + last commit (standard + full)
+    const branch = await ContextBuilder.runGit('git rev-parse --abbrev-ref HEAD', root);
+    if (branch) {
+      parts.push('');
+      parts.push(`Branch: ${branch}`);
+    }
+
+    const lastCommit = await ContextBuilder.runGit('git log --oneline -1', root);
+    if (lastCommit) {
+      parts.push(`Last commit: ${lastCommit}`);
+    }
+
+    if (depth !== 'full') {
+      return parts.join('\n');
+    }
+
+    // File tree (top-level, depth 2) — full only
     const tree = await ContextBuilder.runGit('find . -maxdepth 2 -not -path "./.git/*" -not -path "./node_modules/*" | head -100', root);
     if (tree) {
       parts.push('');
@@ -112,13 +157,7 @@ export class ContextBuilder {
       parts.push('```');
     }
 
-    // Git branch + recent commits
-    const branch = await ContextBuilder.runGit('git rev-parse --abbrev-ref HEAD', root);
-    if (branch) {
-      parts.push('');
-      parts.push(`Branch: ${branch}`);
-    }
-
+    // Recent commits — full only
     const log = await ContextBuilder.runGit('git log --oneline -5', root);
     if (log) {
       parts.push('');

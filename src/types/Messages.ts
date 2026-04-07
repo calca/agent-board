@@ -51,8 +51,9 @@ export type HostToWebView =
   | { type: 'agentsAvailable'; agents: AgentOption[] }
   | { type: 'mcpStatus'; enabled: boolean }
   | { type: 'showTaskForm'; columns: Column[] }
-  | { type: 'streamOutput'; sessionId: string; text: string; ts: string }
+  | { type: 'streamOutput'; sessionId: string; text: string; ts: string; role?: 'user' | 'assistant' | 'tool' }
   | { type: 'streamResume'; sessionId: string; log: string }
+  | { type: 'toolCall'; sessionId: string; status: string }
   | { type: 'fileChanges'; sessionId: string; files: FileChangeInfo[] }
   | { type: 'repoStatus'; isGit: boolean; isGitHub: boolean };
 

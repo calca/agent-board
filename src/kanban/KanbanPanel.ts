@@ -118,8 +118,13 @@ export class KanbanPanel {
   }
 
   /** Push a stream-output chunk for a session to the WebView. */
-  appendStreamOutput(sessionId: string, text: string, ts: string): void {
-    this.postMessage({ type: 'streamOutput', sessionId, text, ts });
+  appendStreamOutput(sessionId: string, text: string, ts: string, role?: 'user' | 'assistant' | 'tool'): void {
+    this.postMessage({ type: 'streamOutput', sessionId, text, ts, role });
+  }
+
+  /** Notify the WebView that a tool call is in progress for a session. */
+  notifyToolCall(sessionId: string, status: string): void {
+    this.postMessage({ type: 'toolCall', sessionId, status });
   }
 
   /** Push the latest file-change list for a session to the WebView. */

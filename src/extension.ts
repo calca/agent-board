@@ -279,6 +279,12 @@ export function activate(context: vscode.ExtensionContext): void {
     });
     panel.onDispose(() => streamSub.dispose());
 
+    // Forward tool-call status events → webview
+    const toolCallSub = copilotLauncher.onDidToolCall(({ sessionId, status }) => {
+      panel.notifyToolCall(sessionId, status);
+    });
+    panel.onDispose(() => toolCallSub.dispose());
+
     // Forward DiffWatcher file-change events → webview (live, via onDidChangeDiff)
     const diffSub = copilotLauncher.onDidChangeDiff(({ sessionId, files }) => {
       panel.updateFileChanges(sessionId, files);
@@ -509,8 +515,7 @@ export function activate(context: vscode.ExtensionContext): void {
           break;
         }
         case 'sendFollowUp': {
-          // Open chat with the follow-up text
-          await vscode.commands.executeCommand('workbench.action.chat.open', { query: msg.text });
+          await copilotLauncher.sendFollowUp(msg.sessionId, msg.text);
           break;
         }
       }

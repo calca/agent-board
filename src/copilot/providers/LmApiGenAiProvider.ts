@@ -31,11 +31,18 @@ export class LmApiGenAiProvider implements IGenAiProvider {
   private cts: vscode.CancellationTokenSource | undefined;
   /** Conversation history for multi-turn sessions. */
   private messages: vscode.LanguageModelChatMessage[] = [];
+  /** Root path of the active worktree or workspace. */
+  private activeRoot: string | undefined;
 
   /** Event emitter for streaming chunks (consumed by StreamController). */
   private readonly onDidStreamEmitter = new vscode.EventEmitter<string>();
   /** Subscribe to streaming output from the model. */
   readonly onDidStream: vscode.Event<string> = this.onDidStreamEmitter.event;
+
+  /** Event emitter for tool-call status strings shown in the card. */
+  private readonly onDidToolCallEmitter = new vscode.EventEmitter<string>();
+  /** Subscribe to tool-call status notifications. */
+  readonly onDidToolCall: vscode.Event<string> = this.onDidToolCallEmitter.event;
 
   async isAvailable(): Promise<boolean> {
     if (typeof vscode.lm?.selectChatModels !== 'function') {
@@ -72,6 +79,7 @@ export class LmApiGenAiProvider implements IGenAiProvider {
 
     // Initialise AgentTools with worktree root (or workspace root as fallback)
     const root = worktreePath ?? vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
+    this.activeRoot = root;
     const tools = root ? new AgentTools(root) : undefined;
 
     await this.runConversationLoop(model, tools);
@@ -85,13 +93,12 @@ export class LmApiGenAiProvider implements IGenAiProvider {
     this.cts = new vscode.CancellationTokenSource();
     this.messages.push(vscode.LanguageModelChatMessage.User(text));
 
-    const root = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
+    const root = this.activeRoot ?? vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
     const tools = root ? new AgentTools(root) : undefined;
 
     await this.runConversationLoop(model, tools);
   }
 
-  /** Cancel the running request. */
   cancel(): void {
     this.cts?.cancel();
     this.cts?.dispose();
@@ -101,11 +108,13 @@ export class LmApiGenAiProvider implements IGenAiProvider {
   /** Reset conversation history. */
   resetConversation(): void {
     this.messages = [];
+    this.activeRoot = undefined;
   }
 
   dispose(): void {
     this.cancel();
     this.onDidStreamEmitter.dispose();
+    this.onDidToolCallEmitter.dispose();
   }
 
   // ── Private ────────────────────────────────────────────────────────
@@ -147,17 +156,32 @@ export class LmApiGenAiProvider implements IGenAiProvider {
 
     const MAX_TOOL_ROUNDS = 20;
 
+    // Build vscode.lm tool definitions when tools are available
+    const toolDefs: vscode.LanguageModelChatTool[] | undefined = tools
+      ? tools.getToolDefinitions().map(t => ({
+          name: t.name,
+          description: t.description,
+          inputSchema: t.inputSchema as object,
+        }))
+      : undefined;
+
     for (let round = 0; round < MAX_TOOL_ROUNDS; round++) {
       if (token.isCancellationRequested) { break; }
 
       try {
+        const options: vscode.LanguageModelChatRequestOptions = {};
+        if (toolDefs && toolDefs.length > 0) {
+          options.tools = toolDefs;
+        }
+
         const response = await model.sendRequest(
           this.messages,
-          {},
+          options,
           token,
         );
 
         let assistantText = '';
+        const toolCallParts: Array<{ part: vscode.LanguageModelToolCallPart; priorText: string }> = [];
 
         for await (const part of response.stream) {
           if (token.isCancellationRequested) { break; }
@@ -166,22 +190,37 @@ export class LmApiGenAiProvider implements IGenAiProvider {
             assistantText += part.value;
             this.onDidStreamEmitter.fire(part.value);
           } else if (part instanceof vscode.LanguageModelToolCallPart && tools) {
-            // Execute the tool and feed result back
-            this.onDidStreamEmitter.fire(`\n[Tool: ${part.name}(${JSON.stringify(part.input)})]\n`);
-            const result = await this.executeToolCall(tools, part.name, part.input as Record<string, unknown>);
-            this.onDidStreamEmitter.fire(`[Result: ${result.content.slice(0, 200)}${result.content.length > 200 ? '…' : ''}]\n`);
+            toolCallParts.push({ part, priorText: assistantText });
+          }
+        }
 
-            // Feed tool result back as user message for next round
+        // Process tool calls collected during this round
+        if (toolCallParts.length > 0 && tools) {
+          // Save any assistant text before tool calls
+          if (assistantText) {
+            this.messages.push(vscode.LanguageModelChatMessage.Assistant(assistantText));
+            assistantText = '';
+          }
+
+          for (const { part } of toolCallParts) {
+            // Emit tool-call status to the UI
+            const statusLabel = this.toolCallStatusLabel(part.name, part.input as Record<string, unknown>);
+            this.onDidToolCallEmitter.fire(statusLabel);
+            this.onDidStreamEmitter.fire(`\n🔧 ${statusLabel}\n`);
+
+            const result = await this.executeToolCall(tools, part.name, part.input as Record<string, unknown>);
+            const resultPreview = result.content.slice(0, 300) + (result.content.length > 300 ? '…' : '');
+            this.onDidStreamEmitter.fire(`📄 ${resultPreview}\n`);
+
+            // Feed tool result back for the next round
             this.messages.push(
-              vscode.LanguageModelChatMessage.Assistant(assistantText || `Calling tool: ${part.name}`),
               vscode.LanguageModelChatMessage.User(
-                `Tool "${part.name}" returned:\n${result.content}`,
+                `Tool "${part.name}" result:\n${result.content}`,
               ),
             );
-
-            // Continue the loop for the model to process tool results
-            continue;
           }
+          // Continue the loop for the model to process tool results
+          continue;
         }
 
         // If we got here without a tool call, the response is complete
@@ -195,6 +234,18 @@ export class LmApiGenAiProvider implements IGenAiProvider {
         this.handleError(err);
         break;
       }
+    }
+  }
+
+  /** Build a human-readable label for a tool call status display. */
+  private toolCallStatusLabel(name: string, args: Record<string, unknown>): string {
+    switch (name) {
+      case 'read_file':   return `Leggendo ${args.path ?? '…'}`;
+      case 'write_file':  return `Scrivendo ${args.path ?? '…'}`;
+      case 'run_command': return `Eseguendo: ${args.command ?? '…'}`;
+      case 'get_diff':    return 'Recuperando diff…';
+      case 'list_files':  return `Listando ${args.path ?? '.'}`;
+      default:            return `${name}(${JSON.stringify(args)})`;
     }
   }
 

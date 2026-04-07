@@ -68,6 +68,11 @@ export interface IGenAiProvider {
    * subscribes and forwards chunks to the `StreamController` / KanbanPanel.
    */
   readonly onDidStream?: vscode.Event<string>;
+  /**
+   * Optional event that fires when a tool call is being executed.
+   * Payload: human-readable status string, e.g. "Leggendo src/auth.ts…"
+   */
+  readonly onDidToolCall?: vscode.Event<string>;
   /** Check whether the provider can be used in the current environment. */
   isAvailable(): Promise<boolean>;
   /**
@@ -76,6 +81,11 @@ export interface IGenAiProvider {
    * the provider should operate in. Providers that don't use it can ignore it.
    */
   run(prompt: string, task?: KanbanTask, worktreePath?: string): Promise<void>;
+  /**
+   * Send a follow-up user message into the current multi-turn session.
+   * Only supported by providers that maintain conversation history (e.g. copilot-lm).
+   */
+  sendFollowUp?(text: string): Promise<void>;
   /**
    * Cancel the currently running request.
    * Optional — providers that don't support cancellation can omit this.

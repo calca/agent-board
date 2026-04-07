@@ -961,3 +961,89 @@ html, body, #root {
   flex: 1;
 }
 
+/* ── Chat bubbles ─────────────────────────────────────────────────────── */
+.session-chat {
+  padding: 8px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  border-bottom: 1px solid var(--vscode-panel-border);
+  max-height: 240px;
+  overflow-y: auto;
+}
+
+.chat-bubble {
+  display: flex;
+  gap: 6px;
+  align-items: flex-start;
+  max-width: 92%;
+  padding: 6px 10px;
+  border-radius: 8px;
+  font-size: 0.88em;
+  line-height: 1.4;
+  word-break: break-word;
+}
+
+.chat-bubble__icon {
+  flex-shrink: 0;
+  line-height: 1.4;
+}
+
+.chat-bubble__body {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.chat-bubble--user {
+  background: var(--vscode-inputValidation-infoBorder, #007acc);
+  color: var(--vscode-button-foreground, #fff);
+  align-self: flex-end;
+  flex-direction: row-reverse;
+}
+
+.chat-bubble--assistant {
+  background: var(--vscode-editor-inactiveSelectionBackground, rgba(255,255,255,0.07));
+  align-self: flex-start;
+}
+
+.chat-bubble--tool {
+  background: rgba(100, 150, 255, 0.10);
+  border-left: 3px solid var(--vscode-textLink-foreground, #6496ff);
+  font-family: var(--vscode-editor-font-family, monospace);
+  font-size: 0.82em;
+  align-self: flex-start;
+}
+
+/* ── Tool-call status (session panel header + card) ───────────────────── */
+.session-tool-status {
+  font-size: 0.82em;
+  color: var(--vscode-descriptionForeground);
+  padding: 2px 12px 4px;
+  font-style: italic;
+  min-height: 1.2em;
+}
+
+.task-card__tool-status {
+  font-size: 0.78em;
+  color: var(--vscode-descriptionForeground);
+  padding: 2px 6px 4px;
+  font-style: italic;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Role-tinted stream lines */
+.stream-output__line--user {
+  background: rgba(0, 120, 212, 0.08);
+  border-left: 3px solid var(--vscode-inputValidation-infoBorder, #007acc);
+  padding-left: 6px;
+}
+
+.stream-output__line--tool {
+  background: rgba(100, 150, 255, 0.07);
+  border-left: 3px solid var(--vscode-textLink-foreground, #6496ff);
+  padding-left: 6px;
+  font-style: italic;
+}
+

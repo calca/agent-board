@@ -40,6 +40,10 @@ export class CopilotLauncher {
   /** Fires whenever a DiffWatcher reports changed files for any session. */
   readonly onDidChangeDiff = this._onDidChangeDiff.event;
 
+  private readonly _onDidToolCall = new vscode.EventEmitter<{ sessionId: string; status: string }>();
+  /** Fires whenever a tool call is in progress for any session. */
+  readonly onDidToolCall = this._onDidToolCall.event;
+
   constructor(
     private readonly registry: ProviderRegistry,
     private readonly context: vscode.ExtensionContext,
@@ -65,6 +69,20 @@ export class CopilotLauncher {
       provider.cancel();
       this.logger.info(`CopilotLauncher: cancelled session for task ${taskId}`);
     }
+  }
+
+  /**
+   * Send a follow-up message to the active provider for a task.
+   * Only works when the provider supports `sendFollowUp` (e.g. copilot-lm).
+   */
+  async sendFollowUp(taskId: string, text: string): Promise<void> {
+    const provider = this.activeProviders.get(taskId);
+    if (!provider?.sendFollowUp) {
+      // Provider not running or doesn't support multi-turn — fall back quietly
+      this.logger.warn(`CopilotLauncher: sendFollowUp not available for task ${taskId}`);
+      return;
+    }
+    await provider.sendFollowUp(text);
   }
 
   /** Update the cached list of discovered agents. */
@@ -114,6 +132,8 @@ export class CopilotLauncher {
     const stream = this.streamRegistry.getOrCreate(taskId);
     // Wire provider streaming → StreamController so output flows to the webview
     const streamSub = provider.onDidStream?.((text: string) => stream.append(text));
+    // Wire tool-call events → onDidToolCall aggregate event
+    const toolCallSub = provider.onDidToolCall?.(status => this._onDidToolCall.fire({ sessionId: taskId, status }));
 
     const watchRoot = worktree?.path ?? vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
     let dwSub: vscode.Disposable | undefined;
@@ -132,6 +152,7 @@ export class CopilotLauncher {
       sessionSucceeded = true;
     } finally {
       streamSub?.dispose();
+      toolCallSub?.dispose();
       dwSub?.dispose();
       this.activeProviders.delete(taskId);
 
