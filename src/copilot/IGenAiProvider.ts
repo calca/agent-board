@@ -1,4 +1,4 @@
-import { KanbanTask, CopilotSessionInfo } from '../types/KanbanTask';
+import { CopilotSessionInfo, KanbanTask } from '../types/KanbanTask';
 
 /**
  * Scope of a GenAI provider.
