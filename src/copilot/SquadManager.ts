@@ -263,6 +263,15 @@ export class SquadManager {
     }
   }
 
+  /**
+   * Restore a session that was interrupted by a VS Code restart.
+   * The card will show the `interrupted` state without re-launching.
+   */
+  restoreInterruptedSession(taskId: string, info: CopilotSessionInfo): void {
+    this.activeSessions.set(taskId, info);
+    this.fireStatusChange();
+  }
+
   dispose(): void {
     if (this.autoSquadTimer) {
       clearInterval(this.autoSquadTimer);

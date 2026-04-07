@@ -68,7 +68,11 @@ export function activate(context: vscode.ExtensionContext): void {
 
   // ── Copilot infrastructure ─────────────────────────────────────────────
 
-  const copilotLauncher = new CopilotLauncher(providerRegistry, context, genAiRegistry, [], ghIssueManager);
+  // SessionStateManager is created first so it can be passed to CopilotLauncher
+  // and restore interrupted sessions before the kanban panel opens.
+  const sessionStateManager = new SessionStateManager(context);
+
+  const copilotLauncher = new CopilotLauncher(providerRegistry, context, genAiRegistry, [], ghIssueManager, sessionStateManager);
   const modelSelector = new ModelSelector(context, genAiRegistry);
   const squadManager = new SquadManager(
     providerRegistry,
@@ -77,15 +81,23 @@ export function activate(context: vscode.ExtensionContext): void {
     genAiRegistry,
   );
 
-  // ── Session state manager ──────────────────────────────────────────────
-
-  const sessionStateManager = new SessionStateManager(context);
-
   // Wire session state changes → refresh overview + kanban
   sessionStateManager.onDidChangeState(({ taskId, state }) => {
     logger.info('SessionState changed: %s → %s', taskId, state);
     overviewProvider.refresh();
   });
+
+  // Restore any sessions that were interrupted when VS Code was last closed.
+  // Inject them into SquadManager so they appear on the kanban board.
+  for (const s of sessionStateManager.getInterruptedSessions()) {
+    squadManager.restoreInterruptedSession(s.taskId, {
+      state: 'interrupted',
+      providerId: s.providerId,
+      startedAt: s.startedAt,
+      finishedAt: s.finishedAt,
+    });
+    logger.info('Restored interrupted session for task %s', s.taskId);
+  }
 
   // ── Agent discovery ────────────────────────────────────────────────────
 
@@ -507,10 +519,16 @@ export function activate(context: vscode.ExtensionContext): void {
           break;
         }
         case 'requestStreamResume': {
-          // Replay the accumulated log buffer so the webview can restore the session panel
+          // Replay the accumulated log buffer so the webview can restore the session panel.
+          // Falls back to the on-disk log if the session was interrupted during a restart.
           const stream = copilotLauncher.getStreamRegistry().get(msg.sessionId);
           if (stream) {
             panel.postMessage({ type: 'streamResume', sessionId: msg.sessionId, log: stream.exportLog() });
+          } else {
+            const persistedLog = copilotLauncher.readPersistedLog(msg.sessionId);
+            if (persistedLog) {
+              panel.postMessage({ type: 'streamResume', sessionId: msg.sessionId, log: persistedLog });
+            }
           }
           break;
         }

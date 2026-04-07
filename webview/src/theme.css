@@ -325,6 +325,21 @@ html, body, #root {
   color: var(--vscode-button-foreground, #fff);
 }
 
+.task-card__session--interrupted {
+  background: var(--vscode-charts-orange, #d18616);
+  color: var(--vscode-button-foreground, #fff);
+}
+
+/* ── Interrupted-session banner inside the session panel ───────────── */
+.session-interrupted-banner {
+  background: rgba(209, 134, 22, 0.15);
+  border-left: 3px solid var(--vscode-charts-orange, #d18616);
+  color: var(--vscode-charts-orange, #d18616);
+  font-size: 0.85em;
+  padding: 6px 12px;
+  flex-shrink: 0;
+}
+
 /* legacy aliases kept for safety */
 .task-card__session--completed { background: var(--vscode-terminal-ansiGreen, #16825d); color: var(--vscode-button-foreground, #fff); }
 .task-card__session--failed    { background: var(--vscode-errorForeground, #f44747);    color: var(--vscode-button-foreground, #fff); }

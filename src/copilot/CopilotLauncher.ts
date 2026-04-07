@@ -1,3 +1,5 @@
+import * as fs from 'fs';
+import * as path from 'path';
 import * as vscode from 'vscode';
 import { ProjectConfig } from '../config/ProjectConfig';
 import { DiffWatcher } from '../diff/DiffWatcher';
@@ -10,6 +12,7 @@ import { Logger } from '../utils/logger';
 import { AgentInfo, readAgentInstructions } from './agentDiscovery';
 import { ContextBuilder } from './ContextBuilder';
 import { GenAiProviderRegistry } from './GenAiProviderRegistry';
+import { SessionStateManager } from './SessionStateManager';
 import { createWorktree, removeWorktree, WorktreeInfo } from './WorktreeManager';
 
 /**
@@ -50,7 +53,27 @@ export class CopilotLauncher {
     private readonly genAiRegistry: GenAiProviderRegistry,
     private agents: AgentInfo[] = [],
     private readonly ghIssueManager?: GitHubIssueManager,
+    private sessionStateManager?: SessionStateManager,
   ) {}
+
+  /** Inject (or replace) the SessionStateManager after construction. */
+  setSessionStateManager(mgr: SessionStateManager): void {
+    this.sessionStateManager = mgr;
+  }
+
+  /**
+   * Read the persisted log file for a session, if it exists.
+   * Returns `undefined` if no log file was recorded or the file was deleted.
+   */
+  readPersistedLog(sessionId: string): string | undefined {
+    const logPath = this.sessionStateManager?.getSession(sessionId)?.logPath;
+    if (!logPath) { return undefined; }
+    try {
+      return fs.readFileSync(logPath, 'utf-8');
+    } catch {
+      return undefined;
+    }
+  }
 
   /** The shared stream registry (used by KanbanPanel for real-time output). */
   getStreamRegistry(): StreamRegistry {
@@ -113,6 +136,12 @@ export class CopilotLauncher {
 
     let prompt = ContextBuilder.build(task);
 
+    // ── Compute log path for persistence ─────────────────────────────
+    const logPath = this.computeLogPath(taskId);
+
+    // ── Register session in SessionStateManager ───────────────────────
+    this.sessionStateManager?.startSession(taskId, providerId, worktree?.path, logPath);
+
     // ── Agent instructions ────────────────────────────────────────────
     if (agentSlug) {
       const agentInfo = this.agents.find(a => a.slug === agentSlug);
@@ -145,6 +174,7 @@ export class CopilotLauncher {
       void dw.refresh();
     }
 
+    this.sessionStateManager?.markRunning(taskId);
     this.activeProviders.set(taskId, provider);
     let sessionSucceeded = false;
     try {
@@ -155,6 +185,16 @@ export class CopilotLauncher {
       toolCallSub?.dispose();
       dwSub?.dispose();
       this.activeProviders.delete(taskId);
+
+      // ── Flush stream log to disk for restart recovery ─────────────
+      this.flushLogToDisk(taskId, logPath);
+
+      // ── Update session state ──────────────────────────────────────
+      if (sessionSucceeded) {
+        this.sessionStateManager?.markDone(taskId);
+      } else {
+        this.sessionStateManager?.markError(taskId);
+      }
 
       // ── Post agent-summary comment on GitHub issue (3.3) ─────────
       if (sessionSucceeded && this.ghIssueManager) {
@@ -283,5 +323,35 @@ export class CopilotLauncher {
     }
     const tasks = await provider.getTasks();
     return tasks.find(t => t.id === taskId);
+  }
+
+  // ── Log persistence ─────────────────────────────────────────────────
+
+  /**
+   * Compute the path where the stream log for a session will be stored.
+   * Returns `undefined` if `context.storageUri` is not available.
+   */
+  private computeLogPath(taskId: string): string | undefined {
+    const storageUri = this.context.storageUri;
+    if (!storageUri) { return undefined; }
+    const safeId = taskId.replace(/[^a-zA-Z0-9_-]/g, '_');
+    return path.join(storageUri.fsPath, 'logs', `${safeId}.log`);
+  }
+
+  /**
+   * Write the current in-memory stream buffer to `logPath`.
+   * Called in the `finally` block of `launch()`.
+   */
+  private flushLogToDisk(taskId: string, logPath: string | undefined): void {
+    if (!logPath) { return; }
+    try {
+      const content = this.streamRegistry.get(taskId)?.exportLog();
+      if (!content) { return; }
+      fs.mkdirSync(path.dirname(logPath), { recursive: true });
+      fs.writeFileSync(logPath, content, 'utf-8');
+      this.logger.info(`CopilotLauncher: log saved to ${logPath}`);
+    } catch (err) {
+      this.logger.warn('CopilotLauncher: failed to flush log:', formatError(err));
+    }
   }
 }

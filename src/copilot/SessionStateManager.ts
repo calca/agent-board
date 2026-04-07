@@ -55,17 +55,26 @@ export class SessionStateManager {
   // ── Public API ──────────────────────────────────────────────────────
 
   /** Register a new session in `starting` state. */
-  startSession(taskId: string, providerId: string, worktreePath?: string): void {
+  startSession(taskId: string, providerId: string, worktreePath?: string, logPath?: string): void {
     const session: PersistedSession = {
       taskId,
       state: 'starting',
       providerId,
       worktreePath,
+      logPath,
       startedAt: new Date().toISOString(),
     };
     this.sessions.set(taskId, session);
     this.persist();
     this.fireChange(taskId, 'starting', 'idle');
+  }
+
+  /** Update the log file path for an existing session. */
+  setLogPath(taskId: string, logPath: string): void {
+    const session = this.sessions.get(taskId);
+    if (!session) { return; }
+    session.logPath = logPath;
+    this.persist();
   }
 
   /** Transition a session to `running` and arm the timeout. */
@@ -135,11 +144,16 @@ export class SessionStateManager {
     return this.sessions.get(taskId);
   }
 
-  /** Get all active sessions (not done/error). */
+  /** Get all active sessions (not done/error/interrupted). */
   getActiveSessions(): PersistedSession[] {
     return [...this.sessions.values()].filter(
       s => s.state === 'starting' || s.state === 'running' || s.state === 'paused',
     );
+  }
+
+  /** Get sessions that were interrupted by a VS Code restart. */
+  getInterruptedSessions(): PersistedSession[] {
+    return [...this.sessions.values()].filter(s => s.state === 'interrupted');
   }
 
   /** Get all sessions (including completed/errored). */
@@ -177,9 +191,9 @@ export class SessionStateManager {
     const saved = this.context.workspaceState.get<PersistedSession[]>(STATE_KEY, []);
     const fixed = fixInterruptedSessions(saved);
     for (const s of fixed) {
-      if (s.state === 'error' && saved.find(o => o.taskId === s.taskId)?.state !== 'error') {
+      if (s.state === 'interrupted' && saved.find(o => o.taskId === s.taskId)?.state !== 'interrupted') {
         this.logger.warn(
-          'SessionStateManager: session "%s" was interrupted — marking as error',
+          'SessionStateManager: session "%s" was interrupted — restoring with interrupted state',
           s.taskId,
         );
       }

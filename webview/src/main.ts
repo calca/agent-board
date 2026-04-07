@@ -429,12 +429,13 @@ function renderCard(task: KanbanTask): string {
     : '';
   const session = task.copilotSession;
   const SESSION_BADGES: Record<string, { icon: string; label: string }> = {
-    idle:     { icon: '⏸', label: 'Idle' },
-    starting: { icon: '▶', label: 'Starting' },
-    running:  { icon: '⟳', label: 'Running' },
-    paused:   { icon: '⏸', label: 'Paused' },
-    done:     { icon: '✓', label: 'Done' },
-    error:    { icon: '✗', label: 'Error' },
+    idle:        { icon: '○', label: 'Idle' },
+    starting:    { icon: '⟳', label: 'Starting' },
+    running:     { icon: '▶', label: 'Running' },
+    paused:      { icon: '⏸', label: 'Paused' },
+    done:        { icon: '✓', label: 'Done' },
+    error:       { icon: '✗', label: 'Error' },
+    interrupted: { icon: '⚡', label: 'Interrotto' },
   };
   const sessionBadge = session
     ? (() => {
@@ -688,6 +689,7 @@ function renderSessionPanel(): string {
   const task = currentTasks.find(t => t.id === sessionPanelTaskId);
   const title = task ? escapeHtml(task.title) : sessionPanelTaskId ?? '';
   const isRunning = task?.copilotSession?.state === 'running' || task?.copilotSession?.state === 'starting';
+  const isInterrupted = task?.copilotSession?.state === 'interrupted';
   const statusIcons: Record<string, string> = { added: '＋', modified: '✎', deleted: '✕' };
   // Reset fence parser state on full render
   _fenceMode = 'none';
@@ -715,6 +717,7 @@ function renderSessionPanel(): string {
           <button class="session-panel__close" id="session-panel-close">✕</button>
         </div>
       </div>
+      ${isInterrupted ? `<div class="session-interrupted-banner">⚡ Sessione interrotta al riavvio di VS Code. Il log precedente è mostrato sotto (sola lettura).</div>` : ''}
       ${isRunning ? `<div id="tool-status-${sessionPanelTaskId}" class="session-tool-status"></div>` : ''}
       <div class="session-panel__body">
         ${sessionChatMessages.length > 0 ? `<div class="session-chat" id="session-chat">${chatHtml}</div>` : ''}
@@ -734,8 +737,10 @@ function renderSessionPanel(): string {
         </div>
       </div>
       <form class="session-panel__follow-up" id="session-follow-up-form">
-        <input class="task-form__input" id="session-follow-up-input" type="text" placeholder="Invia messaggio all'agente…" />
-        <button type="submit" class="toolbar__btn toolbar__btn--primary">Invia</button>
+        <input class="task-form__input" id="session-follow-up-input" type="text"
+          placeholder="${isInterrupted ? 'Sessione interrotta — riavvia per inviare messaggi' : 'Invia messaggio all\'agente…'}"
+          ${isInterrupted ? 'disabled' : ''} />
+        <button type="submit" class="toolbar__btn toolbar__btn--primary" ${isInterrupted ? 'disabled' : ''}>Invia</button>
       </form>
     </div>
   `;
