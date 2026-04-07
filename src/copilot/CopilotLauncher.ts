@@ -222,9 +222,11 @@ export class CopilotLauncher {
         }
       }
 
-      // Cleanup worktree after session (optionally ask for confirmation)
+      // Worktree cleanup is disabled by default: the worktree is kept so the
+      // next session can reuse the same branch and working directory.
+      // Set `worktree.confirmCleanup: true` in config to re-enable cleanup.
       if (worktree) {
-        await this.tryCleanupWorktree(taskId, worktree.path);
+        this.logger.info(`CopilotLauncher: worktree kept for reuse at ${worktree.path}`);
       }
       // Cleanup diff watcher (stream kept until explicit removal)
       const dw = this.diffWatchers.get(taskId);
@@ -277,11 +279,6 @@ export class CopilotLauncher {
   }
 
   private isWorktreeEnabled(providerId?: string): boolean {
-    // Copilot CLI must always run in a dedicated worktree.
-    if (providerId === 'copilot-cli') {
-      return true;
-    }
-
     const projectCfg = ProjectConfig.getProjectConfig();
     const fileValue = projectCfg?.worktree?.enabled;
     if (fileValue !== undefined) {
