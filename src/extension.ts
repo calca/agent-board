@@ -272,19 +272,11 @@ export function activate(context: vscode.ExtensionContext): void {
     });
     panel.onDispose(() => streamSub.dispose());
 
-    // Forward DiffWatcher file-change events → webview (poll all active watchers)
-    const diffPollSub = squadManager.onDidChangeStatus(() => {
-      for (const sid of copilotLauncher.getStreamRegistry().sessionIds) {
-        const dw = copilotLauncher.getDiffWatcher(sid);
-        if (dw) {
-          const files = dw.getChanges();
-          if (files.length > 0) {
-            panel.updateFileChanges(sid, files);
-          }
-        }
-      }
+    // Forward DiffWatcher file-change events → webview (live, via onDidChangeDiff)
+    const diffSub = copilotLauncher.onDidChangeDiff(({ sessionId, files }) => {
+      panel.updateFileChanges(sessionId, files);
     });
-    panel.onDispose(() => diffPollSub.dispose());
+    panel.onDispose(() => diffSub.dispose());
 
     // Wire WebView messages
     panel.onMessage(async (msg) => {
@@ -420,19 +412,19 @@ export function activate(context: vscode.ExtensionContext): void {
           break;
         }
         case 'openDiff': {
-          // Open diff editor for a single file via any active DiffWatcher
-          const streamReg = copilotLauncher.getStreamRegistry();
-          for (const sid of streamReg.sessionIds) {
-            const dw = copilotLauncher.getDiffWatcher(sid);
-            if (dw) {
-              await dw.openDiff(msg.filePath);
-              break;
-            }
+          const dw = copilotLauncher.getDiffWatcher(msg.sessionId);
+          if (dw) {
+            await dw.openDiff(msg.filePath);
           }
           break;
         }
         case 'openFullDiff': {
-          await vscode.commands.executeCommand('workbench.view.scm');
+          const dw = copilotLauncher.getDiffWatcher(msg.sessionId);
+          if (dw) {
+            await dw.openFullDiff(dw.getChanges());
+          } else {
+            await vscode.commands.executeCommand('workbench.view.scm');
+          }
           break;
         }
         case 'openTerminalInWorktree': {

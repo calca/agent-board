@@ -1,4 +1,5 @@
 import { exec } from 'child_process';
+import * as path from 'path';
 import * as vscode from 'vscode';
 import { Logger } from '../utils/logger';
 
@@ -52,17 +53,56 @@ export class DiffWatcher implements vscode.Disposable {
     return this.latestChanges;
   }
 
-  /** Open the VS Code diff editor for a single file. */
+  /** Open the VS Code diff editor for a single file (HEAD vs working tree). */
   async openDiff(filePath: string): Promise<void> {
-    const leftUri = vscode.Uri.parse(`git:${filePath}`);
-    const rightUri = vscode.Uri.file(`${this.rootPath}/${filePath}`);
-    const title = `${filePath} (Working Tree)`;
-    await vscode.commands.executeCommand('vscode.diff', leftUri, rightUri, title);
+    const absPath = path.join(this.rootPath, filePath);
+    // Build the git HEAD URI using VS Code's built-in git extension URI scheme
+    const headUri = vscode.Uri.file(absPath).with({
+      scheme: 'git',
+      query: JSON.stringify({ path: absPath, ref: 'HEAD' }),
+    });
+    const workingUri = vscode.Uri.file(absPath);
+    await vscode.commands.executeCommand('vscode.diff', headUri, workingUri, `${filePath} (HEAD ↔ Working)`);
   }
 
-  /** Open the VS Code SCM diff view showing all changes. */
-  async openFullDiff(): Promise<void> {
-    await vscode.commands.executeCommand('workbench.view.scm');
+  /**
+   * Open a multi-file diff showing all changed files vs HEAD.
+   * Uses `vscode.changes` (VS Code 1.87+); falls back to SCM view otherwise.
+   */
+  async openFullDiff(files: FileChange[]): Promise<void> {
+    if (files.length === 0) {
+      await vscode.commands.executeCommand('workbench.view.scm');
+      return;
+    }
+    const resources = files
+      .filter(f => f.status !== 'deleted')
+      .map(f => {
+        const absPath = path.join(this.rootPath, f.path);
+        const headUri = vscode.Uri.file(absPath).with({
+          scheme: 'git',
+          query: JSON.stringify({ path: absPath, ref: 'HEAD' }),
+        });
+        return [headUri, vscode.Uri.file(absPath), f.path] as [vscode.Uri, vscode.Uri, string];
+      });
+    // Deleted files: HEAD → empty
+    for (const f of files.filter(d => d.status === 'deleted')) {
+      const absPath = path.join(this.rootPath, f.path);
+      const headUri = vscode.Uri.file(absPath).with({
+        scheme: 'git',
+        query: JSON.stringify({ path: absPath, ref: 'HEAD' }),
+      });
+      const emptyUri = vscode.Uri.file(absPath).with({
+        scheme: 'git',
+        query: JSON.stringify({ path: absPath, ref: '' }),
+      });
+      resources.push([headUri, emptyUri, f.path]);
+    }
+    try {
+      await vscode.commands.executeCommand('vscode.changes', 'Worktree Diff', resources);
+    } catch {
+      // Fallback for VS Code < 1.87
+      await vscode.commands.executeCommand('workbench.view.scm');
+    }
   }
 
   dispose(): void {

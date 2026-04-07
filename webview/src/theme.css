@@ -329,6 +329,21 @@ html, body, #root {
 .task-card__session--completed { background: var(--vscode-terminal-ansiGreen, #16825d); color: var(--vscode-button-foreground, #fff); }
 .task-card__session--failed    { background: var(--vscode-errorForeground, #f44747);    color: var(--vscode-button-foreground, #fff); }
 
+/* Orange dot badge — number of files modified by the agent */
+.task-card__diff-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  background: #d97706;
+  color: #fff;
+  border-radius: 10px;
+  padding: 1px 6px;
+  font-size: 0.72em;
+  font-weight: 600;
+  line-height: 1.4;
+  margin-left: 4px;
+}
+
 @keyframes pulse {
   0%, 100% { opacity: 1; }
   50% { opacity: 0.5; }

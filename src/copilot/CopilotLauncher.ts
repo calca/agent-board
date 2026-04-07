@@ -32,6 +32,13 @@ export class CopilotLauncher {
   /** Tracks the provider currently running for a given taskId (for cancellation). */
   private readonly activeProviders = new Map<string, import('./IGenAiProvider').IGenAiProvider>();
 
+  private readonly _onDidChangeDiff = new vscode.EventEmitter<{
+    sessionId: string;
+    files: import('../diff/DiffWatcher').FileChange[];
+  }>();
+  /** Fires whenever a DiffWatcher reports changed files for any session. */
+  readonly onDidChangeDiff = this._onDidChangeDiff.event;
+
   constructor(
     private readonly registry: ProviderRegistry,
     private readonly context: vscode.ExtensionContext,
@@ -104,12 +111,16 @@ export class CopilotLauncher {
     // ── Stream + DiffWatcher ──────────────────────────────────────────
     const stream = this.streamRegistry.getOrCreate(taskId);
     // Wire provider streaming → StreamController so output flows to the webview
-    const streamSub = provider.onDidStream?.(text => stream.append(text));
+    const streamSub = provider.onDidStream?.((text: string) => stream.append(text));
 
     const watchRoot = worktree?.path ?? vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
+    let dwSub: vscode.Disposable | undefined;
     if (watchRoot) {
       const dw = new DiffWatcher(watchRoot);
       this.diffWatchers.set(taskId, dw);
+      dwSub = dw.onDidChange(files => this._onDidChangeDiff.fire({ sessionId: taskId, files }));
+      // Emit initial state
+      void dw.refresh();
     }
 
     this.activeProviders.set(taskId, provider);
@@ -117,6 +128,7 @@ export class CopilotLauncher {
       await provider.run(prompt, task, worktree?.path);
     } finally {
       streamSub?.dispose();
+      dwSub?.dispose();
       this.activeProviders.delete(taskId);
       // Cleanup worktree after session (optionally ask for confirmation)
       if (worktree) {

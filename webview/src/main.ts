@@ -68,6 +68,8 @@ let repoIsGit = true;
 let repoIsGitHub = true;
 /** When true, auto-scroll to bottom on new output. Disabled when user scrolls up. */
 let streamAutoScroll = true;
+/** Per-session file change lists (all sessions, not just the open panel). */
+const fileChangeLists = new Map<string, FileChangeInfo[]>();
 
 // ── Render ─────────────────────────────────────────────────────────────
 
@@ -232,7 +234,7 @@ function render(): void {
     if (selectedTask) {
       sessionPanelTaskId = selectedTask.id;
       sessionStreamLines = [];
-      sessionFileChanges = [];
+      sessionFileChanges = fileChangeLists.get(selectedTask.id) ?? [];
       selectedTask = null;
       render();
       // Request accumulated log replay from the host
@@ -247,8 +249,7 @@ function render(): void {
     sessionFileChanges = [];
     streamAutoScroll = true;
     render();
-  });
-  // Auto-scroll override: if user scrolls up, disable; if they reach the bottom, re-enable
+  });  // Auto-scroll override: if user scrolls up, disable; if they reach the bottom, re-enable
   const scrollEl = document.getElementById('session-stream-scroll');
   if (scrollEl) {
     scrollEl.addEventListener('scroll', () => {
@@ -267,7 +268,9 @@ function render(): void {
     }
   });
   document.getElementById('session-btn-full-diff')?.addEventListener('click', () => {
-    vscode.postMessage({ type: 'openFullDiff' });
+    if (sessionPanelTaskId) {
+      vscode.postMessage({ type: 'openFullDiff', sessionId: sessionPanelTaskId });
+    }
   });
   document.getElementById('session-btn-export')?.addEventListener('click', () => {
     if (sessionPanelTaskId) {
@@ -287,8 +290,8 @@ function render(): void {
   document.querySelectorAll('.stream-file-link').forEach(link => {
     link.addEventListener('click', () => {
       const filePath = (link as HTMLElement).dataset.filePath;
-      if (filePath) {
-        vscode.postMessage({ type: 'openDiff', filePath });
+      if (filePath && sessionPanelTaskId) {
+        vscode.postMessage({ type: 'openDiff', sessionId: sessionPanelTaskId, filePath });
       }
     });
   });
@@ -303,8 +306,8 @@ function render(): void {
   document.querySelectorAll('.session-file-item').forEach(item => {
     item.addEventListener('click', () => {
       const filePath = (item as HTMLElement).dataset.filePath;
-      if (filePath) {
-        vscode.postMessage({ type: 'openDiff', filePath });
+      if (filePath && sessionPanelTaskId) {
+        vscode.postMessage({ type: 'openDiff', sessionId: sessionPanelTaskId, filePath });
       }
     });
   });
@@ -422,6 +425,10 @@ function renderCard(task: KanbanTask): string {
   const agentBadge = task.agent
     ? `<span class="task-card__agent" title="Agent: ${escapeHtml(task.agent)}">🤖 ${escapeHtml(task.agent)}</span>`
     : '';
+  const diffFiles = fileChangeLists.get(task.id);
+  const diffBadge = diffFiles && diffFiles.length > 0
+    ? `<span class="task-card__diff-badge" title="${diffFiles.length} file${diffFiles.length === 1 ? '' : 's'} changed">●&thinsp;${diffFiles.length}</span>`
+    : '';
   return `
     <div class="task-card${isActive ? ' task-card--running' : ''}" data-task-id="${escapeHtml(task.id)}">
       <div class="task-card__title">${escapeHtml(task.title)}</div>
@@ -430,6 +437,7 @@ function renderCard(task: KanbanTask): string {
         ${task.labels.map(l => `<span class="task-card__label">${escapeHtml(l)}</span>`).join('')}
         ${initials ? `<span class="task-card__assignee">${initials}</span>` : ''}
         <span class="task-card__provider">${escapeHtml(task.providerId)}</span>
+        ${diffBadge}
       </div>
       ${agentBadge ? `<div class="task-card__footer">${agentBadge}</div>` : ''}
     </div>
@@ -755,10 +763,11 @@ window.addEventListener('message', (event: MessageEvent) => {
       }
       break;
     case 'fileChanges':
+      fileChangeLists.set(msg.sessionId, msg.files ?? []);
       if (sessionPanelTaskId === msg.sessionId) {
         sessionFileChanges = msg.files ?? [];
-        render();
       }
+      render();
       break;
     case 'streamResume':
       if (sessionPanelTaskId === msg.sessionId) {

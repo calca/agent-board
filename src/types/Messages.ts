@@ -82,8 +82,8 @@ export type WebViewToHost =
   | { type: 'startSquad'; agentSlug?: string; genAiProviderId?: string }
   | { type: 'toggleAutoSquad'; agentSlug?: string; genAiProviderId?: string }
   | { type: 'toggleMcp' }
-  | { type: 'openDiff'; filePath: string }
-  | { type: 'openFullDiff' }
+  | { type: 'openDiff'; sessionId: string; filePath: string }
+  | { type: 'openFullDiff'; sessionId: string }
   | { type: 'openTerminalInWorktree'; sessionId: string }
   | { type: 'exportLog'; sessionId: string }
   | { type: 'requestStreamResume'; sessionId: string }
