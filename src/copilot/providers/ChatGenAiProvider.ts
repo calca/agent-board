@@ -20,6 +20,12 @@ export class ChatGenAiProvider implements IGenAiProvider {
   readonly displayName = 'Chat';
   readonly icon = 'comment-discussion';
   readonly scope: GenAiProviderScope = 'global';
+  /**
+   * Chat is interactive — the human drives progression after launch.
+   * SquadManager will move the task to inprogress but won't auto-advance
+   * it to done/failed when run() returns.
+   */
+  readonly disableAutoAdvance = true;
 
   private agentTools: AgentTools | undefined;
 

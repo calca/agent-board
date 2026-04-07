@@ -67,6 +67,7 @@ export function activate(context: vscode.ExtensionContext): void {
     providerRegistry,
     copilotLauncher,
     () => modelSelector.getProviderId(),
+    genAiRegistry,
   );
 
   // ── Session state manager ──────────────────────────────────────────────
@@ -721,7 +722,7 @@ async function buildGenAiOptions(registry: GenAiProviderRegistry): Promise<GenAi
       icon: p.icon,
     };
 
-    if (!isGit && (p.id === 'copilot-cli' || p.id === 'cloud')) {
+    if (!isGit && (p.id === 'copilot-cli' || p.id === 'cloud' || p.id === 'copilot-lm')) {
       option.disabled = true;
       option.disabledReason = 'Requires a git repository';
     } else if (!isGitHub && p.id === 'cloud') {

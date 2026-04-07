@@ -55,7 +55,7 @@ export class OverviewTreeProvider implements vscode.TreeDataProvider<OverviewIte
 
     // ── Open Kanban (first!) ──────────────────────────────────────────
     items.push(new OverviewItem(
-      '$(layout)  Open Kanban Board',
+      'Open Kanban Board',
       '',
       new vscode.ThemeIcon('layout', new vscode.ThemeColor('terminal.ansiCyan')),
       { command: 'agentBoard.openKanban', title: 'Open Kanban Board' },
@@ -63,7 +63,7 @@ export class OverviewTreeProvider implements vscode.TreeDataProvider<OverviewIte
 
     // ── Separator ─────────────────────────────────────────────────────
     items.push(new OverviewItem(
-      '$(dash)  Tasks',
+      'Tasks',
       `${allTasks.length} total`,
       new vscode.ThemeIcon('pulse', new vscode.ThemeColor('foreground')),
     ));

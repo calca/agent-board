@@ -50,6 +50,18 @@ export interface IGenAiProvider {
    */
   readonly supportsWorktree?: boolean;
 
+  /**
+   * When `true`, the SquadManager will NOT automatically advance the
+   * task to the done/failed column after `run()` returns.
+   *
+   * Use this for interactive providers (e.g. `chat`) where the user
+   * controls when the task progresses — the task is moved to `inprogress`
+   * on launch but subsequent column transitions are left to the human.
+   *
+   * Defaults to `false` when not set.
+   */
+  readonly disableAutoAdvance?: boolean;
+
   /** Check whether the provider can be used in the current environment. */
   isAvailable(): Promise<boolean>;
   /** Execute the provider with the given prompt (and optional task for context). */

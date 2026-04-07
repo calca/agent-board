@@ -42,6 +42,8 @@ export interface KanbanTask {
   providerId: string;
   createdAt?: Date;
   meta: Record<string, unknown>;
+  /** Slug of the agent used to launch the last session, if any. */
+  agent?: string;
   /** Copilot session info, present when a copilot session is attached. */
   copilotSession?: CopilotSessionInfo;
 }

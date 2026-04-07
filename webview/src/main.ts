@@ -19,6 +19,7 @@ interface KanbanTask {
   assignee?: string;
   url?: string;
   providerId: string;
+  agent?: string;
   copilotSession?: {
     state: string;
     providerId?: string;
@@ -100,8 +101,8 @@ function render(): void {
             <option value="">Agent: any</option>
             ${availableAgents.map(a => `<option value="${escapeHtml(a.slug)}"${a.slug === selectedAgentSlug ? ' selected' : ''}>${escapeHtml(a.displayName)}</option>`).join('')}
           </select>
-          <button class="toolbar__btn toolbar__btn--primary" id="btn-start-squad" ${squadStatus.activeCount >= squadStatus.maxSessions ? 'disabled' : ''} title="Start Squad">▶ Start</button>
-          <button class="toolbar__btn toolbar__btn--toggle${squadStatus.autoSquadEnabled ? ' toolbar__btn--on' : ''}" id="btn-toggle-auto" title="Toggle Auto‑Squad">⟳ Auto</button>
+          <button class="toolbar__btn toolbar__btn--primary" id="btn-start-squad" ${!repoIsGit || squadStatus.activeCount >= squadStatus.maxSessions ? 'disabled' : ''} title="Start Squad">▶ Start</button>
+          <button class="toolbar__btn toolbar__btn--toggle${squadStatus.autoSquadEnabled ? ' toolbar__btn--on' : ''}" id="btn-toggle-auto" ${!repoIsGit ? 'disabled' : ''} title="Toggle Auto‑Squad">⟳ Auto</button>
           ${squadStatus.activeCount > 0 ? `<span class="toolbar__badge toolbar__badge--live">${squadStatus.activeCount}/${squadStatus.maxSessions}</span>` : ''}
         </div>
 
@@ -346,6 +347,9 @@ function renderCard(task: KanbanTask): string {
   const sessionBadge = session
     ? `<span class="task-card__session task-card__session--${session.state}" title="Session: ${session.state}">${session.state === 'running' ? '⟳' : session.state === 'completed' ? '✓' : '✗'}</span>`
     : '';
+  const agentBadge = task.agent
+    ? `<span class="task-card__agent" title="Agent: ${escapeHtml(task.agent)}">🤖 ${escapeHtml(task.agent)}</span>`
+    : '';
   return `
     <div class="task-card${session?.state === 'running' ? ' task-card--running' : ''}" data-task-id="${escapeHtml(task.id)}">
       <div class="task-card__title">${escapeHtml(task.title)}</div>
@@ -355,6 +359,7 @@ function renderCard(task: KanbanTask): string {
         ${initials ? `<span class="task-card__assignee">${initials}</span>` : ''}
         <span class="task-card__provider">${escapeHtml(task.providerId)}</span>
       </div>
+      ${agentBadge ? `<div class="task-card__footer">${agentBadge}</div>` : ''}
     </div>
   `;
 }
@@ -480,6 +485,8 @@ function renderRepoBanners(): string {
         <span class="repo-banner__icon">⚠</span>
         <span class="repo-banner__text">
           Questo progetto non è un repository Git.
+          <span class="repo-banner__provider">Squad</span>,
+          <span class="repo-banner__provider">Copilot LM API</span>,
           <span class="repo-banner__provider">Copilot CLI</span> e
           <span class="repo-banner__provider">Cloud</span> sono disabilitati.
         </span>

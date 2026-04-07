@@ -345,6 +345,27 @@ html, body, #root {
   margin-left: auto;
 }
 
+.task-card__footer {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 4px;
+  padding-top: 4px;
+  border-top: 1px solid var(--vscode-panel-border);
+}
+
+.task-card__agent {
+  font-size: 0.7em;
+  opacity: 0.75;
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  color: var(--vscode-descriptionForeground);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 .task-card__assignee {
   width: 20px;
   height: 20px;

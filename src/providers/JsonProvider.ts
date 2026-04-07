@@ -16,6 +16,7 @@ interface JsonTaskEntry {
   assignee?: string;
   url?: string;
   createdAt?: string;
+  agent?: string;
   [key: string]: unknown;
 }
 
@@ -197,6 +198,7 @@ export class JsonProvider implements ITaskProvider {
       labels: entry.labels ?? [],
       assignee: entry.assignee,
       url: entry.url,
+      agent: entry.agent,
       providerId: this.id,
       createdAt: entry.createdAt ? new Date(entry.createdAt) : undefined,
       meta: entry as unknown as Record<string, unknown>,
@@ -212,6 +214,7 @@ export class JsonProvider implements ITaskProvider {
       labels: task.labels,
       assignee: task.assignee,
       url: task.url,
+      agent: task.agent,
       createdAt: task.createdAt?.toISOString(),
     };
   }

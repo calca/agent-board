@@ -6,6 +6,7 @@ import { CopilotSessionInfo, KanbanTask } from '../types/KanbanTask';
 import { SquadStatus } from '../types/Messages';
 import { Logger } from '../utils/logger';
 import { CopilotLauncher } from './CopilotLauncher';
+import { GenAiProviderRegistry } from './GenAiProviderRegistry';
 import {
     SquadConfig,
     canRetry,
@@ -58,6 +59,7 @@ export class SquadManager {
     private readonly providerRegistry: ProviderRegistry,
     private readonly copilotLauncher: CopilotLauncher,
     private readonly genAiProviderId: () => string,
+    private readonly genAiRegistry?: GenAiProviderRegistry,
   ) {}
 
   // ── Public API ──────────────────────────────────────────────────────
@@ -173,6 +175,15 @@ export class SquadManager {
     this.activeSessions.set(taskId, session);
     this.fireStatusChange();
 
+    // Persist the agent slug on the task so the UI can display it
+    if (agentSlug && task.agent !== agentSlug) {
+      try {
+        await taskProvider.updateTask({ ...task, agent: agentSlug });
+      } catch {
+        // non-blocking — the launch proceeds regardless
+      }
+    }
+
     // Move to active column
     await this.moveTask(task, cfg.activeColumn);
 
@@ -188,15 +199,23 @@ export class SquadManager {
     agentSlug: string | undefined,
     cfg: SquadConfig,
   ): void {
+    // Check whether this provider manages its own task progression
+    const provider = this.genAiRegistry?.get(providerId);
+    const autoAdvance = !provider?.disableAutoAdvance;
+
     this.copilotLauncher.launch(taskId, providerId, agentSlug)
       .then(async () => {
-        await this.moveTask(task, cfg.doneColumn);
+        if (autoAdvance) {
+          await this.moveTask(task, cfg.doneColumn);
+        }
         this.completeSession(taskId);
-        this.logger.info('SquadManager: session completed for "%s"', task.title);
+        this.logger.info('SquadManager: session %s for "%s"', autoAdvance ? 'completed' : 'opened', task.title);
       })
       .catch(async () => {
+        if (autoAdvance) {
+          await this.moveTask(task, cfg.sourceColumn);
+        }
         this.failSession(taskId);
-        await this.moveTask(task, cfg.sourceColumn);
         this.logger.error('SquadManager: session failed for "%s"', task.title);
       });
   }
