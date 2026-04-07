@@ -218,6 +218,13 @@ function render(): void {
     }
   });
 
+  // Detail panel — cancel running session
+  document.getElementById('detail-cancel-session')?.addEventListener('click', () => {
+    if (selectedTask) {
+      vscode.postMessage({ type: 'cancelSession', taskId: selectedTask.id });
+    }
+  });
+
   // Detail panel — open session panel (stream + files)
   document.getElementById('detail-open-session-panel')?.addEventListener('click', () => {
     if (selectedTask) {
@@ -383,6 +390,7 @@ function renderDetail(task: KanbanTask): string {
         Session: <strong>${sessionInfo.state}</strong>${sessionInfo.startedAt ? ` — started ${sessionInfo.startedAt}` : ''}
         ${sessionInfo.state === 'running' ? `<button class="task-detail__reopen-btn" id="detail-reopen-session">↗ Open Session</button>` : ''}
         ${sessionInfo.state === 'running' ? `<button class="task-detail__reopen-btn" id="detail-open-session-panel">📊 Session Panel</button>` : ''}
+        ${sessionInfo.state === 'running' ? `<button class="task-detail__reopen-btn task-detail__reopen-btn--stop" id="detail-cancel-session">■ Stop</button>` : ''}
       </div>`
     : '';
   return `

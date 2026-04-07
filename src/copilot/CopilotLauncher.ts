@@ -29,6 +29,8 @@ export class CopilotLauncher {
   private readonly logger = Logger.getInstance();
   private readonly streamRegistry = new StreamRegistry();
   private readonly diffWatchers = new Map<string, DiffWatcher>();
+  /** Tracks the provider currently running for a given taskId (for cancellation). */
+  private readonly activeProviders = new Map<string, import('./IGenAiProvider').IGenAiProvider>();
 
   constructor(
     private readonly registry: ProviderRegistry,
@@ -45,6 +47,15 @@ export class CopilotLauncher {
   /** Get the DiffWatcher for a session, if any. */
   getDiffWatcher(sessionId: string): DiffWatcher | undefined {
     return this.diffWatchers.get(sessionId);
+  }
+
+  /** Cancel the running provider for a task, if any. */
+  cancelSession(taskId: string): void {
+    const provider = this.activeProviders.get(taskId);
+    if (provider?.cancel) {
+      provider.cancel();
+      this.logger.info(`CopilotLauncher: cancelled session for task ${taskId}`);
+    }
   }
 
   /** Update the cached list of discovered agents. */
@@ -98,9 +109,11 @@ export class CopilotLauncher {
       this.diffWatchers.set(taskId, dw);
     }
 
+    this.activeProviders.set(taskId, provider);
     try {
-      await provider.run(prompt, task);
+      await provider.run(prompt, task, worktree?.path);
     } finally {
+      this.activeProviders.delete(taskId);
       // Auto-cleanup worktree after session completes or fails
       if (worktree) {
         await this.tryRemoveWorktree(taskId);

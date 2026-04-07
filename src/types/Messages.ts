@@ -69,6 +69,7 @@ export interface NewTaskData {
 export type WebViewToHost =
   | { type: 'taskMoved'; taskId: string; toCol: ColumnId; index: number }
   | { type: 'openCopilot'; taskId: string; providerId: string; agentSlug?: string }
+  | { type: 'cancelSession'; taskId: string }
   | { type: 'refreshRequest'; providerId?: string }
   | { type: 'ready' }
   | { type: 'addTask' }

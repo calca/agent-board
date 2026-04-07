@@ -64,8 +64,17 @@ export interface IGenAiProvider {
 
   /** Check whether the provider can be used in the current environment. */
   isAvailable(): Promise<boolean>;
-  /** Execute the provider with the given prompt (and optional task for context). */
-  run(prompt: string, task?: KanbanTask): Promise<void>;
+  /**
+   * Execute the provider with the given prompt and optional task context.
+   * `worktreePath` — when available, the isolated git worktree path that
+   * the provider should operate in. Providers that don't use it can ignore it.
+   */
+  run(prompt: string, task?: KanbanTask, worktreePath?: string): Promise<void>;
+  /**
+   * Cancel the currently running request.
+   * Optional — providers that don't support cancellation can omit this.
+   */
+  cancel?(): void;
   /**
    * Return provider-specific session links/shortcuts for a task.
    * Optional — providers that don't support session tracking can omit this.

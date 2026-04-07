@@ -49,7 +49,7 @@ export class LmApiGenAiProvider implements IGenAiProvider {
     }
   }
 
-  async run(prompt: string, task?: KanbanTask): Promise<void> {
+  async run(prompt: string, task?: KanbanTask, worktreePath?: string): Promise<void> {
     const model = await this.selectModel();
     if (!model) {
       vscode.window.showErrorMessage(
@@ -60,9 +60,9 @@ export class LmApiGenAiProvider implements IGenAiProvider {
 
     this.cts = new vscode.CancellationTokenSource();
 
-    // Build the system prompt with task context
+    // Build the system prompt with task context, using the worktree path when available
     const systemPrompt = task
-      ? await ContextBuilder.buildFull(task)
+      ? await ContextBuilder.buildFull(task, worktreePath)
       : 'You are a helpful coding assistant.';
 
     this.messages = [
@@ -70,8 +70,8 @@ export class LmApiGenAiProvider implements IGenAiProvider {
       vscode.LanguageModelChatMessage.User(prompt),
     ];
 
-    // Initialise AgentTools if workspace is available
-    const root = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
+    // Initialise AgentTools with worktree root (or workspace root as fallback)
+    const root = worktreePath ?? vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
     const tools = root ? new AgentTools(root) : undefined;
 
     await this.runConversationLoop(model, tools);

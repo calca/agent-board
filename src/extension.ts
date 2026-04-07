@@ -387,6 +387,13 @@ export function activate(context: vscode.ExtensionContext): void {
           await sendTasksToPanel(panel, providerRegistry, genAiRegistry, squadManager);
           break;
         }
+        case 'cancelSession': {
+          copilotLauncher.cancelSession(msg.taskId);
+          squadManager.failSession(msg.taskId);
+          panel.updateSquadStatus(squadManager.getStatus());
+          await sendTasksToPanel(panel, providerRegistry, genAiRegistry, squadManager);
+          break;
+        }
         case 'reopenSession': {
           // Focus the VS Code chat panel so the user can see the running session
           await vscode.commands.executeCommand('workbench.action.chat.open');

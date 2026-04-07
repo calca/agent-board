@@ -28,7 +28,7 @@ export class ContextBuilder {
     return 'standard';
   }
 
-  static build(task: KanbanTask): string {
+  static build(task: KanbanTask, worktreePath?: string): string {
     const depth = ContextBuilder.getContextDepth();
     const parts: string[] = [];
 
@@ -58,10 +58,13 @@ export class ContextBuilder {
     }
 
     // Workspace info (standard + full)
-    const folders = vscode.workspace.workspaceFolders;
-    if (folders && folders.length > 0) {
+    const workspacePath = worktreePath ?? vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
+    if (workspacePath) {
       parts.push('');
-      parts.push(`Workspace: ${folders[0].uri.fsPath}`);
+      parts.push(`Workspace: ${workspacePath}`);
+      if (worktreePath) {
+        parts.push('(isolated worktree)');
+      }
     }
 
     // Active editor selection (standard + full)
@@ -85,8 +88,8 @@ export class ContextBuilder {
    * Async build that includes full context (file tree + git metadata).
    * Used when `contextDepth` is `full`.
    */
-  static async buildFull(task: KanbanTask): Promise<string> {
-    const base = ContextBuilder.build(task);
+  static async buildFull(task: KanbanTask, worktreePath?: string): Promise<string> {
+    const base = ContextBuilder.build(task, worktreePath);
     const depth = ContextBuilder.getContextDepth();
 
     if (depth !== 'full') {
@@ -94,7 +97,7 @@ export class ContextBuilder {
     }
 
     const parts: string[] = [base];
-    const root = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
+    const root = worktreePath ?? vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
     if (!root) {
       return base;
     }
