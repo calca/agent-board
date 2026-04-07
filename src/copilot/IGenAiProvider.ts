@@ -1,3 +1,4 @@
+import * as vscode from 'vscode';
 import { CopilotSessionInfo, KanbanTask } from '../types/KanbanTask';
 
 /**

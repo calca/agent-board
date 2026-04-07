@@ -1,6 +1,7 @@
 import * as vscode from 'vscode';
 import { ProjectConfig } from '../config/ProjectConfig';
 import { DiffWatcher } from '../diff/DiffWatcher';
+import { GitHubIssueManager } from '../github/GitHubIssueManager';
 import { ProviderRegistry } from '../providers/ProviderRegistry';
 import { StreamRegistry } from '../stream/StreamController';
 import { KanbanTask } from '../types/KanbanTask';
@@ -44,6 +45,7 @@ export class CopilotLauncher {
     private readonly context: vscode.ExtensionContext,
     private readonly genAiRegistry: GenAiProviderRegistry,
     private agents: AgentInfo[] = [],
+    private readonly ghIssueManager?: GitHubIssueManager,
   ) {}
 
   /** The shared stream registry (used by KanbanPanel for real-time output). */
@@ -124,12 +126,41 @@ export class CopilotLauncher {
     }
 
     this.activeProviders.set(taskId, provider);
+    let sessionSucceeded = false;
     try {
       await provider.run(prompt, task, worktree?.path);
+      sessionSucceeded = true;
     } finally {
       streamSub?.dispose();
       dwSub?.dispose();
       this.activeProviders.delete(taskId);
+
+      // ── Post agent-summary comment on GitHub issue (3.3) ─────────
+      if (sessionSucceeded && this.ghIssueManager) {
+        const shouldPost = ProjectConfig.getProjectConfig()?.postAgentSummaryToIssue
+          ?? vscode.workspace.getConfiguration('agentBoard').get<boolean>('postAgentSummaryToIssue', false);
+        if (shouldPost && task.providerId === 'github') {
+          const issueNumber = parseInt(task.id.split(':')[1] ?? '', 10);
+          if (!isNaN(issueNumber)) {
+            const changedFiles = this.diffWatchers.get(taskId)?.getChanges() ?? [];
+            const stream = this.streamRegistry.get(taskId);
+            // Last 50 lines of stream output as a trimmed summary
+            const logLines = stream?.exportLog().trim().split('\n') ?? [];
+            const streamSummary = logLines.slice(-50).join('\n');
+            const agentName = agentSlug ?? 'Agent Board';
+            const markdown = this.ghIssueManager.buildAgentSummaryMarkdown({
+              agentName,
+              issueTitle: task.title,
+              changedFiles,
+              prUrl: task.copilotSession?.prUrl,
+              streamSummary: streamSummary || undefined,
+            });
+            void this.ghIssueManager.postAgentSummaryComment(issueNumber, markdown)
+              .catch(e => this.logger.warn('CopilotLauncher: failed to post summary comment:', e));
+          }
+        }
+      }
+
       // Cleanup worktree after session (optionally ask for confirmation)
       if (worktree) {
         await this.tryCleanupWorktree(taskId, worktree.path);

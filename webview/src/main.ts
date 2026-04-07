@@ -20,11 +20,21 @@ interface KanbanTask {
   url?: string;
   providerId: string;
   agent?: string;
+  /** Arbitrary provider metadata (e.g. avatarUrl from GitHub). */
+  meta?: Record<string, unknown>;
   copilotSession?: {
     state: 'idle' | 'starting' | 'running' | 'paused' | 'done' | 'error';
     providerId?: string;
     startedAt?: string;
     finishedAt?: string;
+    /** Pull request URL after PR creation. */
+    prUrl?: string;
+    /** Pull request number. */
+    prNumber?: number;
+    /** Pull request state. */
+    prState?: 'open' | 'merged' | 'closed';
+    /** Files changed during the session. */
+    changedFiles?: string[];
   };
 }
 interface AgentOption {
@@ -429,15 +439,25 @@ function renderCard(task: KanbanTask): string {
   const diffBadge = diffFiles && diffFiles.length > 0
     ? `<span class="task-card__diff-badge" title="${diffFiles.length} file${diffFiles.length === 1 ? '' : 's'} changed">●&thinsp;${diffFiles.length}</span>`
     : '';
+  // PR badge from copilot session
+  const pr = session?.prUrl
+    ? `<a class="task-card__pr-badge task-card__pr-badge--${session.prState ?? 'open'}" href="${escapeHtml(session.prUrl)}" title="PR #${session.prNumber ?? ''}: ${session.prState ?? 'open'}">⤴ PR${session.prNumber ? ` #${session.prNumber}` : ''}</a>`
+    : '';
+  // Avatar: prefer meta.avatarUrl populated by GitHubProvider, fallback to initials
+  const avatarUrl = (task.meta as Record<string, unknown>)?.avatarUrl as string | undefined;
+  const assigneeHtml = avatarUrl
+    ? `<img class="task-card__avatar" src="${escapeHtml(avatarUrl)}" alt="${escapeHtml(task.assignee ?? '')}" title="${escapeHtml(task.assignee ?? '')}" />`
+    : (initials ? `<span class="task-card__assignee">${initials}</span>` : '');
   return `
     <div class="task-card${isActive ? ' task-card--running' : ''}" data-task-id="${escapeHtml(task.id)}">
       <div class="task-card__title">${escapeHtml(task.title)}</div>
       <div class="task-card__meta">
         ${sessionBadge}
-        ${task.labels.map(l => `<span class="task-card__label">${escapeHtml(l)}</span>`).join('')}
-        ${initials ? `<span class="task-card__assignee">${initials}</span>` : ''}
+        ${task.labels.filter(l => !l.startsWith('kanban:')).map(l => `<span class="task-card__label">${escapeHtml(l)}</span>`).join('')}
+        ${assigneeHtml}
         <span class="task-card__provider">${escapeHtml(task.providerId)}</span>
         ${diffBadge}
+        ${pr}
       </div>
       ${agentBadge ? `<div class="task-card__footer">${agentBadge}</div>` : ''}
     </div>

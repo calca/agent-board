@@ -414,6 +414,32 @@ html, body, #root {
   font-weight: 700;
 }
 
+/* GitHub avatar (replaces initials when available) */
+.task-card__avatar {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  object-fit: cover;
+  vertical-align: middle;
+}
+
+/* PR state badge */
+.task-card__pr-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  border-radius: 10px;
+  padding: 1px 6px;
+  font-size: 0.72em;
+  font-weight: 600;
+  line-height: 1.4;
+  text-decoration: none;
+  margin-left: 2px;
+}
+.task-card__pr-badge--open   { background: #238636; color: #fff; }
+.task-card__pr-badge--merged { background: #8957e5; color: #fff; }
+.task-card__pr-badge--closed { background: #da3633; color: #fff; }
+
 /* ── Task Detail ───────────────────────────────────────────────────── */
 
 .task-detail {

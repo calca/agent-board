@@ -15,6 +15,8 @@ import { CopilotCliGenAiProvider } from './copilot/providers/CopilotCliGenAiProv
 import { LmApiGenAiProvider } from './copilot/providers/LmApiGenAiProvider';
 import { SessionStateManager } from './copilot/SessionStateManager';
 import { SquadManager } from './copilot/SquadManager';
+import { GitHubIssueManager } from './github/GitHubIssueManager';
+import { PullRequestManager } from './github/PullRequestManager';
 import { KanbanPanel } from './kanban/KanbanPanel';
 import { OverviewTreeProvider } from './overviewTreeProvider';
 import { GitHubProvider } from './providers/GitHubProvider';
@@ -37,8 +39,13 @@ export function activate(context: vscode.ExtensionContext): void {
   const providerRegistry = new ProviderRegistry();
   const providerPicker = new ProviderPicker(providerRegistry, context);
 
+  // GitHub service layer (labels, polling, avatars, comments)
+  const ghIssueManager = new GitHubIssueManager();
+  const prManager = new PullRequestManager();
+  context.subscriptions.push(ghIssueManager);
+
   // Register the GitHub provider (uses VSCode SSO + .agent-board/config.json)
-  const githubProvider = new GitHubProvider(context);
+  const githubProvider = new GitHubProvider(context, ghIssueManager);
   providerRegistry.register(githubProvider);
 
   // ── GenAI provider infrastructure ─────────────────────────────────────
@@ -61,7 +68,7 @@ export function activate(context: vscode.ExtensionContext): void {
 
   // ── Copilot infrastructure ─────────────────────────────────────────────
 
-  const copilotLauncher = new CopilotLauncher(providerRegistry, context, genAiRegistry);
+  const copilotLauncher = new CopilotLauncher(providerRegistry, context, genAiRegistry, [], ghIssueManager);
   const modelSelector = new ModelSelector(context, genAiRegistry);
   const squadManager = new SquadManager(
     providerRegistry,
@@ -278,6 +285,20 @@ export function activate(context: vscode.ExtensionContext): void {
     });
     panel.onDispose(() => diffSub.dispose());
 
+    // GitHub 30-second polling: detect remote changes, refresh board
+    const isGH = await isGitHubRepository();
+    if (isGH) {
+      void ghIssueManager.ensureKanbanLabels();
+      ghIssueManager.startPolling(30_000);
+      const ghPollSub = ghIssueManager.onDidDetectRemoteChange(async () => {
+        await sendTasksToPanel(panel, providerRegistry, genAiRegistry, squadManager);
+      });
+      panel.onDispose(() => {
+        ghIssueManager.stopPolling();
+        ghPollSub.dispose();
+      });
+    }
+
     // Wire WebView messages
     panel.onMessage(async (msg) => {
       switch (msg.type) {
@@ -307,6 +328,38 @@ export function activate(context: vscode.ExtensionContext): void {
             const task = tasks.find(t => t.id === msg.taskId);
             if (task) {
               await provider.updateTask({ ...task, status: msg.toCol });
+
+              // ── Auto-PR on move to "done" ────────────────────────────
+              if (msg.toCol === 'done' && task.copilotSession?.state === 'done') {
+                const worktreeBranch = task.copilotSession.changedFiles && task.copilotSession.changedFiles.length > 0
+                  ? `agent-board/${msg.taskId.replace(/[^a-zA-Z0-9-]/g, '-')}`
+                  : undefined;
+                if (worktreeBranch) {
+                  const dw = copilotLauncher.getDiffWatcher(msg.taskId);
+                  const changedFiles = dw?.getChanges() ?? [];
+                  const diffSummary = changedFiles.length > 0
+                    ? `### Files changed\n\n${changedFiles.map(f => `- \`${f.path}\``).join('\n')}`
+                    : '';
+                  const pr = await prManager.createPR({
+                    title: task.title,
+                    body: `Closes #${msg.taskId.split(':')[1]}\n\n${diffSummary}`,
+                    headBranch: worktreeBranch,
+                  });
+                  if (pr) {
+                    // Persist PR link on the task's session info
+                    const updatedTask = { ...task, status: msg.toCol as import('./types/ColumnId').ColumnId };
+                    if (updatedTask.copilotSession) {
+                      updatedTask.copilotSession = {
+                        ...updatedTask.copilotSession,
+                        prUrl: pr.url,
+                        prNumber: pr.number,
+                        prState: pr.state,
+                      };
+                    }
+                    await provider.updateTask(updatedTask);
+                  }
+                }
+              }
             }
           }
           await sendTasksToPanel(panel, providerRegistry, genAiRegistry, squadManager);

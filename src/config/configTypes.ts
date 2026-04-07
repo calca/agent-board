@@ -107,6 +107,13 @@ export interface ProjectConfigData {
     taskDone?: boolean;
   };
   /**
+   * When `true`, Agent Board posts a comment on the GitHub issue after a
+   * successful agent session summarising the changes made.
+   *
+   * VS Code setting: `agentBoard.postAgentSummaryToIssue`
+   */
+  postAgentSummaryToIssue?: boolean;
+  /**
    * MCP (Model Context Protocol) server settings.
    *
    * When enabled, Agent Board exposes a stdio-based MCP server that

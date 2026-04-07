@@ -1,4 +1,5 @@
 import * as vscode from 'vscode';
+import { GitHubIssueManager } from '../github/GitHubIssueManager';
 import { ProjectConfig } from '../config/ProjectConfig';
 import { ColumnId } from '../types/ColumnId';
 import { KanbanTask } from '../types/KanbanTask';
@@ -43,7 +44,10 @@ export class GitHubProvider implements ITaskProvider {
   private perPage = 100;
   private cacheTtlMs = 60_000;
 
-  constructor(private readonly context: vscode.ExtensionContext) {
+  constructor(
+    private readonly context: vscode.ExtensionContext,
+    private readonly issueManager?: GitHubIssueManager,
+  ) {
     this.readConfig();
   }
 
@@ -61,6 +65,7 @@ export class GitHubProvider implements ITaskProvider {
     }
 
     const nativeId = task.id.replace(`${this.id}:`, '');
+    const issueNumber = parseInt(nativeId, 10);
     const state = task.status === 'done' ? 'closed' : 'open';
 
     const res = await fetch(
@@ -74,6 +79,11 @@ export class GitHubProvider implements ITaskProvider {
 
     if (!res.ok) {
       throw new Error(`GitHub API error: ${res.status} ${res.statusText}`);
+    }
+
+    // Sync kanban column label
+    if (!isNaN(issueNumber) && this.issueManager) {
+      await this.issueManager.syncIssueColumn(issueNumber, task.status).catch(() => { /* non-fatal */ });
     }
 
     await this.refresh();
@@ -187,17 +197,25 @@ export class GitHubProvider implements ITaskProvider {
   }
 
   private mapIssue(issue: GitHubIssue): KanbanTask {
+    const assigneeLogin = issue.assignee?.login;
+    // Queue avatar fetch (fire-and-forget, cached)
+    if (assigneeLogin && this.issueManager) {
+      void this.issueManager.getAvatarUrl(assigneeLogin);
+    }
     return {
       id: `${this.id}:${issue.number}`,
       title: issue.title,
       body: issue.body ?? '',
       status: this.mapStatus(issue.state, issue.labels),
       labels: issue.labels.map(l => l.name),
-      assignee: issue.assignee?.login,
+      assignee: assigneeLogin,
       url: issue.html_url,
       providerId: this.id,
       createdAt: new Date(issue.created_at),
-      meta: issue as unknown as Record<string, unknown>,
+      meta: {
+        ...(issue as unknown as Record<string, unknown>),
+        avatarUrl: (issue as unknown as { assignee?: { avatar_url?: string } }).assignee?.avatar_url,
+      },
     };
   }
 
@@ -206,6 +224,12 @@ export class GitHubProvider implements ITaskProvider {
       return 'done';
     }
     const labelNames = labels.map(l => l.name.toLowerCase());
+    // Authoritative kanban labels take priority
+    if (labelNames.includes('kanban:done'))        { return 'done'; }
+    if (labelNames.includes('kanban:review'))      { return 'review'; }
+    if (labelNames.includes('kanban:in-progress')) { return 'inprogress'; }
+    if (labelNames.includes('kanban:todo'))        { return 'todo'; }
+    // Legacy label heuristics
     if (labelNames.includes('in progress') || labelNames.includes('wip')) {
       return 'inprogress';
     }
