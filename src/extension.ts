@@ -1,4 +1,5 @@
 import { exec } from 'child_process';
+import * as path from 'path';
 import * as vscode from 'vscode';
 import { AgentManager } from './agentManager';
 import { AgentsTreeProvider, AgentTreeItem } from './agentsTreeProvider';
@@ -546,6 +547,84 @@ export function activate(context: vscode.ExtensionContext): void {
           await vscode.commands.executeCommand('vscode.openFolder', wtUri, { forceNewWindow: true });
           break;
         }
+        case 'reviewWorktree': {
+          // Open VS Code diff view: main...worktree-branch
+          const session = sessionStateManager.getSession(msg.sessionId);
+          const wtPath = session?.worktreePath;
+          const repoRoot = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
+          if (!wtPath || !repoRoot) { break; }
+
+          try {
+            // Get the branch name of the worktree
+            const branch = await execPromise('git rev-parse --abbrev-ref HEAD', { cwd: wtPath });
+            // Use vscode.changes to show the multi-file diff between main and the worktree branch
+            const diffOutput = await execPromise(`git diff --name-status main...${branch.trim()}`, { cwd: repoRoot });
+            const files = diffOutput.trim().split('\n').filter(l => l).map(line => {
+              const [statusChar, ...pathParts] = line.split('\t');
+              const filePath = pathParts.join('\t');
+              return { statusChar, filePath };
+            });
+            const resources = files.map(f => {
+              const absPath = path.join(repoRoot, f.filePath);
+              const mainUri = vscode.Uri.file(absPath).with({
+                scheme: 'git',
+                query: JSON.stringify({ path: absPath, ref: 'main' }),
+              });
+              const branchUri = f.statusChar === 'D'
+                ? vscode.Uri.file(absPath).with({ scheme: 'git', query: JSON.stringify({ path: absPath, ref: '' }) })
+                : vscode.Uri.file(path.join(wtPath, f.filePath));
+              return [mainUri, branchUri, f.filePath] as [vscode.Uri, vscode.Uri, string];
+            });
+            if (resources.length > 0) {
+              await vscode.commands.executeCommand('vscode.changes', `Review: ${branch.trim()} vs main`, resources);
+            } else {
+              vscode.window.showInformationMessage('Nessuna differenza tra il worktree e main.');
+            }
+          } catch (err) {
+            const errMsg = err instanceof Error ? err.message : String(err);
+            logger.error('reviewWorktree failed:', errMsg);
+            vscode.window.showErrorMessage(`Review failed: ${errMsg}`);
+          }
+          break;
+        }
+        case 'mergeWorktree': {
+          const session = sessionStateManager.getSession(msg.sessionId);
+          const wtPath = session?.worktreePath;
+          const repoRoot = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
+          if (!wtPath || !repoRoot) { break; }
+
+          try {
+            const branch = (await execPromise('git rev-parse --abbrev-ref HEAD', { cwd: wtPath })).trim();
+
+            const answer = await vscode.window.showWarningMessage(
+              `Merge il branch "${branch}" in main?`,
+              { modal: true },
+              'Merge',
+              'Annulla',
+            );
+            if (answer !== 'Merge') { break; }
+
+            // Commit any uncommitted changes in the worktree first
+            try {
+              await execPromise('git add -A && git diff --cached --quiet || git commit -m "agent: auto-commit before merge"', { cwd: wtPath });
+            } catch { /* ignore if nothing to commit */ }
+
+            // Merge into main
+            await execPromise(`git merge ${branch} --no-edit`, { cwd: repoRoot });
+
+            panel.postMessage({ type: 'mergeResult', sessionId: msg.sessionId, success: true, message: `Branch "${branch}" mergiato in main con successo.` });
+            vscode.window.showInformationMessage(`✅ Branch "${branch}" mergiato in main.`);
+
+            // Refresh tasks to update the UI
+            vscode.commands.executeCommand('agentBoard.refreshTasks');
+          } catch (err) {
+            const errMsg = err instanceof Error ? err.message : String(err);
+            logger.error('mergeWorktree failed:', errMsg);
+            panel.postMessage({ type: 'mergeResult', sessionId: msg.sessionId, success: false, message: errMsg });
+            vscode.window.showErrorMessage(`Merge fallito: ${errMsg}`);
+          }
+          break;
+        }
       }
     });
   });
@@ -891,5 +970,18 @@ async function buildGenAiOptions(registry: GenAiProviderRegistry): Promise<GenAi
     }
 
     return option;
+  });
+}
+
+/** Promisified `exec` helper for git commands. */
+function execPromise(command: string, options: { cwd: string }): Promise<string> {
+  return new Promise((resolve, reject) => {
+    exec(command, { cwd: options.cwd, timeout: 30_000 }, (err, stdout, stderr) => {
+      if (err) {
+        reject(new Error(stderr?.trim() || err.message));
+      } else {
+        resolve(stdout.trim());
+      }
+    });
   });
 }

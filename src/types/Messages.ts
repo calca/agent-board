@@ -55,7 +55,8 @@ export type HostToWebView =
   | { type: 'streamResume'; sessionId: string; log: string }
   | { type: 'toolCall'; sessionId: string; status: string }
   | { type: 'fileChanges'; sessionId: string; files: FileChangeInfo[] }
-  | { type: 'repoStatus'; isGit: boolean; isGitHub: boolean };
+  | { type: 'repoStatus'; isGit: boolean; isGitHub: boolean }
+  | { type: 'mergeResult'; sessionId: string; success: boolean; message: string };
 
 // ── WebView → Host ──────────────────────────────────────────────────────────
 
@@ -89,4 +90,6 @@ export type WebViewToHost =
   | { type: 'openTerminalInWorktree'; sessionId: string }
   | { type: 'exportLog'; sessionId: string }
   | { type: 'requestStreamResume'; sessionId: string }
-  | { type: 'sendFollowUp'; sessionId: string; text: string };
+  | { type: 'sendFollowUp'; sessionId: string; text: string }
+  | { type: 'reviewWorktree'; sessionId: string }
+  | { type: 'mergeWorktree'; sessionId: string };

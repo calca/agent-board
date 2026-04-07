@@ -421,6 +421,20 @@ function render(): void {
     });
   });
 
+  // ── Review & merge worktree (all views) ───────────────────────────
+  document.querySelectorAll('.detail-review-wt, .fv-review-wt').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const sessionId = (btn as HTMLElement).dataset.sessionId;
+      if (sessionId) { vscode.postMessage({ type: 'reviewWorktree', sessionId }); }
+    });
+  });
+  document.querySelectorAll('.detail-merge-wt, .fv-merge-wt').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const sessionId = (btn as HTMLElement).dataset.sessionId;
+      if (sessionId) { vscode.postMessage({ type: 'mergeWorktree', sessionId }); }
+    });
+  });
+
   // ── Task form listeners ──────────────────────────────────────────
   document.getElementById('task-form-close')?.addEventListener('click', () => {
     showTaskForm = false;
@@ -610,6 +624,8 @@ function renderDetail(task: KanbanTask): string {
           <span class="task-detail__wt-label">Worktree:</span>
           <code class="task-detail__wt-path">${escapeHtml(sessionInfo.worktreePath)}</code>
           <button class="task-detail__reopen-btn detail-open-worktree" data-wt-path="${escapeHtml(sessionInfo.worktreePath)}">↗ Apri in VS Code</button>
+          <button class="task-detail__reopen-btn detail-review-wt" data-session-id="${escapeHtml(task.id)}">🔍 Review Diff</button>
+          <button class="task-detail__reopen-btn task-detail__reopen-btn--merge detail-merge-wt" data-session-id="${escapeHtml(task.id)}">⤴ Merge in Main</button>
         </div>
       ` : ''}
       ${task.url ? `<a class="task-detail__link" href="${escapeHtml(task.url)}">Open source ↗</a>` : ''}
@@ -975,6 +991,8 @@ function renderFullView(): string {
               <div class="full-view__section-label">Worktree</div>
               <code class="full-view__wt-path">${escapeHtml(sessionInfo.worktreePath)}</code>
               <button class="toolbar__btn toolbar__btn--small fv-open-worktree" data-wt-path="${escapeHtml(sessionInfo.worktreePath)}" style="margin-top:4px;width:100%">↗ Apri in VS Code</button>
+              <button class="toolbar__btn toolbar__btn--small fv-review-wt" data-session-id="${escapeHtml(task.id)}" style="margin-top:4px;width:100%">🔍 Review Diff vs Main</button>
+              <button class="toolbar__btn toolbar__btn--primary fv-merge-wt" data-session-id="${escapeHtml(task.id)}" style="margin-top:4px;width:100%">⤴ Merge in Main</button>
             </div>
           ` : ''}
           <div class="full-view__section">
@@ -1192,6 +1210,11 @@ window.addEventListener('message', (event: MessageEvent) => {
     case 'repoStatus':
       repoIsGit = msg.isGit ?? true;
       repoIsGitHub = msg.isGitHub ?? true;
+      render();
+      break;
+    case 'mergeResult':
+      addTaskLog(msg.sessionId, msg.success ? 'system' : 'board',
+        msg.success ? `✅ ${msg.message}` : `❌ Merge fallito: ${msg.message}`);
       render();
       break;
   }

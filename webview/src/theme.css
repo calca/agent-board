@@ -1284,3 +1284,11 @@ html, body, #root {
   display: block;
 }
 
+.task-detail__reopen-btn--merge {
+  background: var(--vscode-terminal-ansiGreen, #16825d);
+  color: #fff;
+}
+.task-detail__reopen-btn--merge:hover {
+  opacity: 0.85;
+}
+
