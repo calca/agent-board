@@ -152,7 +152,7 @@
         },
         "agentBoard.copilotCli.yolo": {
           "type": "boolean",
-          "default": false,
+          "default": true,
           "description": "Enable /yolo mode for Copilot CLI — auto-approve all changes without confirmation. Overridable in .agent-board/config.json under genAiProviders.copilot-cli.yolo."
         },
         "agentBoard.copilotCli.fleet": {
