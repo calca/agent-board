@@ -1,3 +1,4 @@
+import { execFile } from 'child_process';
 import * as fs from 'fs';
 import * as path from 'path';
 import * as vscode from 'vscode';
@@ -200,6 +201,11 @@ export class CopilotLauncher {
       // ── Flush stream log to disk for restart recovery ─────────────
       this.flushLogToDisk(taskId, logPath);
 
+      // ── Auto-commit worktree changes ────────────────────────────
+      if (worktree) {
+        await this.autoCommitWorktree(worktree.path, task.title, sessionSucceeded);
+      }
+
       // ── Update session state ──────────────────────────────────────
       if (sessionSucceeded) {
         this.sessionStateManager?.markDone(taskId);
@@ -315,6 +321,45 @@ export class CopilotLauncher {
       );
     }
     return info;
+  }
+
+  /**
+   * Auto-commit all changes in the worktree with an auto-generated message.
+   * Silently skips if there is nothing to commit.
+   */
+  private async autoCommitWorktree(wtPath: string, taskTitle: string, succeeded: boolean): Promise<void> {
+    try {
+      // Check if there are any changes to commit
+      const statusOut = await this.git(wtPath, ['status', '--porcelain']);
+      if (!statusOut.trim()) {
+        this.logger.info('CopilotLauncher: autoCommit — nothing to commit in %s', wtPath);
+        return;
+      }
+
+      await this.git(wtPath, ['add', '-A']);
+
+      // Build a descriptive commit message
+      const diffStat = await this.git(wtPath, ['diff', '--cached', '--stat', '--no-color']);
+      const fileCount = diffStat.trim().split('\n').length - 1; // last line is summary
+      const status = succeeded ? 'done' : 'wip';
+      const msg = `agent(${status}): ${taskTitle}\n\n${fileCount > 0 ? diffStat.trim() : 'Auto-commit by Agent Board'}`;
+
+      await this.git(wtPath, ['commit', '-m', msg, '--no-verify']);
+      this.logger.info('CopilotLauncher: autoCommit — committed in %s', wtPath);
+    } catch (err) {
+      // Non-fatal: log and move on
+      this.logger.warn('CopilotLauncher: autoCommit failed: %s', formatError(err));
+    }
+  }
+
+  /** Run a git command in the given directory. */
+  private git(cwd: string, args: string[]): Promise<string> {
+    return new Promise((resolve, reject) => {
+      execFile('git', args, { cwd, timeout: 30_000 }, (err, stdout, stderr) => {
+        if (err) { reject(new Error(stderr?.trim() || err.message)); }
+        else { resolve(stdout); }
+      });
+    });
   }
 
   private async resolveTask(taskId: string): Promise<KanbanTask | undefined> {
