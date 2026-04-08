@@ -176,7 +176,10 @@ export class CopilotLauncher {
     const watchRoot = worktree?.path ?? vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
     let dwSub: vscode.Disposable | undefined;
     if (watchRoot) {
-      const dw = new DiffWatcher(watchRoot);
+      // When running in a worktree the agent may commit its changes, so we diff
+      // against `main` (the parent branch) instead of `HEAD` to keep seeing them.
+      const baseRef = worktree ? 'main' : 'HEAD';
+      const dw = new DiffWatcher(watchRoot, baseRef);
       this.diffWatchers.set(taskId, dw);
       dwSub = dw.onDidChange(files => this._onDidChangeDiff.fire({ sessionId: taskId, files }));
       // Emit initial state

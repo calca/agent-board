@@ -28,8 +28,16 @@ export class DiffWatcher implements vscode.Disposable {
 
   private latestChanges: FileChange[] = [];
 
+  /**
+   * @param rootPath  Directory to watch.
+   * @param baseRef   Git ref to diff against (default `HEAD`).
+   *                  Use `main` (or the parent branch) for worktrees where the
+   *                  agent may commit, so that committed changes are still visible.
+   * @param debounceMs  Debounce interval for filesystem events.
+   */
   constructor(
     readonly rootPath: string,
+    private readonly baseRef: string = 'HEAD',
     private readonly debounceMs: number = 500,
   ) {
     const pattern = new vscode.RelativePattern(rootPath, '**/*');
@@ -53,16 +61,15 @@ export class DiffWatcher implements vscode.Disposable {
     return this.latestChanges;
   }
 
-  /** Open the VS Code diff editor for a single file (HEAD vs working tree). */
+  /** Open the VS Code diff editor for a single file (baseRef vs working tree). */
   async openDiff(filePath: string): Promise<void> {
     const absPath = path.join(this.rootPath, filePath);
-    // Build the git HEAD URI using VS Code's built-in git extension URI scheme
     const headUri = vscode.Uri.file(absPath).with({
       scheme: 'git',
-      query: JSON.stringify({ path: absPath, ref: 'HEAD' }),
+      query: JSON.stringify({ path: absPath, ref: this.baseRef }),
     });
     const workingUri = vscode.Uri.file(absPath);
-    await vscode.commands.executeCommand('vscode.diff', headUri, workingUri, `${filePath} (HEAD ↔ Working)`);
+    await vscode.commands.executeCommand('vscode.diff', headUri, workingUri, `${filePath} (${this.baseRef} ↔ Working)`);
   }
 
   /**
@@ -81,16 +88,16 @@ export class DiffWatcher implements vscode.Disposable {
         const absPath = path.join(this.rootPath, f.path);
         const headUri = vscode.Uri.file(absPath).with({
           scheme: 'git',
-          query: JSON.stringify({ path: absPath, ref: 'HEAD' }),
+          query: JSON.stringify({ path: absPath, ref: this.baseRef }),
         });
         return [vscode.Uri.file(absPath), headUri, vscode.Uri.file(absPath)] as [vscode.Uri, vscode.Uri, vscode.Uri];
       });
-    // Deleted files: HEAD → empty
+    // Deleted files: baseRef → empty
     for (const f of files.filter(d => d.status === 'deleted')) {
       const absPath = path.join(this.rootPath, f.path);
       const headUri = vscode.Uri.file(absPath).with({
         scheme: 'git',
-        query: JSON.stringify({ path: absPath, ref: 'HEAD' }),
+        query: JSON.stringify({ path: absPath, ref: this.baseRef }),
       });
       const emptyUri = vscode.Uri.file(absPath).with({
         scheme: 'git',
@@ -126,7 +133,7 @@ export class DiffWatcher implements vscode.Disposable {
   private gitDiff(): Promise<FileChange[]> {
     return new Promise<FileChange[]>(resolve => {
       exec(
-        'git diff --name-status HEAD',
+        `git diff --name-status ${this.baseRef}`,
         { cwd: this.rootPath, timeout: 10_000 },
         (err, stdout) => {
           if (err) {
