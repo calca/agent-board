@@ -139,11 +139,11 @@ function render(): void {
 
         <div class="toolbar__group" data-label="Squad">
           <select class="toolbar__select" id="squad-provider-select" title="Provider">
-            <option value="">Provider: default</option>
-            ${genAiProviders
-              .filter(p => !p.disabled && p.id !== 'chat')
-              .map(p => `<option value="${escapeHtml(p.id)}"${p.id === selectedSquadProviderId ? ' selected' : ''}>${escapeHtml(p.displayName)}</option>`)
-              .join('')}
+            ${(() => {
+              const squadProviders = genAiProviders.filter(p => !p.disabled && p.id !== 'chat');
+              if (squadProviders.length === 0) { return '<option value="">No providers</option>'; }
+              return squadProviders.map((p, i) => `<option value="${escapeHtml(p.id)}"${(selectedSquadProviderId ? p.id === selectedSquadProviderId : i === 0) ? ' selected' : ''}>${escapeHtml(p.displayName)}</option>`).join('');
+            })()}
           </select>
           <select class="toolbar__select" id="agent-select" title="Agent"${availableAgents.some(a => a.canSquad) ? '' : ' disabled'}>
             ${(() => {
@@ -391,9 +391,19 @@ function render(): void {
       const sessionId = (btn as HTMLElement).dataset.sessionId;
       if (!sessionId) { return; }
       const panel = (btn as HTMLElement).closest('.fv-merge-panel');
-      const checked = panel?.querySelector<HTMLInputElement>('input[type="radio"]:checked');
-      const mergeStrategy = (checked?.value ?? 'squash') as 'squash' | 'merge' | 'rebase';
+      const select = panel?.querySelector<HTMLSelectElement>('.fv-merge-select');
+      const mergeStrategy = (select?.value ?? 'squash') as 'squash' | 'merge' | 'rebase';
       vscode.postMessage({ type: 'mergeWorktree', sessionId, mergeStrategy });
+    });
+  });
+  document.querySelectorAll('.fv-agent-merge').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const sessionId = (btn as HTMLElement).dataset.sessionId;
+      if (!sessionId) { return; }
+      const panel = (btn as HTMLElement).closest('.fv-merge-panel');
+      const select = panel?.querySelector<HTMLSelectElement>('.fv-merge-select');
+      const mergeStrategy = (select?.value ?? 'squash') as 'squash' | 'merge' | 'rebase';
+      vscode.postMessage({ type: 'agentMerge', sessionId, mergeStrategy });
     });
   });
   document.querySelectorAll('.fv-delete-wt').forEach(btn => {
@@ -910,12 +920,6 @@ function renderFullView(): string {
           </div>
         </div>
         <div class="fv-topbar__actions">
-          ${genAiProviders.filter(p => !p.disabled).map(p => {
-            const isActive = activeProviderId === p.id;
-            const disabledAttr = isRunning && !isActive ? ' disabled' : '';
-            const cls = `toolbar__btn toolbar__btn--small fv-launch-provider${isActive ? ' toolbar__btn--active-provider' : ''}${isRunning && !isActive ? ' toolbar__btn--muted' : ''}`;
-            return `<button class="${cls}" data-provider-id="${escapeHtml(p.id)}" title="${escapeHtml(p.displayName)}"${disabledAttr}>🤖 ${escapeHtml(p.displayName)}</button>`;
-          }).join('')}
           ${isRunning ? `<button class="toolbar__btn toolbar__btn--small toolbar__btn--danger" id="fv-btn-stop">■ Stop</button>` : ''}
         </div>
       </div>
@@ -981,34 +985,29 @@ function renderFullView(): string {
             </div>
             <div class="fv-panel__body fv-panel__body--scroll">
               <div class="fv-actions">
+                <div class="fv-actions__providers">
+                  ${genAiProviders.filter(p => !p.disabled).map(p => {
+                    const isActive = activeProviderId === p.id;
+                    const disabledAttr = isRunning && !isActive ? ' disabled' : '';
+                    return `<button class="fv-action-btn fv-launch-provider${isActive ? ' fv-action-btn--active' : ''}${isRunning && !isActive ? ' fv-action-btn--muted' : ''}" data-provider-id="${escapeHtml(p.id)}" title="${escapeHtml(p.displayName)}"${disabledAttr}>🤖 ${escapeHtml(p.displayName)}</button>`;
+                  }).join('')}
+                </div>
+                <hr class="fv-actions__separator" />
                 ${hasWorktree ? `
                   <button class="fv-action-btn fv-open-worktree" data-wt-path="${escapeHtml(sessionInfo!.worktreePath!)}" title="Open worktree folder in VS Code">↗ Open in VS Code</button>
                   <button class="fv-action-btn fv-review-wt" data-session-id="${escapeHtml(task.id)}" title="Review changes vs main branch">🔍 Review Diff</button>
                   ${isMerged
                     ? `<button class="fv-action-btn fv-action-btn--primary" disabled>⤴ Merge ✓</button>`
                     : `<div class="fv-merge-panel" data-session-id="${escapeHtml(task.id)}">
-                        <label class="fv-merge-option">
-                          <input type="radio" name="merge-strategy-${escapeHtml(task.id)}" value="squash" checked />
-                          <div class="fv-merge-option__info">
-                            <strong>Squash and merge</strong>
-                            <span>Combine all commits into one before merging.</span>
-                          </div>
-                        </label>
-                        <label class="fv-merge-option">
-                          <input type="radio" name="merge-strategy-${escapeHtml(task.id)}" value="merge" />
-                          <div class="fv-merge-option__info">
-                            <strong>Create a merge commit</strong>
-                            <span>Preserve all commits with a merge commit.</span>
-                          </div>
-                        </label>
-                        <label class="fv-merge-option">
-                          <input type="radio" name="merge-strategy-${escapeHtml(task.id)}" value="rebase" />
-                          <div class="fv-merge-option__info">
-                            <strong>Rebase and merge</strong>
-                            <span>Rebase commits onto main, no merge commit.</span>
-                          </div>
-                        </label>
-                        <button class="fv-action-btn fv-action-btn--primary fv-merge-confirm" data-session-id="${escapeHtml(task.id)}">⤴ Merge</button>
+                        <select class="fv-merge-select" data-session-id="${escapeHtml(task.id)}">
+                          <option value="squash" selected>Squash and merge</option>
+                          <option value="merge">Create a merge commit</option>
+                          <option value="rebase">Rebase and merge</option>
+                        </select>
+                        <div class="fv-merge-panel__btns">
+                          <button class="fv-action-btn fv-action-btn--primary fv-merge-confirm" data-session-id="${escapeHtml(task.id)}">⤴ Merge</button>
+                          <button class="fv-action-btn fv-agent-merge" data-session-id="${escapeHtml(task.id)}" title="Launch agent to review and merge">🤖 Agent Merge</button>
+                        </div>
                       </div>`
                   }
                   <button class="fv-action-btn fv-action-btn--danger fv-delete-wt" data-session-id="${escapeHtml(task.id)}" title="Delete worktree directory and branch" ${!isMerged ? 'disabled' : ''}>🗑 Delete Workspace</button>
@@ -1192,6 +1191,11 @@ window.addEventListener('message', (event: MessageEvent) => {
       currentColumns = msg.columns ?? [];
       editableProviderIds = msg.editableProviderIds ?? [];
       genAiProviders = msg.genAiProviders ?? [];
+      // Pre-select first squad-eligible provider if none selected
+      if (!selectedSquadProviderId) {
+        const first = genAiProviders.find(p => !p.disabled && p.id !== 'chat');
+        if (first) { selectedSquadProviderId = first.id; }
+      }
       // If the editing task was refreshed, update its data
       if (editingTask) {
         const updated = currentTasks.find(t => t.id === editingTask!.id);

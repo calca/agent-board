@@ -657,6 +657,74 @@ export function activate(context: vscode.ExtensionContext): void {
           }
           break;
         }
+        case 'agentMerge': {
+          const session = sessionStateManager.getSession(msg.sessionId);
+          const wtPath = session?.worktreePath;
+          const repoRoot = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
+          if (!wtPath || !repoRoot) {
+            vscode.window.showErrorMessage('Agent Merge: worktree non trovato.');
+            break;
+          }
+
+          const strategy = msg.mergeStrategy ?? 'squash';
+          const strategyLabels: Record<string, string> = {
+            squash: 'squash and merge',
+            merge: 'merge commit',
+            rebase: 'rebase and merge',
+          };
+
+          // Pick the first canSquad agent (matching the toolbar selection)
+          const agent = discoveredAgents.find(a => a.canSquad);
+          if (!agent) {
+            vscode.window.showErrorMessage('Agent Merge: nessun agente squad disponibile.');
+            break;
+          }
+
+          // Determine which provider to use — pick the first non-chat provider
+          const provider = genAiRegistry?.getAll().find(p => p.id !== 'chat');
+          if (!provider) {
+            vscode.window.showErrorMessage('Agent Merge: nessun provider disponibile per il merge.');
+            break;
+          }
+
+          try {
+            const branch = (await execPromise('git rev-parse --abbrev-ref HEAD', { cwd: wtPath })).trim();
+            const diffSummary = (await execPromise(`git diff main --stat`, { cwd: wtPath })).trim();
+
+            const mergePrompt =
+              `## Merge Task\n\n` +
+              `You are reviewing and merging branch "${branch}" into main.\n` +
+              `Strategy: **${strategyLabels[strategy]}**.\n\n` +
+              `### Changed files\n\`\`\`\n${diffSummary}\n\`\`\`\n\n` +
+              `### Instructions\n` +
+              `1. Review all changes in the worktree at ${wtPath}\n` +
+              `2. Ensure code quality, check for bugs, security issues, and style\n` +
+              `3. If changes are acceptable, perform the merge using the "${strategyLabels[strategy]}" strategy:\n` +
+              (strategy === 'squash'
+                ? `   - Run: git checkout main && git merge --squash ${branch} && git commit -m "squash: ${branch}"\n`
+                : strategy === 'rebase'
+                  ? `   - Run: git checkout main && git rebase ${branch}\n`
+                  : `   - Run: git checkout main && git merge ${branch} --no-edit\n`) +
+              `4. If changes need fixes, apply them first, then merge\n` +
+              `5. Report what you found and whether the merge was successful\n`;
+
+            // Launch the agent with the merge prompt
+            await squadManager.launchSingle(msg.sessionId, provider.id, agent.slug);
+
+            // Send the merge prompt as a follow-up (the launch built the base prompt from the task)
+            setTimeout(() => {
+              void copilotLauncher.sendFollowUp(msg.sessionId, mergePrompt);
+            }, 2000);
+
+            panel.updateSquadStatus(squadManager.getStatus());
+            await sendTasksToPanel(panel, providerRegistry, genAiRegistry, squadManager, sessionStateManager);
+          } catch (err) {
+            const errMsg = err instanceof Error ? err.message : String(err);
+            logger.error('agentMerge failed:', errMsg);
+            vscode.window.showErrorMessage(`Agent Merge fallito: ${errMsg}`);
+          }
+          break;
+        }
         case 'deleteWorktree': {
           const session = sessionStateManager.getSession(msg.sessionId);
           const wtPath = session?.worktreePath;

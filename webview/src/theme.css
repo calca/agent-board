@@ -1566,6 +1566,24 @@ html, body, #root {
   text-align: center;
   padding: 8px 0;
 }
+.fv-actions__providers {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.fv-actions__separator {
+  border: none;
+  border-top: 1px solid var(--vscode-panel-border);
+  margin: 4px 0;
+}
+.fv-action-btn--active {
+  background: var(--vscode-button-background);
+  color: var(--vscode-button-foreground);
+  border-color: var(--vscode-button-background);
+}
+.fv-action-btn--muted {
+  opacity: 0.4;
+}
 .fv-action-btn {
   display: flex;
   align-items: center;
@@ -1611,44 +1629,23 @@ html, body, #root {
   display: flex;
   flex-direction: column;
   gap: 6px;
+}
+.fv-merge-select {
+  width: 100%;
+  padding: 6px 10px;
   border: 1px solid var(--vscode-panel-border);
-  border-radius: 6px;
-  padding: 8px 10px;
-  background: var(--vscode-sideBar-background);
-}
-.fv-merge-option {
-  display: flex;
-  align-items: flex-start;
-  gap: 8px;
-  padding: 6px 8px;
   border-radius: 4px;
-  cursor: pointer;
-  transition: background 0.12s;
-}
-.fv-merge-option:hover {
-  background: var(--vscode-list-hoverBackground);
-}
-.fv-merge-option input[type="radio"] {
-  margin-top: 3px;
-  flex-shrink: 0;
-  accent-color: var(--vscode-button-background);
-}
-.fv-merge-option__info {
-  display: flex;
-  flex-direction: column;
-  gap: 1px;
-}
-.fv-merge-option__info strong {
+  background: var(--vscode-dropdown-background, var(--vscode-editor-background));
+  color: var(--vscode-dropdown-foreground, var(--vscode-foreground));
   font-size: 0.88em;
-  font-weight: 600;
+  cursor: pointer;
 }
-.fv-merge-option__info span {
-  font-size: 0.78em;
-  opacity: 0.6;
-  line-height: 1.4;
+.fv-merge-panel__btns {
+  display: flex;
+  gap: 6px;
 }
-.fv-merge-panel .fv-action-btn {
-  margin-top: 4px;
+.fv-merge-panel__btns .fv-action-btn {
+  flex: 1;
 }
 
 /* ── Log in bottom row ─── */
