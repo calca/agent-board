@@ -140,6 +140,15 @@ export class SessionStateManager {
     this.persist();
   }
 
+  /** Clear the worktree path from a session (after worktree deletion) while keeping all other info. */
+  clearWorktree(taskId: string): void {
+    const session = this.sessions.get(taskId);
+    if (!session) { return; }
+    session.worktreePath = undefined;
+    this.persist();
+    this.fireChange(taskId, session.state, session.state);
+  }
+
   /** Get a session by task ID. */
   getSession(taskId: string): PersistedSession | undefined {
     return this.sessions.get(taskId);

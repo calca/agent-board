@@ -659,6 +659,7 @@ export function activate(context: vscode.ExtensionContext): void {
 
           try {
             await removeWorktree(repoRoot, msg.sessionId);
+            sessionStateManager.clearWorktree(msg.sessionId);
             panel.postMessage({ type: 'deleteWorktreeResult', sessionId: msg.sessionId, success: true });
             vscode.window.showInformationMessage('Worktree eliminato.');
             vscode.commands.executeCommand('agentBoard.refreshTasks');
