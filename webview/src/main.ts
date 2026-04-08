@@ -379,6 +379,14 @@ function render(): void {
     editingTask = null;
     render();
   });
+  // Close on overlay backdrop click
+  document.getElementById('task-form-overlay')?.addEventListener('click', (e: Event) => {
+    if ((e.target as HTMLElement).id === 'task-form-overlay') {
+      showTaskForm = false;
+      editingTask = null;
+      render();
+    }
+  });
 
   document.getElementById('task-form')?.addEventListener('submit', (e: Event) => {
     e.preventDefault();
@@ -535,7 +543,7 @@ function renderCard(task: KanbanTask): string {
 function renderEditForm(task: KanbanTask): string {
   const cols = currentColumns;
   return `
-    <div class="task-form-overlay">
+    <div class="task-form-overlay" id="task-form-overlay">
       <div class="task-form-panel">
         <button class="task-form-panel__close" id="task-form-close">✕</button>
         <div class="task-form-panel__heading">Edit Task</div>
@@ -544,18 +552,24 @@ function renderEditForm(task: KanbanTask): string {
           <input class="task-form__input" id="tf-title" type="text" value="${escapeHtml(task.title)}" required />
 
           <label class="task-form__label" for="tf-body">Description</label>
-          <textarea class="task-form__textarea" id="tf-body" rows="4">${escapeHtml(task.body)}</textarea>
+          <textarea class="task-form__textarea" id="tf-body" rows="8">${escapeHtml(task.body)}</textarea>
 
-          <label class="task-form__label" for="tf-status">Status</label>
-          <select class="task-form__select" id="tf-status">
-            ${cols.map(c => `<option value="${escapeHtml(c.id)}"${c.id === task.status ? ' selected' : ''}>${escapeHtml(c.label)}</option>`).join('')}
-          </select>
-
-          <label class="task-form__label" for="tf-labels">Labels</label>
-          <input class="task-form__input" id="tf-labels" type="text" value="${escapeHtml(task.labels.join(', '))}" placeholder="bug, feature  (comma separated)" />
-
-          <label class="task-form__label" for="tf-assignee">Assignee</label>
-          <input class="task-form__input" id="tf-assignee" type="text" value="${escapeHtml(task.assignee ?? '')}" placeholder="Username" />
+          <div class="task-form__row">
+            <div class="task-form__field">
+              <label class="task-form__label" for="tf-status">Status</label>
+              <select class="task-form__select" id="tf-status">
+                ${cols.map(c => `<option value="${escapeHtml(c.id)}"${c.id === task.status ? ' selected' : ''}>${escapeHtml(c.label)}</option>`).join('')}
+              </select>
+            </div>
+            <div class="task-form__field">
+              <label class="task-form__label" for="tf-labels">Labels</label>
+              <input class="task-form__input" id="tf-labels" type="text" value="${escapeHtml(task.labels.join(', '))}" placeholder="bug, feature" />
+            </div>
+            <div class="task-form__field">
+              <label class="task-form__label" for="tf-assignee">Assignee</label>
+              <input class="task-form__input" id="tf-assignee" type="text" value="${escapeHtml(task.assignee ?? '')}" placeholder="Username" />
+            </div>
+          </div>
 
           <div class="task-form__actions">
             <button type="submit" class="task-form__btn task-form__btn--save">Save</button>
@@ -583,27 +597,33 @@ function renderEditForm(task: KanbanTask): string {
 function renderTaskForm(): string {
   const cols = formColumns.length > 0 ? formColumns : currentColumns;
   return `
-    <div class="task-form-overlay">
+    <div class="task-form-overlay" id="task-form-overlay">
       <div class="task-form-panel">
         <button class="task-form-panel__close" id="task-form-close">✕</button>
         <div class="task-form-panel__heading">New Task</div>
         <form id="task-form" class="task-form">
           <label class="task-form__label" for="tf-title">Title *</label>
-          <input class="task-form__input" id="tf-title" type="text" placeholder="What needs to be done?" required />
+          <input class="task-form__input" id="tf-title" type="text" placeholder="What needs to be done?" required autofocus />
 
           <label class="task-form__label" for="tf-body">Description</label>
-          <textarea class="task-form__textarea" id="tf-body" rows="4" placeholder="Add more details…"></textarea>
+          <textarea class="task-form__textarea" id="tf-body" rows="8" placeholder="Describe the task in detail — the agent will use this as instructions…"></textarea>
 
-          <label class="task-form__label" for="tf-status">Status</label>
-          <select class="task-form__select" id="tf-status">
-            ${cols.map(c => `<option value="${escapeHtml(c.id)}">${escapeHtml(c.label)}</option>`).join('')}
-          </select>
-
-          <label class="task-form__label" for="tf-labels">Labels</label>
-          <input class="task-form__input" id="tf-labels" type="text" placeholder="bug, feature  (comma separated)" />
-
-          <label class="task-form__label" for="tf-assignee">Assignee</label>
-          <input class="task-form__input" id="tf-assignee" type="text" placeholder="Username" />
+          <div class="task-form__row">
+            <div class="task-form__field">
+              <label class="task-form__label" for="tf-status">Status</label>
+              <select class="task-form__select" id="tf-status">
+                ${cols.map(c => `<option value="${escapeHtml(c.id)}">${escapeHtml(c.label)}</option>`).join('')}
+              </select>
+            </div>
+            <div class="task-form__field">
+              <label class="task-form__label" for="tf-labels">Labels</label>
+              <input class="task-form__input" id="tf-labels" type="text" placeholder="bug, feature" />
+            </div>
+            <div class="task-form__field">
+              <label class="task-form__label" for="tf-assignee">Assignee</label>
+              <input class="task-form__input" id="tf-assignee" type="text" placeholder="Username" />
+            </div>
+          </div>
 
           <div class="task-form__actions">
             <button type="submit" class="task-form__btn task-form__btn--save">Save</button>
