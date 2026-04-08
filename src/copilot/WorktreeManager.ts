@@ -1,6 +1,6 @@
 import { execFile } from 'child_process';
-import * as path from 'path';
 import * as fs from 'fs';
+import * as path from 'path';
 
 /**
  * Result of creating a git worktree for a task.
@@ -33,10 +33,15 @@ export function sanitiseBranchName(taskId: string): string {
 /**
  * Build the worktree directory path for a given task.
  *
- * The worktree is placed inside `<repoRoot>/.agent-board/worktrees/<sanitised>`.
+ * The worktree is placed **outside** the repository to avoid interfering with
+ * VS Code file watchers, search indexing and `.gitignore` requirements.
+ *
+ * Layout: `<parent>/<repoName>.worktrees/<sanitised-taskId>`
  */
 export function worktreePath(repoRoot: string, taskId: string): string {
-  return path.join(repoRoot, '.agent-board', 'worktrees', sanitiseBranchName(taskId));
+  const parent = path.dirname(repoRoot);
+  const repoName = path.basename(repoRoot);
+  return path.join(parent, `${repoName}.worktrees`, sanitiseBranchName(taskId));
 }
 
 /**

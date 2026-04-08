@@ -1,10 +1,10 @@
 import * as assert from 'assert';
-import {
-  sanitiseBranchName,
-  worktreePath,
-  worktreeBranch,
-} from '../../copilot/WorktreeManager';
 import * as path from 'path';
+import {
+    sanitiseBranchName,
+    worktreeBranch,
+    worktreePath,
+} from '../../copilot/WorktreeManager';
 
 suite('WorktreeManager — sanitiseBranchName', () => {
   test('passes through simple alphanumeric ids', () => {
@@ -38,9 +38,9 @@ suite('WorktreeManager — sanitiseBranchName', () => {
 });
 
 suite('WorktreeManager — worktreePath', () => {
-  test('returns path under .agent-board/worktrees', () => {
-    const result = worktreePath('/repo', 'github:42');
-    assert.strictEqual(result, path.join('/repo', '.agent-board', 'worktrees', 'github-42'));
+  test('returns path outside repo as sibling directory', () => {
+    const result = worktreePath('/projects/repo', 'github:42');
+    assert.strictEqual(result, path.join('/projects', 'repo.worktrees', 'github-42'));
   });
 });
 
