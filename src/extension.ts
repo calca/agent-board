@@ -9,6 +9,7 @@ import { ProjectConfig } from './config/ProjectConfig';
 import { AgentInfo, discoverAgents } from './copilot/agentDiscovery';
 import { registerChatParticipant } from './copilot/ChatParticipant';
 import { CopilotLauncher } from './copilot/CopilotLauncher';
+import { removeWorktree } from './copilot/WorktreeManager';
 import { GenAiProviderRegistry } from './copilot/GenAiProviderRegistry';
 import { ModelSelector } from './copilot/ModelSelector';
 import { ChatGenAiProvider } from './copilot/providers/ChatGenAiProvider';
@@ -633,6 +634,33 @@ export function activate(context: vscode.ExtensionContext): void {
             logger.error('mergeWorktree failed:', errMsg);
             panel.postMessage({ type: 'mergeResult', sessionId: msg.sessionId, success: false, message: errMsg });
             vscode.window.showErrorMessage(`Merge fallito: ${errMsg}`);
+          }
+          break;
+        }
+        case 'deleteWorktree': {
+          const session = sessionStateManager.getSession(msg.sessionId);
+          const wtPath = session?.worktreePath;
+          const repoRoot = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
+          if (!wtPath || !repoRoot) { break; }
+
+          const answer = await vscode.window.showWarningMessage(
+            `Eliminare il workspace worktree "${path.basename(wtPath)}"? Questa operazione è irreversibile.`,
+            { modal: true },
+            'Elimina',
+            'Annulla',
+          );
+          if (answer !== 'Elimina') { break; }
+
+          try {
+            await removeWorktree(repoRoot, msg.sessionId);
+            panel.postMessage({ type: 'deleteWorktreeResult', sessionId: msg.sessionId, success: true });
+            vscode.window.showInformationMessage('Worktree eliminato.');
+            vscode.commands.executeCommand('agentBoard.refreshTasks');
+          } catch (err) {
+            const errMsg = err instanceof Error ? err.message : String(err);
+            logger.error('deleteWorktree failed:', errMsg);
+            panel.postMessage({ type: 'deleteWorktreeResult', sessionId: msg.sessionId, success: false, message: errMsg });
+            vscode.window.showErrorMessage(`Eliminazione fallita: ${errMsg}`);
           }
           break;
         }

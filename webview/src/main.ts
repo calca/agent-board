@@ -103,6 +103,8 @@ interface TaskLogEntry {
 let fullViewTaskId: string | null = null;
 const taskEventLogs = new Map<string, TaskLogEntry[]>();
 let fullViewAutoScroll = true;
+/** Sessions whose worktree has been merged successfully — enables "Delete Workspace". */
+const mergedSessions = new Set<string>();
 
 // ── Render ─────────────────────────────────────────────────────────────
 
@@ -297,14 +299,6 @@ function render(): void {
   document.getElementById('fv-btn-stop')?.addEventListener('click', () => {
     if (fullViewTaskId) { vscode.postMessage({ type: 'cancelSession', taskId: fullViewTaskId }); }
   });
-  document.getElementById('fv-follow-up-form')?.addEventListener('submit', (e: Event) => {
-    e.preventDefault();
-    const input = document.getElementById('fv-follow-up-input') as HTMLInputElement | null;
-    if (input && fullViewTaskId && input.value.trim()) {
-      vscode.postMessage({ type: 'sendFollowUp', sessionId: fullViewTaskId, text: input.value.trim() });
-      input.value = '';
-    }
-  });
   // ── Full view inline edit form ──────────────────────────────────────
   document.getElementById('fv-edit-form')?.addEventListener('submit', (e: Event) => {
     e.preventDefault();
@@ -356,6 +350,12 @@ function render(): void {
     btn.addEventListener('click', () => {
       const sessionId = (btn as HTMLElement).dataset.sessionId;
       if (sessionId) { vscode.postMessage({ type: 'mergeWorktree', sessionId }); }
+    });
+  });
+  document.querySelectorAll('.fv-delete-wt').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const sessionId = (btn as HTMLElement).dataset.sessionId;
+      if (sessionId) { vscode.postMessage({ type: 'deleteWorktree', sessionId }); }
     });
   });
 
@@ -840,12 +840,28 @@ function renderFullView(): string {
   const statusCol = currentColumns.find(c => c.id === task.status);
   const isEditable = editableProviderIds.includes(task.providerId);
   const activeProviderId = isRunning ? sessionInfo?.providerId : undefined;
+  const isMerged = mergedSessions.has(task.id);
+  const hasWorktree = !!sessionInfo?.worktreePath;
+
+  // ── State badge colour helper ──
+  const stateClass = sessionInfo ? `task-card__session task-card__session--${sessionInfo.state}` : '';
 
   return `
     <div class="full-view">
-      <div class="full-view__header">
-        <span class="full-view__title">${escapeHtml(task.title)}</span>
-        <div class="full-view__header-actions">
+      <!-- ── Top bar ── -->
+      <div class="fv-topbar">
+        <div class="fv-topbar__left">
+          <button class="fv-topbar__back" id="fv-close" title="Back">←</button>
+          <div class="fv-topbar__title-group">
+            <span class="fv-topbar__title">${escapeHtml(task.title)}</span>
+            <span class="fv-topbar__meta">
+              ${sessionInfo ? `<span class="${stateClass}">${escapeHtml(sessionInfo.state)}</span>` : ''}
+              <span class="fv-topbar__provider">${escapeHtml(task.providerId)}</span>
+              ${task.url ? `<a class="fv-topbar__link" href="${escapeHtml(task.url)}">↗</a>` : ''}
+            </span>
+          </div>
+        </div>
+        <div class="fv-topbar__actions">
           ${genAiProviders.filter(p => !p.disabled).map(p => {
             const isActive = activeProviderId === p.id;
             const disabledAttr = isRunning && !isActive ? ' disabled' : '';
@@ -853,169 +869,223 @@ function renderFullView(): string {
             return `<button class="${cls}" data-provider-id="${escapeHtml(p.id)}" title="${escapeHtml(p.displayName)}"${disabledAttr}>🤖 ${escapeHtml(p.displayName)}</button>`;
           }).join('')}
           ${isRunning ? `<button class="toolbar__btn toolbar__btn--small toolbar__btn--danger" id="fv-btn-stop">■ Stop</button>` : ''}
-          ${sessionInfo?.worktreePath ? `<button class="toolbar__btn toolbar__btn--small fv-review-wt" data-session-id="${escapeHtml(task.id)}" title="Review Diff vs Main">🔍 Review</button>` : ''}
-          ${sessionInfo?.worktreePath ? `<button class="toolbar__btn toolbar__btn--small toolbar__btn--primary fv-merge-wt" data-session-id="${escapeHtml(task.id)}" title="Merge in Main">⤴ Merge</button>` : ''}
-          <button class="full-view__close" id="fv-close">✕</button>
         </div>
       </div>
-      <div class="full-view__content">
-        <aside class="full-view__info">
-          ${isEditable ? renderFullViewEditableSidebar(task, sessionInfo, statusCol, files, statusIcons) : renderFullViewReadOnlySidebar(task, sessionInfo, statusCol, files, statusIcons)}
-        </aside>
-        <div class="full-view__log">
-          <div class="full-view__log-header">
-            <span>Activity Log</span>
-            <span class="full-view__log-count">${logs.length} entries</span>
-          </div>
-          ${isInterrupted ? `<div class="session-interrupted-banner">⚡ Session interrupted. Log is read-only.</div>` : ''}
-          <div class="full-view__log-scroll" id="fv-log-scroll">
-            <div class="full-view__log-entries" id="fv-log-entries">
-              ${logs.map(e => renderLogEntry(e)).join('')}
-              ${logs.length === 0 ? '<div class="fv-log__empty">No activity yet. Events will appear here in real time.</div>' : ''}
+
+      ${isInterrupted ? `<div class="session-interrupted-banner">⚡ Session interrupted. Log is read-only.</div>` : ''}
+
+      <!-- ── Main content (two columns) ── -->
+      <div class="fv-body">
+
+        <!-- ── LEFT COLUMN: info panels ── -->
+        <aside class="fv-sidebar">
+
+          <!-- Task Details (collapsible) -->
+          <details class="fv-panel" ${isEditable ? '' : 'open'}>
+            <summary class="fv-panel__header">
+              <span class="fv-panel__header-text">📋 Task Details</span>
+              <span class="fv-panel__chevron"></span>
+            </summary>
+            <div class="fv-panel__body">
+              ${isEditable ? renderFvEditableDetails(task, statusCol) : renderFvReadOnlyDetails(task, statusCol)}
             </div>
-          </div>
-          <form class="full-view__follow-up" id="fv-follow-up-form">
-            <input class="task-form__input" id="fv-follow-up-input" type="text"
-              placeholder="${isInterrupted ? 'Session interrupted' : (isRunning ? 'Send message to agent…' : 'Agent not running')}"
-              ${!isRunning ? 'disabled' : ''} />
-            <button type="submit" class="toolbar__btn toolbar__btn--primary" ${!isRunning ? 'disabled' : ''}>Send</button>
-          </form>
+          </details>
+
+          <!-- Session & Worktree -->
+          ${sessionInfo || hasWorktree ? `
+          <details class="fv-panel" open>
+            <summary class="fv-panel__header">
+              <span class="fv-panel__header-text">⚙ Session</span>
+              <span class="fv-panel__chevron"></span>
+            </summary>
+            <div class="fv-panel__body">
+              ${renderFvSessionPanel(sessionInfo, task, isMerged)}
+            </div>
+          </details>
+          ` : ''}
+
+          <!-- Changed Files (collapsible) -->
+          <details class="fv-panel" ${files.length > 0 ? 'open' : ''}>
+            <summary class="fv-panel__header">
+              <span class="fv-panel__header-text">📂 Files</span>
+              ${files.length > 0 ? `<span class="fv-panel__badge">${files.length}</span>` : ''}
+              <span class="fv-panel__chevron"></span>
+            </summary>
+            <div class="fv-panel__body fv-panel__body--flush">
+              ${files.length === 0
+                ? '<div class="fv-files-empty">No changes detected</div>'
+                : `<div class="fv-file-list">
+                    ${files.map(f => `
+                      <div class="fv-file-item file-list__item file-list__item--${f.status}" data-file-path="${escapeHtml(f.path)}">
+                        <span class="file-list__icon">${statusIcons[f.status] || '?'}</span>
+                        <span class="file-list__path">${escapeHtml(f.path)}</span>
+                      </div>
+                    `).join('')}
+                  </div>`}
+            </div>
+          </details>
+
+          <!-- Actions -->
+          <details class="fv-panel" open>
+            <summary class="fv-panel__header">
+              <span class="fv-panel__header-text">⚡ Actions</span>
+              <span class="fv-panel__chevron"></span>
+            </summary>
+            <div class="fv-panel__body">
+              <div class="fv-actions">
+                ${hasWorktree ? `
+                  <button class="fv-action-btn fv-open-worktree" data-wt-path="${escapeHtml(sessionInfo!.worktreePath!)}" title="Open worktree folder in VS Code">↗ Open in VS Code</button>
+                  <button class="fv-action-btn fv-review-wt" data-session-id="${escapeHtml(task.id)}" title="Review changes vs main branch">🔍 Review Diff</button>
+                  <button class="fv-action-btn fv-action-btn--primary fv-merge-wt" data-session-id="${escapeHtml(task.id)}" title="Merge worktree branch into main" ${isMerged ? 'disabled' : ''}>⤴ Merge${isMerged ? ' ✓' : ''}</button>
+                  <button class="fv-action-btn fv-action-btn--danger fv-delete-wt" data-session-id="${escapeHtml(task.id)}" title="Delete worktree directory and branch" ${!isMerged ? 'disabled' : ''}>🗑 Delete Workspace</button>
+                ` : `<div class="fv-actions__empty">No worktree — actions require a worktree session.</div>`}
+              </div>
+            </div>
+          </details>
+
+        </aside>
+
+        <!-- ── RIGHT COLUMN: activity log ── -->
+        <div class="fv-log-column">
+          <details class="fv-panel fv-panel--log" open>
+            <summary class="fv-panel__header fv-log-panel-header">
+              <span class="fv-panel__header-text">📜 Activity Log</span>
+              <span class="fv-panel__badge">${logs.length}</span>
+              <span class="fv-panel__chevron"></span>
+            </summary>
+            <div class="fv-panel__body fv-panel__body--log">
+              <div class="fv-log-scroll" id="fv-log-scroll">
+                <div class="fv-log-entries" id="fv-log-entries">
+                  ${logs.map(e => renderLogEntry(e)).join('')}
+                  ${logs.length === 0 ? '<div class="fv-log__empty">No activity yet. Events will appear here in real time.</div>' : ''}
+                </div>
+              </div>
+            </div>
+          </details>
         </div>
+
       </div>
     </div>
   `;
 }
 
-function renderFullViewReadOnlySidebar(
-  task: KanbanTask,
-  sessionInfo: KanbanTask['copilotSession'],
-  statusCol: Column | undefined,
-  files: FileChangeInfo[],
-  statusIcons: Record<string, string>,
-): string {
-  return `
-    <div class="full-view__section">
-      <div class="full-view__section-label">Status</div>
-      <div>${escapeHtml(statusCol?.label ?? task.status)}</div>
-    </div>
-    ${renderSessionSection(sessionInfo, task)}
-    ${task.labels.length > 0 ? `
-      <div class="full-view__section">
-        <div class="full-view__section-label">Labels</div>
-        <div class="full-view__labels">${task.labels.map(l => `<span class="task-card__label">${escapeHtml(l)}</span>`).join('')}</div>
-      </div>
-    ` : ''}
-    ${task.assignee ? `
-      <div class="full-view__section">
-        <div class="full-view__section-label">Assignee</div>
-        <div>${escapeHtml(task.assignee)}</div>
-      </div>
-    ` : ''}
-    ${task.agent ? `
-      <div class="full-view__section">
-        <div class="full-view__section-label">Agent</div>
-        <div>🤖 ${escapeHtml(task.agent)}</div>
-      </div>
-    ` : ''}
-    ${renderWorktreeSection(sessionInfo, task)}
-    <div class="full-view__section">
-      <div class="full-view__section-label">Description</div>
-      <div class="full-view__body">${task.body ? escapeHtml(task.body) : '<span style="opacity:0.5">No description</span>'}</div>
-    </div>
-    ${task.url ? `<div class="full-view__section"><a class="task-detail__link" href="${escapeHtml(task.url)}">Open source ↗</a></div>` : ''}
-    ${renderFilesSection(files, statusIcons)}
-    <div class="full-view__section"><span class="task-card__provider">${escapeHtml(task.providerId)}</span></div>
-  `;
-}
+// ── Full-view sub-renderers ────────────────────────────────────────────
 
-function renderFullViewEditableSidebar(
-  task: KanbanTask,
-  sessionInfo: KanbanTask['copilotSession'],
-  statusCol: Column | undefined,
-  files: FileChangeInfo[],
-  statusIcons: Record<string, string>,
-): string {
+function renderFvReadOnlyDetails(task: KanbanTask, statusCol: Column | undefined): string {
   return `
-    <form id="fv-edit-form" class="fv-edit-form">
-      <div class="full-view__section">
-        <label class="full-view__section-label" for="fv-edit-title">Title</label>
-        <input class="task-form__input" id="fv-edit-title" type="text" value="${escapeHtml(task.title)}" required />
+    <div class="fv-detail-grid">
+      <div class="fv-detail-row">
+        <span class="fv-detail-label">Status</span>
+        <span>${escapeHtml(statusCol?.label ?? task.status)}</span>
       </div>
-      <div class="full-view__section">
-        <label class="full-view__section-label" for="fv-edit-status">Status</label>
-        <select class="task-form__select" id="fv-edit-status">
-          ${currentColumns.map(c => `<option value="${escapeHtml(c.id)}"${c.id === task.status ? ' selected' : ''}>${escapeHtml(c.label)}</option>`).join('')}
-        </select>
-      </div>
-      ${renderSessionSection(sessionInfo, task)}
-      <div class="full-view__section">
-        <label class="full-view__section-label" for="fv-edit-labels">Labels</label>
-        <input class="task-form__input" id="fv-edit-labels" type="text" value="${escapeHtml(task.labels.join(', '))}" placeholder="bug, feature" />
-      </div>
-      <div class="full-view__section">
-        <label class="full-view__section-label" for="fv-edit-assignee">Assignee</label>
-        <input class="task-form__input" id="fv-edit-assignee" type="text" value="${escapeHtml(task.assignee ?? '')}" placeholder="Username" />
-      </div>
-      ${task.agent ? `
-        <div class="full-view__section">
-          <div class="full-view__section-label">Agent</div>
-          <div>🤖 ${escapeHtml(task.agent)}</div>
+      ${task.labels.length > 0 ? `
+        <div class="fv-detail-row">
+          <span class="fv-detail-label">Labels</span>
+          <span class="fv-detail-labels">${task.labels.map(l => `<span class="task-card__label">${escapeHtml(l)}</span>`).join('')}</span>
         </div>
       ` : ''}
-      ${renderWorktreeSection(sessionInfo, task)}
-      <div class="full-view__section">
-        <label class="full-view__section-label" for="fv-edit-body">Description</label>
-        <textarea class="task-form__textarea" id="fv-edit-body" rows="4">${escapeHtml(task.body)}</textarea>
-      </div>
-      <div class="full-view__section">
-        <button type="submit" class="toolbar__btn toolbar__btn--primary" style="width:100%">Save</button>
-      </div>
-    </form>
-    ${task.url ? `<div class="full-view__section"><a class="task-detail__link" href="${escapeHtml(task.url)}">Open source ↗</a></div>` : ''}
-    ${renderFilesSection(files, statusIcons)}
-    <div class="full-view__section"><span class="task-card__provider">${escapeHtml(task.providerId)}</span></div>
-  `;
-}
-
-function renderSessionSection(sessionInfo: KanbanTask['copilotSession'], task: KanbanTask): string {
-  if (!sessionInfo) { return ''; }
-  return `
-    <div class="full-view__section">
-      <div class="full-view__section-label">Session</div>
-      <span class="task-card__session task-card__session--${sessionInfo.state}">${escapeHtml(sessionInfo.state)}</span>
-      ${sessionInfo.startedAt ? `<div class="full-view__meta">Started ${escapeHtml(sessionInfo.startedAt)}</div>` : ''}
-      ${sessionInfo.finishedAt ? `<div class="full-view__meta">Finished ${escapeHtml(sessionInfo.finishedAt)}</div>` : ''}
-      ${sessionInfo.state === 'error' && sessionInfo.errorMessage ? `<div class="full-view__error">${escapeHtml(sessionInfo.errorMessage)}</div>` : ''}
-      ${sessionInfo.prUrl ? `<a class="task-card__pr-badge task-card__pr-badge--${sessionInfo.prState ?? 'open'}" href="${escapeHtml(sessionInfo.prUrl)}">PR #${sessionInfo.prNumber ?? ''}</a>` : ''}
+      ${task.assignee ? `
+        <div class="fv-detail-row">
+          <span class="fv-detail-label">Assignee</span>
+          <span>${escapeHtml(task.assignee)}</span>
+        </div>
+      ` : ''}
+      ${task.agent ? `
+        <div class="fv-detail-row">
+          <span class="fv-detail-label">Agent</span>
+          <span>🤖 ${escapeHtml(task.agent)}</span>
+        </div>
+      ` : ''}
     </div>
+    ${task.body ? `<div class="fv-description">${escapeHtml(task.body)}</div>` : ''}
   `;
 }
 
-function renderWorktreeSection(sessionInfo: KanbanTask['copilotSession'], task: KanbanTask): string {
-  if (!sessionInfo?.worktreePath) { return ''; }
+function renderFvEditableDetails(task: KanbanTask, statusCol: Column | undefined): string {
   return `
-    <div class="full-view__section">
-      <div class="full-view__section-label">Worktree</div>
-      <code class="full-view__wt-path">${escapeHtml(sessionInfo.worktreePath)}</code>
-      <button class="toolbar__btn toolbar__btn--small fv-open-worktree" data-wt-path="${escapeHtml(sessionInfo.worktreePath)}" style="margin-top:4px;width:100%">↗ Apri in VS Code</button>
-      <button class="toolbar__btn toolbar__btn--small fv-review-wt" data-session-id="${escapeHtml(task.id)}" style="margin-top:4px;width:100%">🔍 Review Diff vs Main</button>
-      <button class="toolbar__btn toolbar__btn--primary fv-merge-wt" data-session-id="${escapeHtml(task.id)}" style="margin-top:4px;width:100%">⤴ Merge in Main</button>
-    </div>
-  `;
-}
-
-function renderFilesSection(files: FileChangeInfo[], statusIcons: Record<string, string>): string {
-  return `
-    <div class="full-view__section">
-      <div class="full-view__section-label">Changed Files (${files.length})</div>
-      ${files.length === 0
-        ? '<div class="file-list__empty">No changes yet</div>'
-        : files.map(f => `
-          <div class="fv-file-item file-list__item file-list__item--${f.status}" data-file-path="${escapeHtml(f.path)}">
-            <span class="file-list__icon">${statusIcons[f.status] || '?'}</span>
-            <span class="file-list__path">${escapeHtml(f.path)}</span>
+    <form id="fv-edit-form" class="fv-edit-form">
+      <div class="fv-detail-grid">
+        <div class="fv-detail-row">
+          <label class="fv-detail-label" for="fv-edit-title">Title</label>
+          <input class="task-form__input" id="fv-edit-title" type="text" value="${escapeHtml(task.title)}" required />
+        </div>
+        <div class="fv-detail-row">
+          <label class="fv-detail-label" for="fv-edit-status">Status</label>
+          <select class="task-form__select" id="fv-edit-status">
+            ${currentColumns.map(c => `<option value="${escapeHtml(c.id)}"${c.id === task.status ? ' selected' : ''}>${escapeHtml(c.label)}</option>`).join('')}
+          </select>
+        </div>
+        <div class="fv-detail-row">
+          <label class="fv-detail-label" for="fv-edit-labels">Labels</label>
+          <input class="task-form__input" id="fv-edit-labels" type="text" value="${escapeHtml(task.labels.join(', '))}" placeholder="bug, feature" />
+        </div>
+        <div class="fv-detail-row">
+          <label class="fv-detail-label" for="fv-edit-assignee">Assignee</label>
+          <input class="task-form__input" id="fv-edit-assignee" type="text" value="${escapeHtml(task.assignee ?? '')}" placeholder="Username" />
+        </div>
+        ${task.agent ? `
+          <div class="fv-detail-row">
+            <span class="fv-detail-label">Agent</span>
+            <span>🤖 ${escapeHtml(task.agent)}</span>
           </div>
-        `).join('')}
+        ` : ''}
+      </div>
+      <div class="fv-edit-body-group">
+        <label class="fv-detail-label" for="fv-edit-body">Description</label>
+        <textarea class="task-form__textarea" id="fv-edit-body" rows="3">${escapeHtml(task.body)}</textarea>
+      </div>
+      <button type="submit" class="toolbar__btn toolbar__btn--primary fv-save-btn">Save Changes</button>
+    </form>
+  `;
+}
+
+function renderFvSessionPanel(
+  sessionInfo: KanbanTask['copilotSession'],
+  task: KanbanTask,
+  isMerged: boolean,
+): string {
+  if (!sessionInfo) { return ''; }
+  const hasWorktree = !!sessionInfo.worktreePath;
+  return `
+    <div class="fv-session-grid">
+      <div class="fv-detail-row">
+        <span class="fv-detail-label">State</span>
+        <span class="task-card__session task-card__session--${sessionInfo.state}">${escapeHtml(sessionInfo.state)}</span>
+      </div>
+      ${sessionInfo.providerId ? `
+        <div class="fv-detail-row">
+          <span class="fv-detail-label">Provider</span>
+          <span>${escapeHtml(sessionInfo.providerId)}</span>
+        </div>
+      ` : ''}
+      ${sessionInfo.startedAt ? `
+        <div class="fv-detail-row">
+          <span class="fv-detail-label">Started</span>
+          <span class="fv-detail-meta">${escapeHtml(sessionInfo.startedAt)}</span>
+        </div>
+      ` : ''}
+      ${sessionInfo.finishedAt ? `
+        <div class="fv-detail-row">
+          <span class="fv-detail-label">Finished</span>
+          <span class="fv-detail-meta">${escapeHtml(sessionInfo.finishedAt)}</span>
+        </div>
+      ` : ''}
+      ${sessionInfo.state === 'error' && sessionInfo.errorMessage ? `
+        <div class="fv-session-error">${escapeHtml(sessionInfo.errorMessage)}</div>
+      ` : ''}
+      ${sessionInfo.prUrl ? `
+        <div class="fv-detail-row">
+          <span class="fv-detail-label">Pull Request</span>
+          <a class="task-card__pr-badge task-card__pr-badge--${sessionInfo.prState ?? 'open'}" href="${escapeHtml(sessionInfo.prUrl)}">PR #${sessionInfo.prNumber ?? ''}</a>
+        </div>
+      ` : ''}
+      ${hasWorktree ? `
+        <div class="fv-detail-row">
+          <span class="fv-detail-label">Worktree</span>
+          <code class="fv-wt-path">${escapeHtml(sessionInfo.worktreePath!)}</code>
+        </div>
+        ${isMerged ? '<div class="fv-merged-badge">✅ Merged into main</div>' : ''}
+      ` : ''}
     </div>
   `;
 }
@@ -1193,8 +1263,15 @@ window.addEventListener('message', (event: MessageEvent) => {
       render();
       break;
     case 'mergeResult':
+      if (msg.success) { mergedSessions.add(msg.sessionId); }
       addTaskLog(msg.sessionId, msg.success ? 'system' : 'board',
         msg.success ? `✅ ${msg.message}` : `❌ Merge fallito: ${msg.message}`);
+      render();
+      break;
+    case 'deleteWorktreeResult':
+      addTaskLog(msg.sessionId, msg.success ? 'system' : 'board',
+        msg.success ? '🗑 Worktree eliminato.' : `❌ Eliminazione fallita: ${msg.message ?? ''}`);
+      if (msg.success) { mergedSessions.delete(msg.sessionId); }
       render();
       break;
   }

@@ -92,4 +92,5 @@ export type WebViewToHost =
   | { type: 'requestStreamResume'; sessionId: string }
   | { type: 'sendFollowUp'; sessionId: string; text: string }
   | { type: 'reviewWorktree'; sessionId: string }
-  | { type: 'mergeWorktree'; sessionId: string };
+  | { type: 'mergeWorktree'; sessionId: string }
+  | { type: 'deleteWorktree'; sessionId: string };
