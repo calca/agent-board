@@ -359,8 +359,9 @@ function render(): void {
   });
 
   // ── Review & merge worktree (all views) ───────────────────────────
-  document.querySelectorAll('.fv-review-wt').forEach(btn => {
-    btn.addEventListener('click', () => {
+  document.querySelectorAll('.fv-review-wt, .card-review-wt').forEach(btn => {
+    btn.addEventListener('click', (e: Event) => {
+      e.stopPropagation(); // prevent card click → full view
       const sessionId = (btn as HTMLElement).dataset.sessionId;
       if (sessionId) { vscode.postMessage({ type: 'reviewWorktree', sessionId }); }
     });
@@ -515,7 +516,7 @@ function renderCard(task: KanbanTask): string {
     ? `<img class="task-card__avatar" src="${escapeHtml(avatarUrl)}" alt="${escapeHtml(task.assignee ?? '')}" title="${escapeHtml(task.assignee ?? '')}" />`
     : (initials ? `<span class="task-card__assignee">${initials}</span>` : '');
   const wtBadge = session?.worktreePath
-    ? `<span class="task-card__wt-badge" title="${escapeHtml(session.worktreePath)}">🌿</span>`
+    ? `<span class="task-card__wt-badge" title="${escapeHtml(session.worktreePath)}">🌿</span><button class="task-card__diff-btn card-review-wt" data-session-id="${escapeHtml(task.id)}" title="Review Diff vs Main">⇄</button>`
     : '';
   return `
     <div class="task-card${isActive ? ' task-card--running' : ''}" data-task-id="${escapeHtml(task.id)}">
@@ -847,6 +848,8 @@ function renderFullView(): string {
             return `<button class="${cls}" data-provider-id="${escapeHtml(p.id)}" title="${escapeHtml(p.displayName)}"${disabledAttr}>🤖 ${escapeHtml(p.displayName)}</button>`;
           }).join('')}
           ${isRunning ? `<button class="toolbar__btn toolbar__btn--small toolbar__btn--danger" id="fv-btn-stop">■ Stop</button>` : ''}
+          ${sessionInfo?.worktreePath ? `<button class="toolbar__btn toolbar__btn--small fv-review-wt" data-session-id="${escapeHtml(task.id)}" title="Review Diff vs Main">🔍 Review</button>` : ''}
+          ${sessionInfo?.worktreePath ? `<button class="toolbar__btn toolbar__btn--small toolbar__btn--primary fv-merge-wt" data-session-id="${escapeHtml(task.id)}" title="Merge in Main">⤴ Merge</button>` : ''}
           <button class="toolbar__btn toolbar__btn--small" id="fv-btn-terminal" title="Terminal">⌨</button>
           <button class="toolbar__btn toolbar__btn--small" id="fv-btn-diff" title="Full Diff">Diff</button>
           <button class="toolbar__btn toolbar__btn--small" id="fv-btn-export" title="Export Log">Export</button>

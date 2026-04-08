@@ -1304,6 +1304,23 @@ html, body, #root {
   cursor: default;
 }
 
+.task-card__diff-btn {
+  all: unset;
+  font-size: 0.72em;
+  cursor: pointer;
+  padding: 1px 4px;
+  border-radius: 3px;
+  background: var(--vscode-button-secondaryBackground, rgba(128,128,128,0.2));
+  color: var(--vscode-button-secondaryForeground, inherit);
+  opacity: 0.8;
+  transition: opacity 0.15s, background 0.15s;
+}
+.task-card__diff-btn:hover {
+  opacity: 1;
+  background: var(--vscode-button-background, #0e639c);
+  color: var(--vscode-button-foreground, #fff);
+}
+
 .task-detail__worktree {
   display: flex;
   align-items: center;

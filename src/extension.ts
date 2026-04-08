@@ -209,7 +209,7 @@ export function activate(context: vscode.ExtensionContext): void {
     refresh();
     const activePanel = KanbanPanel.getInstance();
     if (activePanel) {
-      await sendTasksToPanel(activePanel, providerRegistry, genAiRegistry, squadManager);
+      await sendTasksToPanel(activePanel, providerRegistry, genAiRegistry, squadManager, sessionStateManager);
     }
     vscode.window.showInformationMessage(`Task "${title}" added.`);
   });
@@ -287,7 +287,7 @@ export function activate(context: vscode.ExtensionContext): void {
     // Auto-refresh board when squad session state changes (background completion/failure)
     const squadSub = squadManager.onDidChangeStatus(async () => {
       panel.updateSquadStatus(squadManager.getStatus());
-      await sendTasksToPanel(panel, providerRegistry, genAiRegistry, squadManager);
+      await sendTasksToPanel(panel, providerRegistry, genAiRegistry, squadManager, sessionStateManager);
     });
     panel.onDispose(() => squadSub.dispose());
 
@@ -315,7 +315,7 @@ export function activate(context: vscode.ExtensionContext): void {
       void ghIssueManager.ensureKanbanLabels();
       ghIssueManager.startPolling(30_000);
       const ghPollSub = ghIssueManager.onDidDetectRemoteChange(async () => {
-        await sendTasksToPanel(panel, providerRegistry, genAiRegistry, squadManager);
+        await sendTasksToPanel(panel, providerRegistry, genAiRegistry, squadManager, sessionStateManager);
       });
       panel.onDispose(() => {
         ghIssueManager.stopPolling();
@@ -328,7 +328,7 @@ export function activate(context: vscode.ExtensionContext): void {
       switch (msg.type) {
         case 'ready':
           // Send initial tasks, squad status, available agents, and MCP status
-          await sendTasksToPanel(panel, providerRegistry, genAiRegistry, squadManager);
+          await sendTasksToPanel(panel, providerRegistry, genAiRegistry, squadManager, sessionStateManager);
           panel.updateSquadStatus(squadManager.getStatus());
           panel.updateAgents(agentOptions());
           panel.updateMcpStatus(ProjectConfig.getProjectConfig()?.mcp?.enabled ?? false);
@@ -340,7 +340,7 @@ export function activate(context: vscode.ExtensionContext): void {
           break;
         case 'refreshRequest':
           await refreshTasksCommand(providerRegistry);
-          await sendTasksToPanel(panel, providerRegistry, genAiRegistry, squadManager);
+          await sendTasksToPanel(panel, providerRegistry, genAiRegistry, squadManager, sessionStateManager);
           refreshAgents();
           panel.updateAgents(agentOptions());
           break;
@@ -386,7 +386,7 @@ export function activate(context: vscode.ExtensionContext): void {
               }
             }
           }
-          await sendTasksToPanel(panel, providerRegistry, genAiRegistry, squadManager);
+          await sendTasksToPanel(panel, providerRegistry, genAiRegistry, squadManager, sessionStateManager);
           break;
         }
         case 'openCopilot':
@@ -396,7 +396,7 @@ export function activate(context: vscode.ExtensionContext): void {
           }
           await squadManager.launchSingle(msg.taskId, msg.providerId, msg.agentSlug);
           panel.updateSquadStatus(squadManager.getStatus());
-          await sendTasksToPanel(panel, providerRegistry, genAiRegistry, squadManager);
+          await sendTasksToPanel(panel, providerRegistry, genAiRegistry, squadManager, sessionStateManager);
           break;
         case 'startSquad': {
           if (!(await isGitRepository())) {
@@ -405,7 +405,7 @@ export function activate(context: vscode.ExtensionContext): void {
           }
           await handleStartSquad(squadManager, msg.agentSlug, msg.genAiProviderId);
           panel.updateSquadStatus(squadManager.getStatus());
-          await sendTasksToPanel(panel, providerRegistry, genAiRegistry, squadManager);
+          await sendTasksToPanel(panel, providerRegistry, genAiRegistry, squadManager, sessionStateManager);
           break;
         }
         case 'toggleAutoSquad': {
@@ -442,7 +442,7 @@ export function activate(context: vscode.ExtensionContext): void {
             await jsonProvider.updateTask(updates as import('./types/KanbanTask').KanbanTask);
           }
           refresh();
-          await sendTasksToPanel(panel, providerRegistry, genAiRegistry, squadManager);
+          await sendTasksToPanel(panel, providerRegistry, genAiRegistry, squadManager, sessionStateManager);
           break;
         }
         case 'cancelTaskForm':
@@ -467,20 +467,20 @@ export function activate(context: vscode.ExtensionContext): void {
             }
           }
           refresh();
-          await sendTasksToPanel(panel, providerRegistry, genAiRegistry, squadManager);
+          await sendTasksToPanel(panel, providerRegistry, genAiRegistry, squadManager, sessionStateManager);
           break;
         }
         case 'launchProvider': {
           await squadManager.launchSingle(msg.taskId, msg.genAiProviderId, undefined);
           panel.updateSquadStatus(squadManager.getStatus());
-          await sendTasksToPanel(panel, providerRegistry, genAiRegistry, squadManager);
+          await sendTasksToPanel(panel, providerRegistry, genAiRegistry, squadManager, sessionStateManager);
           break;
         }
         case 'cancelSession': {
           copilotLauncher.cancelSession(msg.taskId);
           squadManager.failSession(msg.taskId);
           panel.updateSquadStatus(squadManager.getStatus());
-          await sendTasksToPanel(panel, providerRegistry, genAiRegistry, squadManager);
+          await sendTasksToPanel(panel, providerRegistry, genAiRegistry, squadManager, sessionStateManager);
           break;
         }
         case 'reopenSession': {
@@ -812,7 +812,7 @@ const EDITABLE_PROVIDER_IDS = ['json', 'github'];
 /**
  * Gather tasks from all providers and push them to the Kanban panel.
  */
-async function sendTasksToPanel(panel: KanbanPanel, registry: ProviderRegistry, genAiRegistry?: import('./copilot/GenAiProviderRegistry').GenAiProviderRegistry, squadMgr?: SquadManager): Promise<void> {
+async function sendTasksToPanel(panel: KanbanPanel, registry: ProviderRegistry, genAiRegistry?: import('./copilot/GenAiProviderRegistry').GenAiProviderRegistry, squadMgr?: SquadManager, sessionStateMgr?: SessionStateManager): Promise<void> {
   const providers = registry.getAll();
   const allTasks = (
     await Promise.allSettled(providers.map(p => p.getTasks()))
@@ -820,11 +820,18 @@ async function sendTasksToPanel(panel: KanbanPanel, registry: ProviderRegistry, 
     .filter((r): r is PromiseFulfilledResult<import('./types/KanbanTask').KanbanTask[]> => r.status === 'fulfilled')
     .flatMap(r => r.value);
 
-  // Inject active session info into tasks so the webview can show status
-  if (squadMgr) {
-    const sessions = squadMgr.getActiveSessions();
-    for (const task of allTasks) {
-      const session = sessions.get(task.id);
+  // Inject session info into tasks so the webview can show status, worktree, errors
+  // Prefer SessionStateManager (has worktreePath, errorMessage), fallback to SquadManager active sessions
+  for (const task of allTasks) {
+    if (sessionStateMgr) {
+      const persisted = sessionStateMgr.getSession(task.id);
+      if (persisted) {
+        task.copilotSession = sessionStateMgr.toCopilotSessionInfo(persisted);
+        continue;
+      }
+    }
+    if (squadMgr) {
+      const session = squadMgr.getActiveSessions().get(task.id);
       if (session) {
         task.copilotSession = session;
       }
