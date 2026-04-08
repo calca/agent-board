@@ -1,20 +1,20 @@
 import * as vscode from 'vscode';
 import { Logger } from '../utils/logger';
 import {
-  fixInterruptedSessions,
-  PersistedSession,
-  SessionState,
-  toCopilotSessionInfo as toCopilotInfo,
+    fixInterruptedSessions,
+    PersistedSession,
+    SessionState,
+    toCopilotSessionInfo as toCopilotInfo,
 } from './sessionStateUtils';
 
 // Re-export pure utilities so consumers can import from one place
 export {
-  badgeColor,
-  badgeIcon,
-  fixInterruptedSessions,
-  isActive,
-  mapStateToCopilot,
-  toCopilotSessionInfo
+    badgeColor,
+    badgeIcon,
+    fixInterruptedSessions,
+    isActive,
+    mapStateToCopilot,
+    toCopilotSessionInfo
 } from './sessionStateUtils';
 export type { PersistedSession, SessionState } from './sessionStateUtils';
 
