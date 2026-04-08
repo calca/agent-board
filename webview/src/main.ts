@@ -326,6 +326,17 @@ function render(): void {
   document.getElementById('fv-btn-stop')?.addEventListener('click', () => {
     if (fullViewTaskId) { vscode.postMessage({ type: 'cancelSession', taskId: fullViewTaskId }); }
   });
+  // ── Full view edit button → open overlay ────────────────────────────
+  document.getElementById('fv-edit-btn')?.addEventListener('click', () => {
+    if (!fullViewTaskId) { return; }
+    const task = currentTasks.find(t => t.id === fullViewTaskId);
+    if (task) {
+      editingTask = task;
+      formColumns = currentColumns;
+      showTaskForm = false;
+      render();
+    }
+  });
   // ── Full view inline edit form ──────────────────────────────────────
   document.getElementById('fv-edit-form')?.addEventListener('submit', (e: Event) => {
     e.preventDefault();
@@ -625,19 +636,6 @@ function renderEditForm(task: KanbanTask): string {
             <button type="button" class="task-form__btn task-form__btn--cancel" id="task-form-cancel">Close</button>
           </div>
         </form>
-        ${genAiProviders.length > 0 ? `
-        <div class="actions-toolbar">
-          <div class="actions-toolbar__heading">Actions</div>
-          <div class="actions-toolbar__list">
-            ${genAiProviders.map(p => `
-              <button class="actions__provider-btn${p.disabled ? ' actions__provider-btn--disabled' : ''}" data-provider-id="${escapeHtml(p.id)}" ${p.disabled ? 'disabled' : ''} title="${escapeHtml(p.disabled ? (p.disabledReason ?? 'Not available') : p.displayName)}">
-                <span class="actions__provider-icon codicon codicon-${escapeHtml(p.icon)}"></span>
-                ${escapeHtml(p.displayName)}
-              </button>
-            `).join('')}
-          </div>
-        </div>
-        ` : ''}
       </div>
     </div>
   `;
@@ -934,9 +932,10 @@ function renderFullView(): string {
           <div class="fv-panel fv-panel--fill">
             <div class="fv-panel__header fv-panel__header--static">
               <span class="fv-panel__header-text">📋 Task Details</span>
+              ${isEditable ? `<button class="fv-panel__header-btn" id="fv-edit-btn" title="Edit task">✏ Edit</button>` : ''}
             </div>
             <div class="fv-panel__body fv-panel__body--scroll">
-              ${isEditable ? renderFvEditableDetails(task, statusCol) : renderFvReadOnlyDetails(task, statusCol)}
+              ${renderFvReadOnlyDetails(task, statusCol)}
             </div>
           </div>
         </div>
