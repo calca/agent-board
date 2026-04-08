@@ -229,11 +229,6 @@ function render(): void {
       streamAutoScroll = atBottom;
     }, { passive: true });
   }
-  document.getElementById('session-btn-terminal')?.addEventListener('click', () => {
-    if (sessionPanelTaskId) {
-      vscode.postMessage({ type: 'openTerminalInWorktree', sessionId: sessionPanelTaskId });
-    }
-  });
   document.getElementById('session-btn-stop')?.addEventListener('click', () => {
     if (sessionPanelTaskId) {
       vscode.postMessage({ type: 'cancelSession', taskId: sessionPanelTaskId });
@@ -302,10 +297,6 @@ function render(): void {
   document.getElementById('fv-btn-stop')?.addEventListener('click', () => {
     if (fullViewTaskId) { vscode.postMessage({ type: 'cancelSession', taskId: fullViewTaskId }); }
   });
-  document.getElementById('fv-btn-terminal')?.addEventListener('click', () => {
-    if (fullViewTaskId) { vscode.postMessage({ type: 'openTerminalInWorktree', sessionId: fullViewTaskId }); }
-  });
-
   document.getElementById('fv-follow-up-form')?.addEventListener('submit', (e: Event) => {
     e.preventDefault();
     const input = document.getElementById('fv-follow-up-input') as HTMLInputElement | null;
@@ -748,7 +739,6 @@ function renderSessionPanel(): string {
       <div class="session-panel__header">
         <span class="session-panel__title">${title}</span>
         <div class="session-panel__action-bar">
-          <button class="toolbar__btn toolbar__btn--small" id="session-btn-terminal" title="Open in Terminal">⌨ Terminal</button>
           <button class="toolbar__btn toolbar__btn--small" id="session-btn-full-diff" title="Full Diff">Diff</button>
           <button class="toolbar__btn toolbar__btn--small" id="session-btn-export" title="Export Log">Export</button>
           ${isRunning ? `<button class="toolbar__btn toolbar__btn--small toolbar__btn--danger" id="session-btn-stop" title="Stop Agent">■ Stop</button>` : ''}
@@ -865,7 +855,6 @@ function renderFullView(): string {
           ${isRunning ? `<button class="toolbar__btn toolbar__btn--small toolbar__btn--danger" id="fv-btn-stop">■ Stop</button>` : ''}
           ${sessionInfo?.worktreePath ? `<button class="toolbar__btn toolbar__btn--small fv-review-wt" data-session-id="${escapeHtml(task.id)}" title="Review Diff vs Main">🔍 Review</button>` : ''}
           ${sessionInfo?.worktreePath ? `<button class="toolbar__btn toolbar__btn--small toolbar__btn--primary fv-merge-wt" data-session-id="${escapeHtml(task.id)}" title="Merge in Main">⤴ Merge</button>` : ''}
-          <button class="toolbar__btn toolbar__btn--small" id="fv-btn-terminal" title="Terminal">⌨</button>
           <button class="full-view__close" id="fv-close">✕</button>
         </div>
       </div>
