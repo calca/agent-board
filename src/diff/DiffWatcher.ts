@@ -74,7 +74,8 @@ export class DiffWatcher implements vscode.Disposable {
       await vscode.commands.executeCommand('workbench.view.scm');
       return;
     }
-    const resources = files
+    // vscode.changes expects [labelUri, leftUri?, rightUri?]
+    const resources: [vscode.Uri, vscode.Uri, vscode.Uri][] = files
       .filter(f => f.status !== 'deleted')
       .map(f => {
         const absPath = path.join(this.rootPath, f.path);
@@ -82,7 +83,7 @@ export class DiffWatcher implements vscode.Disposable {
           scheme: 'git',
           query: JSON.stringify({ path: absPath, ref: 'HEAD' }),
         });
-        return [headUri, vscode.Uri.file(absPath), f.path] as [vscode.Uri, vscode.Uri, string];
+        return [vscode.Uri.file(absPath), headUri, vscode.Uri.file(absPath)] as [vscode.Uri, vscode.Uri, vscode.Uri];
       });
     // Deleted files: HEAD → empty
     for (const f of files.filter(d => d.status === 'deleted')) {
@@ -95,7 +96,7 @@ export class DiffWatcher implements vscode.Disposable {
         scheme: 'git',
         query: JSON.stringify({ path: absPath, ref: '' }),
       });
-      resources.push([headUri, emptyUri, f.path]);
+      resources.push([vscode.Uri.file(absPath), headUri, emptyUri]);
     }
     try {
       await vscode.commands.executeCommand('vscode.changes', 'Worktree Diff', resources);

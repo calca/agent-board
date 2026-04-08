@@ -573,7 +573,8 @@ export function activate(context: vscode.ExtensionContext): void {
               const branchUri = f.statusChar === 'D'
                 ? vscode.Uri.file(absPath).with({ scheme: 'git', query: JSON.stringify({ path: absPath, ref: '' }) })
                 : vscode.Uri.file(path.join(wtPath, f.filePath));
-              return [mainUri, branchUri, f.filePath] as [vscode.Uri, vscode.Uri, string];
+              // vscode.changes expects [labelUri, leftUri?, rightUri?]
+              return [vscode.Uri.file(absPath), mainUri, branchUri] as [vscode.Uri, vscode.Uri, vscode.Uri];
             });
             if (resources.length > 0) {
               await vscode.commands.executeCommand('vscode.changes', `Review: ${branch.trim()} vs main`, resources);
