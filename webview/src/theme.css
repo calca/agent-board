@@ -1048,6 +1048,21 @@ html, body, #root {
   text-overflow: ellipsis;
 }
 
+/* Error message blocks (card / detail / full-view) */
+.task-card__error,
+.task-detail__error,
+.full-view__error {
+  font-size: 0.82em;
+  color: var(--vscode-errorForeground, #f44747);
+  background: var(--vscode-inputValidation-errorBackground, rgba(244,71,71,0.1));
+  border: 1px solid var(--vscode-inputValidation-errorBorder, #f44747);
+  border-radius: 4px;
+  padding: 4px 8px;
+  margin-top: 4px;
+  word-break: break-word;
+}
+.task-card__error { margin: 0 6px 4px; }
+
 /* Role-tinted stream lines */
 .stream-output__line--user {
   background: rgba(0, 120, 212, 0.08);

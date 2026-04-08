@@ -121,11 +121,12 @@ export class SessionStateManager {
   }
 
   /** Mark a session as failed/errored. */
-  markError(taskId: string): void {
+  markError(taskId: string, errorMessage?: string): void {
     const session = this.sessions.get(taskId);
     if (!session) { return; }
     const prev = session.state;
     session.state = 'error';
+    session.errorMessage = errorMessage;
     session.finishedAt = new Date().toISOString();
     this.clearTimer(taskId);
     this.persist();

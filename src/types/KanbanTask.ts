@@ -27,6 +27,8 @@ export interface CopilotSessionInfo {
   changedFiles?: string[];
   /** Relative path to the worktree directory (if created). */
   worktreePath?: string;
+  /** Human-readable error message (set when state is 'error'). */
+  errorMessage?: string;
 }
 
 /**

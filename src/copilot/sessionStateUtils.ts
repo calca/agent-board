@@ -15,6 +15,8 @@ export interface PersistedSession {
   startedAt?: string;
   finishedAt?: string;
   logPath?: string;
+  /** Human-readable error message when state is 'error'. */
+  errorMessage?: string;
 }
 
 // ── Pure utilities (testable without VS Code) ─────────────────────────
@@ -67,6 +69,7 @@ export function toCopilotSessionInfo(session: PersistedSession): CopilotSessionI
     startedAt: session.startedAt,
     finishedAt: session.finishedAt,
     worktreePath: session.worktreePath,
+    errorMessage: session.errorMessage,
   };
 }
 

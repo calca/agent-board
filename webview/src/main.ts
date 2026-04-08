@@ -37,6 +37,8 @@ interface KanbanTask {
     changedFiles?: string[];
     /** Relative path to worktree directory. */
     worktreePath?: string;
+    /** Human-readable error message when state is 'error'. */
+    errorMessage?: string;
   };
 }
 interface AgentOption {
@@ -593,6 +595,7 @@ function renderCard(task: KanbanTask): string {
         ${wtBadge}
       </div>
       ${toolCallBadge}
+      ${session?.state === 'error' && session?.errorMessage ? `<div class="task-card__error">${escapeHtml(session.errorMessage)}</div>` : ''}
       ${agentBadge ? `<div class="task-card__footer">${agentBadge}</div>` : ''}
     </div>
   `;
@@ -619,6 +622,7 @@ function renderDetail(task: KanbanTask): string {
       </div>
       <div class="task-detail__body">${escapeHtml(task.body)}</div>
       ${sessionLine}
+      ${sessionInfo?.state === 'error' && sessionInfo?.errorMessage ? `<div class="task-detail__error">${escapeHtml(sessionInfo.errorMessage)}</div>` : ''}
       ${sessionInfo?.worktreePath ? `
         <div class="task-detail__worktree">
           <span class="task-detail__wt-label">Worktree:</span>
@@ -965,6 +969,7 @@ function renderFullView(): string {
               <span class="task-card__session task-card__session--${sessionInfo.state}">${escapeHtml(sessionInfo.state)}</span>
               ${sessionInfo.startedAt ? `<div class="full-view__meta">Started ${escapeHtml(sessionInfo.startedAt)}</div>` : ''}
               ${sessionInfo.finishedAt ? `<div class="full-view__meta">Finished ${escapeHtml(sessionInfo.finishedAt)}</div>` : ''}
+              ${sessionInfo.state === 'error' && sessionInfo.errorMessage ? `<div class="full-view__error">${escapeHtml(sessionInfo.errorMessage)}</div>` : ''}
               ${sessionInfo.prUrl ? `<a class="task-card__pr-badge task-card__pr-badge--${sessionInfo.prState ?? 'open'}" href="${escapeHtml(sessionInfo.prUrl)}">PR #${sessionInfo.prNumber ?? ''}</a>` : ''}
             </div>
           ` : ''}
@@ -1060,6 +1065,9 @@ window.addEventListener('message', (event: MessageEvent) => {
           }
           if (ot.copilotSession?.state !== nt.copilotSession?.state && nt.copilotSession) {
             addTaskLog(nt.id, 'board', `Session → ${nt.copilotSession.state}`);
+            if (nt.copilotSession.state === 'error' && nt.copilotSession.errorMessage) {
+              addTaskLog(nt.id, 'board', `❌ ${nt.copilotSession.errorMessage}`);
+            }
           }
         }
       }

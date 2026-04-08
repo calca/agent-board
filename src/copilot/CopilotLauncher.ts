@@ -131,7 +131,15 @@ export class CopilotLauncher {
     // ── Worktree support ──────────────────────────────────────────────
     let worktree: WorktreeInfo | undefined;
     if (provider.supportsWorktree && this.isWorktreeEnabled(provider.id)) {
-      worktree = await this.tryCreateWorktree(taskId);
+      try {
+        worktree = await this.tryCreateWorktree(taskId);
+      } catch (wtErr) {
+        const errMsg = formatError(wtErr);
+        this.sessionStateManager?.startSession(taskId, providerId, undefined, undefined);
+        this.sessionStateManager?.markError(taskId, `Worktree creation failed: ${errMsg}`);
+        vscode.window.showErrorMessage(`Worktree creation failed: ${errMsg}`);
+        return;
+      }
     }
 
     let prompt = ContextBuilder.build(task);
@@ -177,9 +185,12 @@ export class CopilotLauncher {
     this.sessionStateManager?.markRunning(taskId);
     this.activeProviders.set(taskId, provider);
     let sessionSucceeded = false;
+    let sessionError: string | undefined;
     try {
       await provider.run(prompt, task, worktree?.path);
       sessionSucceeded = true;
+    } catch (runErr) {
+      sessionError = formatError(runErr);
     } finally {
       streamSub?.dispose();
       toolCallSub?.dispose();
@@ -193,7 +204,7 @@ export class CopilotLauncher {
       if (sessionSucceeded) {
         this.sessionStateManager?.markDone(taskId);
       } else {
-        this.sessionStateManager?.markError(taskId);
+        this.sessionStateManager?.markError(taskId, sessionError);
       }
 
       // ── Post agent-summary comment on GitHub issue (3.3) ─────────
@@ -297,19 +308,13 @@ export class CopilotLauncher {
     }
 
     const repoRoot = folders[0].uri.fsPath;
-    try {
-      const info = await createWorktree(repoRoot, taskId);
-      if (info) {
-        this.logger.info(
-          `CopilotLauncher: worktree created at ${info.path} (branch: ${info.branch})`,
-        );
-      }
-      return info;
-    } catch (err) {
-      this.logger.error('CopilotLauncher: worktree creation failed:', formatError(err));
-      vscode.window.showWarningMessage(`Worktree creation failed: ${formatError(err)}`);
-      return undefined;
+    const info = await createWorktree(repoRoot, taskId);
+    if (info) {
+      this.logger.info(
+        `CopilotLauncher: worktree created at ${info.path} (branch: ${info.branch})`,
+      );
     }
+    return info;
   }
 
   private async resolveTask(taskId: string): Promise<KanbanTask | undefined> {

@@ -583,6 +583,7 @@ export function activate(context: vscode.ExtensionContext): void {
           } catch (err) {
             const errMsg = err instanceof Error ? err.message : String(err);
             logger.error('reviewWorktree failed:', errMsg);
+            panel.postMessage({ type: 'mergeResult', sessionId: msg.sessionId, success: false, message: `Review failed: ${errMsg}` });
             vscode.window.showErrorMessage(`Review failed: ${errMsg}`);
           }
           break;
