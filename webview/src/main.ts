@@ -305,12 +305,7 @@ function render(): void {
   document.getElementById('fv-btn-terminal')?.addEventListener('click', () => {
     if (fullViewTaskId) { vscode.postMessage({ type: 'openTerminalInWorktree', sessionId: fullViewTaskId }); }
   });
-  document.getElementById('fv-btn-export')?.addEventListener('click', () => {
-    if (fullViewTaskId) { vscode.postMessage({ type: 'exportLog', sessionId: fullViewTaskId }); }
-  });
-  document.getElementById('fv-btn-diff')?.addEventListener('click', () => {
-    if (fullViewTaskId) { vscode.postMessage({ type: 'openFullDiff', sessionId: fullViewTaskId }); }
-  });
+
   document.getElementById('fv-follow-up-form')?.addEventListener('submit', (e: Event) => {
     e.preventDefault();
     const input = document.getElementById('fv-follow-up-input') as HTMLInputElement | null;
@@ -851,8 +846,6 @@ function renderFullView(): string {
           ${sessionInfo?.worktreePath ? `<button class="toolbar__btn toolbar__btn--small fv-review-wt" data-session-id="${escapeHtml(task.id)}" title="Review Diff vs Main">🔍 Review</button>` : ''}
           ${sessionInfo?.worktreePath ? `<button class="toolbar__btn toolbar__btn--small toolbar__btn--primary fv-merge-wt" data-session-id="${escapeHtml(task.id)}" title="Merge in Main">⤴ Merge</button>` : ''}
           <button class="toolbar__btn toolbar__btn--small" id="fv-btn-terminal" title="Terminal">⌨</button>
-          <button class="toolbar__btn toolbar__btn--small" id="fv-btn-diff" title="Full Diff">Diff</button>
-          <button class="toolbar__btn toolbar__btn--small" id="fv-btn-export" title="Export Log">Export</button>
           <button class="full-view__close" id="fv-close">✕</button>
         </div>
       </div>
