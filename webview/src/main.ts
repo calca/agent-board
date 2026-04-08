@@ -215,6 +215,29 @@ function render(): void {
     });
   });
 
+  // Card action buttons
+  document.querySelectorAll('.card-btn-edit').forEach(btn => {
+    btn.addEventListener('click', (e: Event) => {
+      e.stopPropagation();
+      const taskId = (btn as HTMLElement).dataset.taskId;
+      if (!taskId) { return; }
+      const task = currentTasks.find(t => t.id === taskId);
+      if (task) {
+        editingTask = task;
+        formColumns = currentColumns;
+        showTaskForm = false;
+        render();
+      }
+    });
+  });
+  document.querySelectorAll('.card-btn-execute').forEach(btn => {
+    btn.addEventListener('click', (e: Event) => {
+      e.stopPropagation();
+      const taskId = (btn as HTMLElement).dataset.taskId;
+      if (taskId) { openFullView(taskId); }
+    });
+  });
+
   // ── Session panel listeners ────────────────────────────────────────
   document.getElementById('session-panel-close')?.addEventListener('click', () => {
     sessionPanelTaskId = null;
@@ -540,6 +563,10 @@ function renderCard(task: KanbanTask): string {
       ${toolCallBadge}
       ${session?.state === 'error' && session?.errorMessage ? `<div class="task-card__error">${escapeHtml(session.errorMessage)}</div>` : ''}
       ${agentBadge ? `<div class="task-card__footer">${agentBadge}</div>` : ''}
+      <div class="task-card__actions">
+        <button class="task-card__action-btn card-btn-edit" data-task-id="${escapeHtml(task.id)}" title="Edit">✎</button>
+        <button class="task-card__action-btn card-btn-execute" data-task-id="${escapeHtml(task.id)}" title="Execute">▶</button>
+      </div>
     </div>
   `;
 }
@@ -887,44 +914,43 @@ function renderFullView(): string {
 
       ${isInterrupted ? `<div class="session-interrupted-banner">⚡ Session interrupted. Log is read-only.</div>` : ''}
 
-      <!-- ── Main content (two columns) ── -->
-      <div class="fv-body">
+      <!-- ── ROW 1: four panels side by side (2/3 height) ── -->
+      <div class="fv-row fv-row--top">
 
-        <!-- ── LEFT COLUMN: info panels ── -->
-        <aside class="fv-sidebar">
-
-          <!-- Task Details (collapsible) -->
-          <details class="fv-panel" ${isEditable ? '' : 'open'}>
-            <summary class="fv-panel__header">
+        <!-- Task Details -->
+        <div class="fv-col">
+          <div class="fv-panel fv-panel--fill">
+            <div class="fv-panel__header fv-panel__header--static">
               <span class="fv-panel__header-text">📋 Task Details</span>
-              <span class="fv-panel__chevron"></span>
-            </summary>
-            <div class="fv-panel__body">
+            </div>
+            <div class="fv-panel__body fv-panel__body--scroll">
               ${isEditable ? renderFvEditableDetails(task, statusCol) : renderFvReadOnlyDetails(task, statusCol)}
             </div>
-          </details>
+          </div>
+        </div>
 
-          <!-- Session & Worktree -->
-          ${sessionInfo || hasWorktree ? `
-          <details class="fv-panel" open>
-            <summary class="fv-panel__header">
+        <!-- Session -->
+        <div class="fv-col">
+          <div class="fv-panel fv-panel--fill">
+            <div class="fv-panel__header fv-panel__header--static">
               <span class="fv-panel__header-text">⚙ Session</span>
-              <span class="fv-panel__chevron"></span>
-            </summary>
-            <div class="fv-panel__body">
-              ${renderFvSessionPanel(sessionInfo, task, isMerged)}
             </div>
-          </details>
-          ` : ''}
+            <div class="fv-panel__body fv-panel__body--scroll">
+              ${sessionInfo || hasWorktree
+                ? renderFvSessionPanel(sessionInfo, task, isMerged)
+                : '<div class="fv-empty-hint">No session started</div>'}
+            </div>
+          </div>
+        </div>
 
-          <!-- Changed Files (collapsible) -->
-          <details class="fv-panel" ${files.length > 0 ? 'open' : ''}>
-            <summary class="fv-panel__header">
+        <!-- Files -->
+        <div class="fv-col">
+          <div class="fv-panel fv-panel--fill">
+            <div class="fv-panel__header fv-panel__header--static">
               <span class="fv-panel__header-text">📂 Files</span>
               ${files.length > 0 ? `<span class="fv-panel__badge">${files.length}</span>` : ''}
-              <span class="fv-panel__chevron"></span>
-            </summary>
-            <div class="fv-panel__body fv-panel__body--flush">
+            </div>
+            <div class="fv-panel__body fv-panel__body--scroll fv-panel__body--flush">
               ${files.length === 0
                 ? '<div class="fv-files-empty">No changes detected</div>'
                 : `<div class="fv-file-list">
@@ -936,15 +962,16 @@ function renderFullView(): string {
                     `).join('')}
                   </div>`}
             </div>
-          </details>
+          </div>
+        </div>
 
-          <!-- Actions -->
-          <details class="fv-panel" open>
-            <summary class="fv-panel__header">
+        <!-- Actions -->
+        <div class="fv-col">
+          <div class="fv-panel fv-panel--fill">
+            <div class="fv-panel__header fv-panel__header--static">
               <span class="fv-panel__header-text">⚡ Actions</span>
-              <span class="fv-panel__chevron"></span>
-            </summary>
-            <div class="fv-panel__body">
+            </div>
+            <div class="fv-panel__body fv-panel__body--scroll">
               <div class="fv-actions">
                 ${hasWorktree ? `
                   <button class="fv-action-btn fv-open-worktree" data-wt-path="${escapeHtml(sessionInfo!.worktreePath!)}" title="Open worktree folder in VS Code">↗ Open in VS Code</button>
@@ -954,30 +981,29 @@ function renderFullView(): string {
                 ` : `<div class="fv-actions__empty">No worktree — actions require a worktree session.</div>`}
               </div>
             </div>
-          </details>
-
-        </aside>
-
-        <!-- ── RIGHT COLUMN: activity log ── -->
-        <div class="fv-log-column">
-          <details class="fv-panel fv-panel--log" open>
-            <summary class="fv-panel__header fv-log-panel-header">
-              <span class="fv-panel__header-text">📜 Activity Log</span>
-              <span class="fv-panel__badge">${logs.length}</span>
-              <span class="fv-panel__chevron"></span>
-            </summary>
-            <div class="fv-panel__body fv-panel__body--log">
-              <div class="fv-log-scroll" id="fv-log-scroll">
-                <div class="fv-log-entries" id="fv-log-entries">
-                  ${logs.map(e => renderLogEntry(e)).join('')}
-                  ${logs.length === 0 ? '<div class="fv-log__empty">No activity yet. Events will appear here in real time.</div>' : ''}
-                </div>
-              </div>
-            </div>
-          </details>
+          </div>
         </div>
 
       </div>
+
+      <!-- ── ROW 2: Activity Log (1/3 height) ── -->
+      <div class="fv-row fv-row--bottom">
+        <div class="fv-panel fv-panel--fill">
+          <div class="fv-panel__header fv-panel__header--static fv-log-panel-header">
+            <span class="fv-panel__header-text">📜 Activity Log</span>
+            <span class="fv-panel__badge">${logs.length}</span>
+          </div>
+          <div class="fv-panel__body fv-panel__body--log">
+            <div class="fv-log-scroll" id="fv-log-scroll">
+              <div class="fv-log-entries" id="fv-log-entries">
+                ${logs.map(e => renderLogEntry(e)).join('')}
+                ${logs.length === 0 ? '<div class="fv-log__empty">No activity yet. Events will appear here in real time.</div>' : ''}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
     </div>
   `;
 }
