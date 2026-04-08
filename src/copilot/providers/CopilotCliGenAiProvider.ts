@@ -36,8 +36,8 @@ export class CopilotCliGenAiProvider implements IGenAiProvider {
   }
 
   async run(prompt: string, _task?: KanbanTask, worktreePath?: string): Promise<void> {
-    const prefix = buildOptimisationPrefix(this.yolo, this.fleet);
-    const fullPrompt = prefix ? `${prefix}\n${prompt}` : prompt;
+    const suffix = buildOptimisationPrefix(this.yolo, this.fleet);
+    const fullPrompt = suffix ? `${prompt}\n\n${suffix}` : prompt;
     const cwd = worktreePath ?? vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
     const flags = this.yolo ? ' --allow-all --autopilot' : '';
     this._emit(`[copilot-cli] Avvio: copilot${flags}\n`);
