@@ -1,13 +1,13 @@
 import * as assert from 'assert';
 import {
-  badgeColor,
-  badgeIcon,
-  fixInterruptedSessions,
-  isActive,
-  mapStateToCopilot,
-  PersistedSession,
-  SessionState,
-  toCopilotSessionInfo,
+    badgeColor,
+    badgeIcon,
+    fixInterruptedSessions,
+    isActive,
+    mapStateToCopilot,
+    PersistedSession,
+    SessionState,
+    toCopilotSessionInfo,
 } from '../../copilot/sessionStateUtils';
 
 suite('SessionStateManager (pure utils)', () => {
