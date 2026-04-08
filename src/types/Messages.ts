@@ -58,7 +58,8 @@ export type HostToWebView =
   | { type: 'toolCall'; sessionId: string; status: string }
   | { type: 'fileChanges'; sessionId: string; files: FileChangeInfo[] }
   | { type: 'repoStatus'; isGit: boolean; isGitHub: boolean }
-  | { type: 'mergeResult'; sessionId: string; success: boolean; message: string };
+  | { type: 'mergeResult'; sessionId: string; success: boolean; message: string }
+  | { type: 'deleteWorktreeResult'; sessionId: string; success: boolean; message?: string };
 
 // ── WebView → Host ──────────────────────────────────────────────────────────
 
