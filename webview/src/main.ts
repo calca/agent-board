@@ -311,6 +311,19 @@ function render(): void {
     const assignee = (document.getElementById('fv-edit-assignee') as HTMLInputElement)?.value.trim() ?? '';
     vscode.postMessage({ type: 'editTask', taskId: fullViewTaskId, data: { title, body, status, labels, assignee } });
   });
+  // Immediate status change from any full-view status select
+  document.getElementById('fv-status-select')?.addEventListener('change', (e: Event) => {
+    const newStatus = (e.target as HTMLSelectElement).value;
+    if (fullViewTaskId && newStatus) {
+      vscode.postMessage({ type: 'taskMoved', taskId: fullViewTaskId, toCol: newStatus, index: 0 });
+    }
+  });
+  document.getElementById('fv-edit-status')?.addEventListener('change', (e: Event) => {
+    const newStatus = (e.target as HTMLSelectElement).value;
+    if (fullViewTaskId && newStatus) {
+      vscode.postMessage({ type: 'taskMoved', taskId: fullViewTaskId, toCol: newStatus, index: 0 });
+    }
+  });
   document.querySelectorAll('.fv-file-item').forEach(item => {
     item.addEventListener('click', () => {
       const filePath = (item as HTMLElement).dataset.filePath;
@@ -976,7 +989,9 @@ function renderFvReadOnlyDetails(task: KanbanTask, statusCol: Column | undefined
     <div class="fv-detail-grid">
       <div class="fv-detail-row">
         <span class="fv-detail-label">Status</span>
-        <span>${escapeHtml(statusCol?.label ?? task.status)}</span>
+        <select class="task-form__select fv-status-select" id="fv-status-select">
+          ${currentColumns.map(c => `<option value="${escapeHtml(c.id)}"${c.id === task.status ? ' selected' : ''}>${escapeHtml(c.label)}</option>`).join('')}
+        </select>
       </div>
       ${task.labels.length > 0 ? `
         <div class="fv-detail-row">
