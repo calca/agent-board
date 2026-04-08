@@ -9,7 +9,6 @@ import { ProjectConfig } from './config/ProjectConfig';
 import { AgentInfo, discoverAgents } from './copilot/agentDiscovery';
 import { registerChatParticipant } from './copilot/ChatParticipant';
 import { CopilotLauncher } from './copilot/CopilotLauncher';
-import { removeWorktree } from './copilot/WorktreeManager';
 import { GenAiProviderRegistry } from './copilot/GenAiProviderRegistry';
 import { ModelSelector } from './copilot/ModelSelector';
 import { ChatGenAiProvider } from './copilot/providers/ChatGenAiProvider';
@@ -18,6 +17,7 @@ import { CopilotCliGenAiProvider } from './copilot/providers/CopilotCliGenAiProv
 import { LmApiGenAiProvider } from './copilot/providers/LmApiGenAiProvider';
 import { SessionStateManager } from './copilot/SessionStateManager';
 import { SquadManager } from './copilot/SquadManager';
+import { removeWorktree } from './copilot/WorktreeManager';
 import { GitHubIssueManager } from './github/GitHubIssueManager';
 import { PullRequestManager } from './github/PullRequestManager';
 import { KanbanPanel } from './kanban/KanbanPanel';
@@ -292,6 +292,12 @@ export function activate(context: vscode.ExtensionContext): void {
       await sendTasksToPanel(panel, providerRegistry, genAiRegistry, squadManager, sessionStateManager);
     });
     panel.onDispose(() => squadSub.dispose());
+
+    // Auto-refresh board when session state changes (worktree creation, running, done, error)
+    const sessionSub = sessionStateManager.onDidChangeState(async () => {
+      await sendTasksToPanel(panel, providerRegistry, genAiRegistry, squadManager, sessionStateManager);
+    });
+    panel.onDispose(() => sessionSub.dispose());
 
     // Forward stream output from any session → webview
     const streamSub = copilotLauncher.getStreamRegistry().onDidAppendAny(({ sessionId, text, ts }) => {
