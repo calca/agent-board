@@ -211,7 +211,7 @@ export class CopilotLauncher {
 
       // ── Update session state ──────────────────────────────────────
       if (sessionSucceeded) {
-        this.sessionStateManager?.markDone(taskId);
+        this.sessionStateManager?.markCompleted(taskId);
       } else {
         this.sessionStateManager?.markError(taskId, sessionError);
       }

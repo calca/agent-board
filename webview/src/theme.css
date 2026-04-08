@@ -315,7 +315,7 @@ html, body, #root {
   color: var(--vscode-button-foreground, #fff);
 }
 
-.task-card__session--done {
+.task-card__session--completed {
   background: var(--vscode-terminal-ansiGreen, #16825d);
   color: var(--vscode-button-foreground, #fff);
 }

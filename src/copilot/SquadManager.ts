@@ -245,7 +245,7 @@ export class SquadManager {
   completeSession(taskId: string): void {
     const session = this.activeSessions.get(taskId);
     if (session) {
-      session.state = 'done';
+      session.state = 'completed';
       session.finishedAt = new Date().toISOString();
       this.activeSessions.delete(taskId);
       this.fireStatusChange();

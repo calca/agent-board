@@ -27,7 +27,7 @@ const DEFAULT_TIMEOUT_MS = 5 * 60 * 1000;
  * Manages the full lifecycle of agent sessions with extended states,
  * configurable timeouts, and persistence across VS Code restarts.
  *
- * States: `idle → starting → running → paused → done | error`
+ * States: `idle → starting → running → paused → completed | error`
  *
  * Features:
  * - Badge color mapping for each state
@@ -109,15 +109,15 @@ export class SessionStateManager {
   }
 
   /** Mark a session as successfully completed. */
-  markDone(taskId: string): void {
+  markCompleted(taskId: string): void {
     const session = this.sessions.get(taskId);
     if (!session) { return; }
     const prev = session.state;
-    session.state = 'done';
+    session.state = 'completed';
     session.finishedAt = new Date().toISOString();
     this.clearTimer(taskId);
     this.persist();
-    this.fireChange(taskId, 'done', prev);
+    this.fireChange(taskId, 'completed', prev);
   }
 
   /** Mark a session as failed/errored. */

@@ -537,19 +537,19 @@ function renderCard(task: KanbanTask): string {
     ? task.assignee.slice(0, 2).toUpperCase()
     : '';
   const session = task.copilotSession;
-  const SESSION_BADGES: Record<string, { icon: string; label: string }> = {
-    idle:        { icon: '○', label: 'Idle' },
-    starting:    { icon: '⟳', label: 'Starting' },
-    running:     { icon: '▶', label: 'Running' },
-    paused:      { icon: '⏸', label: 'Paused' },
-    done:        { icon: '✓', label: 'Done' },
-    error:       { icon: '✗', label: 'Error' },
-    interrupted: { icon: '⚡', label: 'Interrotto' },
+  const SESSION_LABELS: Record<string, string> = {
+    idle:        'Idle',
+    starting:    'Starting',
+    running:     'Running',
+    paused:      'Paused',
+    completed:   'Completed',
+    error:       'Error',
+    interrupted: 'Interrupted',
   };
   const sessionBadge = session
     ? (() => {
-        const b = SESSION_BADGES[session.state] ?? { icon: '●', label: session.state };
-        return `<span class="task-card__session task-card__session--${session.state}" title="Session: ${b.label}">${b.icon}</span>`;
+        const label = SESSION_LABELS[session.state] ?? session.state;
+        return `<span class="task-card__session task-card__session--${session.state}">${escapeHtml(label)}</span>`;
       })()
     : '';
   const isActive = session?.state === 'running' || session?.state === 'starting';

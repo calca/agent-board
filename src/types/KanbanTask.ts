@@ -1,7 +1,7 @@
 import { ColumnId } from './ColumnId';
 
 /** Current state of a copilot session attached to a task. */
-export type CopilotSessionState = 'idle' | 'starting' | 'running' | 'paused' | 'done' | 'error' | 'interrupted';
+export type CopilotSessionState = 'idle' | 'starting' | 'running' | 'paused' | 'completed' | 'error' | 'interrupted';
 
 /** Provider-supplied links/shortcuts for an active copilot session. */
 export interface CopilotSessionInfo {

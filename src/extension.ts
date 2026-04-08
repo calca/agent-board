@@ -362,7 +362,7 @@ export function activate(context: vscode.ExtensionContext): void {
               await provider.updateTask({ ...task, status: msg.toCol });
 
               // ── Auto-PR on move to "done" ────────────────────────────
-              if (msg.toCol === 'done' && task.copilotSession?.state === 'done') {
+              if (msg.toCol === 'done' && task.copilotSession?.state === 'completed') {
                 const worktreeBranch = task.copilotSession.changedFiles && task.copilotSession.changedFiles.length > 0
                   ? `agent-board/${msg.taskId.replace(/[^a-zA-Z0-9-]/g, '-')}`
                   : undefined;

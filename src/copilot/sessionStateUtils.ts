@@ -4,7 +4,7 @@ import { CopilotSessionInfo, CopilotSessionState } from '../types/KanbanTask';
  * Extended session state that includes `starting` and `paused`
  * beyond the existing `CopilotSessionState`.
  */
-export type SessionState = 'idle' | 'starting' | 'running' | 'paused' | 'done' | 'error' | 'interrupted';
+export type SessionState = 'idle' | 'starting' | 'running' | 'paused' | 'completed' | 'error' | 'interrupted';
 
 /** Persisted session record stored in `workspaceState`. */
 export interface PersistedSession {
@@ -28,7 +28,7 @@ export function badgeColor(state: SessionState): string {
     case 'starting': return 'charts.yellow';
     case 'running': return 'charts.green';
     case 'paused': return 'charts.orange';
-    case 'done': return 'charts.blue';
+    case 'completed': return 'charts.blue';
     case 'error': return 'charts.red';
     case 'interrupted': return 'charts.orange';
   }
@@ -41,7 +41,7 @@ export function badgeIcon(state: SessionState): string {
     case 'starting': return 'loading~spin';
     case 'running': return 'play-circle';
     case 'paused': return 'debug-pause';
-    case 'done': return 'check';
+    case 'completed': return 'check';
     case 'error': return 'error';
     case 'interrupted': return 'warning';
   }
@@ -55,7 +55,7 @@ export function mapStateToCopilot(state: SessionState): CopilotSessionState {
     case 'running':
     case 'paused':
       return 'running';
-    case 'done': return 'done';
+    case 'completed': return 'completed';
     case 'error': return 'error';
     case 'interrupted': return 'interrupted';
   }
@@ -81,7 +81,7 @@ export function isActive(state: SessionState): boolean {
 /**
  * Fix interrupted sessions: anything `starting`, `running`, or `paused`
  * from a previous VS Code lifecycle is moved to `interrupted`.
- * Sessions that were already `interrupted`, `done`, or `error` are left as-is.
+ * Sessions that were already `interrupted`, `completed`, or `error` are left as-is.
  */
 export function fixInterruptedSessions(sessions: PersistedSession[]): PersistedSession[] {
   return sessions.map(s => {
