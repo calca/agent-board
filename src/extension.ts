@@ -1,4 +1,5 @@
 import { exec } from 'child_process';
+import * as fs from 'fs';
 import * as path from 'path';
 import * as vscode from 'vscode';
 import { AgentManager } from './agentManager';
@@ -553,6 +554,10 @@ export function activate(context: vscode.ExtensionContext): void {
           const wtPath = session?.worktreePath;
           const repoRoot = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
           if (!wtPath || !repoRoot) { break; }
+          if (!fs.existsSync(wtPath)) {
+            vscode.window.showErrorMessage(`Worktree directory not found: ${wtPath}`);
+            break;
+          }
 
           try {
             // Get the branch name of the worktree
@@ -594,6 +599,10 @@ export function activate(context: vscode.ExtensionContext): void {
           const wtPath = session?.worktreePath;
           const repoRoot = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
           if (!wtPath || !repoRoot) { break; }
+          if (!fs.existsSync(wtPath)) {
+            vscode.window.showErrorMessage(`Worktree directory not found: ${wtPath}`);
+            break;
+          }
 
           try {
             const branch = (await execPromise('git rev-parse --abbrev-ref HEAD', { cwd: wtPath })).trim();
