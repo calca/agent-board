@@ -1606,6 +1606,51 @@ html, body, #root {
   background: var(--vscode-inputValidation-errorBackground, rgba(244,71,71,0.15));
 }
 
+/* ── Merge strategy panel ─── */
+.fv-merge-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  border: 1px solid var(--vscode-panel-border);
+  border-radius: 6px;
+  padding: 8px 10px;
+  background: var(--vscode-sideBar-background);
+}
+.fv-merge-option {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 6px 8px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background 0.12s;
+}
+.fv-merge-option:hover {
+  background: var(--vscode-list-hoverBackground);
+}
+.fv-merge-option input[type="radio"] {
+  margin-top: 3px;
+  flex-shrink: 0;
+  accent-color: var(--vscode-button-background);
+}
+.fv-merge-option__info {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+.fv-merge-option__info strong {
+  font-size: 0.88em;
+  font-weight: 600;
+}
+.fv-merge-option__info span {
+  font-size: 0.78em;
+  opacity: 0.6;
+  line-height: 1.4;
+}
+.fv-merge-panel .fv-action-btn {
+  margin-top: 4px;
+}
+
 /* ── Log in bottom row ─── */
 .fv-log-panel-header {
   background: var(--vscode-sideBar-background);

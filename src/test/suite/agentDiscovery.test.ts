@@ -65,6 +65,17 @@ suite('agentDiscovery — discoverAgents', () => {
     assert.strictEqual(result[0].slug, 'code-reviewer');
     assert.strictEqual(result[0].displayName, 'Code Reviewer Agent');
     assert.ok(result[0].filePath.endsWith('code-reviewer.md'));
+    assert.strictEqual(result[0].canSquad, false);
+  });
+
+  test('parses canSquad from frontmatter', () => {
+    const dir = path.join(tmpDir, AGENTS_DIR);
+    fs.mkdirSync(dir, { recursive: true });
+    fs.writeFileSync(path.join(dir, 'squad-agent.md'), '---\ncanSquad: true\n---\n# Squad Agent\n\nInstructions.');
+    const result = discoverAgents(tmpDir);
+    assert.strictEqual(result.length, 1);
+    assert.strictEqual(result[0].canSquad, true);
+    assert.strictEqual(result[0].displayName, 'Squad Agent');
   });
 
   test('falls back to title-cased slug when no heading', () => {
@@ -123,10 +134,12 @@ suite('agentDiscovery — AgentInfo shape', () => {
       slug: 'test-agent',
       displayName: 'Test Agent',
       filePath: '/tmp/test-agent.md',
+      canSquad: false,
     };
     assert.strictEqual(info.slug, 'test-agent');
     assert.strictEqual(info.displayName, 'Test Agent');
     assert.strictEqual(info.filePath, '/tmp/test-agent.md');
+    assert.strictEqual(info.canSquad, false);
   });
 });
 

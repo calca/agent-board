@@ -30,6 +30,8 @@ export interface SquadStatus {
 export interface AgentOption {
   slug: string;
   displayName: string;
+  /** Whether this agent supports squad mode. */
+  canSquad?: boolean;
 }
 
 /** Minimal GenAI provider info sent to the WebView. */
@@ -92,5 +94,5 @@ export type WebViewToHost =
   | { type: 'requestStreamResume'; sessionId: string }
   | { type: 'sendFollowUp'; sessionId: string; text: string }
   | { type: 'reviewWorktree'; sessionId: string }
-  | { type: 'mergeWorktree'; sessionId: string }
+  | { type: 'mergeWorktree'; sessionId: string; mergeStrategy: 'squash' | 'merge' | 'rebase' }
   | { type: 'deleteWorktree'; sessionId: string };

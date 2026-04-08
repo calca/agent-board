@@ -111,7 +111,7 @@ export function activate(context: vscode.ExtensionContext): void {
 
   let discoveredAgents: AgentInfo[] = [];
   const agentOptions = (): AgentOption[] =>
-    discoveredAgents.map(a => ({ slug: a.slug, displayName: a.displayName }));
+    discoveredAgents.map(a => ({ slug: a.slug, displayName: a.displayName, canSquad: a.canSquad }));
 
   function refreshAgents(): void {
     const folders = vscode.workspace.workspaceFolders;
@@ -611,11 +611,18 @@ export function activate(context: vscode.ExtensionContext): void {
             break;
           }
 
+          const strategy = msg.mergeStrategy ?? 'squash';
+          const strategyLabels: Record<string, string> = {
+            squash: 'Squash and merge',
+            merge: 'Merge commit',
+            rebase: 'Rebase and merge',
+          };
+
           try {
             const branch = (await execPromise('git rev-parse --abbrev-ref HEAD', { cwd: wtPath })).trim();
 
             const answer = await vscode.window.showWarningMessage(
-              `Merge il branch "${branch}" in main?`,
+              `${strategyLabels[strategy]} il branch "${branch}" in main?`,
               { modal: true },
               'Merge',
               'Annulla',
@@ -627,11 +634,18 @@ export function activate(context: vscode.ExtensionContext): void {
               await execPromise('git add -A && git diff --cached --quiet || git commit -m "agent: auto-commit before merge"', { cwd: wtPath });
             } catch { /* ignore if nothing to commit */ }
 
-            // Merge into main
-            await execPromise(`git merge ${branch} --no-edit`, { cwd: repoRoot });
+            // Merge into main using chosen strategy
+            if (strategy === 'squash') {
+              await execPromise(`git merge --squash ${branch}`, { cwd: repoRoot });
+              await execPromise(`git commit --no-edit -m "squash: ${branch}"`, { cwd: repoRoot });
+            } else if (strategy === 'rebase') {
+              await execPromise(`git rebase ${branch}`, { cwd: repoRoot });
+            } else {
+              await execPromise(`git merge ${branch} --no-edit`, { cwd: repoRoot });
+            }
 
-            panel.postMessage({ type: 'mergeResult', sessionId: msg.sessionId, success: true, message: `Branch "${branch}" mergiato in main con successo.` });
-            vscode.window.showInformationMessage(`✅ Branch "${branch}" mergiato in main.`);
+            panel.postMessage({ type: 'mergeResult', sessionId: msg.sessionId, success: true, message: `Branch "${branch}" mergiato in main (${strategyLabels[strategy]}).` });
+            vscode.window.showInformationMessage(`✅ Branch "${branch}" mergiato in main (${strategyLabels[strategy]}).`);
 
             // Refresh tasks to update the UI
             vscode.commands.executeCommand('agentBoard.refreshTasks');
@@ -924,6 +938,8 @@ async function pickGenAiProvider(
 ): Promise<string | undefined> {
   const items = registry.getAll()
     .filter(p => {
+      // Chat provider cannot run in background — exclude from squad
+      if (p.id === 'chat') { return false; }
       const noGitRequired = p.id === 'copilot-cli' || p.id === 'cloud' || p.id === 'copilot-lm';
       if (!isGit && noGitRequired) { return false; }
       if (!isGitHub && p.id === 'cloud') { return false; }
@@ -944,24 +960,23 @@ async function pickGenAiProvider(
  * Returns `undefined` if no agents are available or the user cancels.
  */
 async function pickAgent(agents: AgentInfo[]): Promise<string | undefined> {
-  if (agents.length === 0) {
+  const squadAgents = agents.filter(a => a.canSquad);
+  if (squadAgents.length === 0) {
     return undefined;
   }
 
-  const items = [
-    { label: '$(dash) None', description: 'No agent', slug: undefined as string | undefined },
-    ...agents.map(a => ({
-      label: `$(hubot) ${a.displayName}`,
-      description: a.slug,
-      slug: a.slug as string | undefined,
-    })),
-  ];
+  const items = squadAgents.map(a => ({
+    label: `$(hubot) ${a.displayName}`,
+    description: a.slug,
+    slug: a.slug as string | undefined,
+  }));
 
   const selected = await vscode.window.showQuickPick(items, {
-    placeHolder: 'Select an agent (optional)',
+    placeHolder: 'Select a squad agent',
   });
 
-  return selected?.slug;
+  // Default to first squad agent when user cancels
+  return selected?.slug ?? squadAgents[0]?.slug;
 }
 
 // ── Git / GitHub detection helpers ──────────────────────────────────────────

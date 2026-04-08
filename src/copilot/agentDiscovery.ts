@@ -21,6 +21,8 @@ export interface AgentInfo {
   displayName: string;
   /** Absolute path to the `.md` file. */
   filePath: string;
+  /** Whether this agent can participate in squad mode. Parsed from `canSquad` frontmatter. */
+  canSquad: boolean;
 }
 
 /** Directory name relative to the workspace root. */
@@ -42,8 +44,11 @@ export function discoverAgents(workspaceRoot: string): AgentInfo[] {
   return entries.map(fileName => {
     const slug = fileName.replace(/\.md$/i, '');
     const filePath = path.join(dir, fileName);
-    const displayName = extractDisplayName(filePath, slug);
-    return { slug, displayName, filePath };
+    const content = readFileContent(filePath);
+    const frontmatter = parseFrontmatter(content);
+    const displayName = extractDisplayNameFromContent(content, slug);
+    const canSquad = frontmatter.canSquad === true;
+    return { slug, displayName, filePath, canSquad };
   });
 }
 
@@ -62,19 +67,43 @@ export function readAgentInstructions(filePath: string): string | undefined {
 
 // ── Internals ───────────────────────────────────────────────────────────────
 
+/** Read file content safely, returning empty string on failure. */
+function readFileContent(filePath: string): string {
+  try {
+    return fs.readFileSync(filePath, 'utf-8');
+  } catch {
+    return '';
+  }
+}
+
+/**
+ * Parse YAML-like frontmatter delimited by `---`.
+ * Returns a simple key-value record. Supports boolean and string values.
+ */
+function parseFrontmatter(content: string): Record<string, unknown> {
+  const fmMatch = content.match(/^---\r?\n([\s\S]*?)\r?\n---/);
+  if (!fmMatch) { return {}; }
+  const result: Record<string, unknown> = {};
+  for (const line of fmMatch[1].split(/\r?\n/)) {
+    const kv = line.match(/^(\w+):\s*(.+)$/);
+    if (!kv) { continue; }
+    const [, key, raw] = kv;
+    const val = raw.trim();
+    if (val === 'true') { result[key] = true; }
+    else if (val === 'false') { result[key] = false; }
+    else { result[key] = val; }
+  }
+  return result;
+}
+
 /**
  * Extract a human-readable display name from the first `# Heading` in
- * a Markdown file.  Falls back to title-casing the slug.
+ * a Markdown string.  Falls back to title-casing the slug.
  */
-function extractDisplayName(filePath: string, slug: string): string {
-  try {
-    const content = fs.readFileSync(filePath, 'utf-8');
-    const match = content.match(/^#\s+(.+)/m);
-    if (match) {
-      return match[1].trim();
-    }
-  } catch {
-    // fall through to default
+function extractDisplayNameFromContent(content: string, slug: string): string {
+  const match = content.match(/^#\s+(.+)/m);
+  if (match) {
+    return match[1].trim();
   }
   return titleCase(slug);
 }
