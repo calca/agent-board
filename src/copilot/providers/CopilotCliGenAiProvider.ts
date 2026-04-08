@@ -39,7 +39,7 @@ export class CopilotCliGenAiProvider implements IGenAiProvider {
     const prefix = buildOptimisationPrefix(this.yolo, this.fleet);
     const fullPrompt = prefix ? `${prefix}\n${prompt}` : prompt;
     const cwd = worktreePath ?? vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
-    const flags = this.yolo ? ' --allow-all --autopilot' : '';
+    const flags = this.yolo ? ' --allow-all --autopilot --yes' : '';
     this._emit(`[copilot-cli] Avvio: copilot${flags}\n`);
     await this._spawnCopilot(fullPrompt, cwd);
   }
@@ -60,7 +60,7 @@ export class CopilotCliGenAiProvider implements IGenAiProvider {
     return new Promise<void>((resolve, reject) => {
       const args = ['-p', prompt];
       if (this.yolo) {
-        args.push('--allow-all', '--autopilot');
+        args.push('--allow-all', '--autopilot', '--yes');
       }
       this.logger.info("CopilotCliGenAiProvider: spawning copilot %s (cwd=%s)", args.join(" "), cwd ?? ".");
       console.log(`[agent-board] copilot ${args.map(a => a.includes(' ') ? `"${a}"` : a).join(' ')}  (cwd=${cwd ?? '.'})`);
