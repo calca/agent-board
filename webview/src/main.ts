@@ -360,14 +360,6 @@ function render(): void {
   document.getElementById('fv-btn-stop')?.addEventListener('click', () => {
     if (fullViewTaskId) { vscode.postMessage({ type: 'cancelSession', taskId: fullViewTaskId }); }
   });
-  document.getElementById('fv-btn-delete-task')?.addEventListener('click', () => {
-    const taskId = (document.getElementById('fv-btn-delete-task') as HTMLElement)?.dataset.taskId;
-    if (taskId && confirm('Delete this task? This action cannot be undone.')) {
-      vscode.postMessage({ type: 'deleteTask', taskId });
-      fullViewTaskId = null;
-      render();
-    }
-  });
   // ── Full view edit button → open overlay ────────────────────────────
   document.getElementById('fv-edit-btn')?.addEventListener('click', () => {
     if (!fullViewTaskId) { return; }
@@ -484,6 +476,16 @@ function render(): void {
     if ((e.target as HTMLElement).id === 'task-form-overlay') {
       showTaskForm = false;
       editingTask = null;
+      render();
+    }
+  });
+
+  document.getElementById('task-form-delete')?.addEventListener('click', () => {
+    const taskId = (document.getElementById('task-form-delete') as HTMLElement)?.dataset.taskId;
+    if (taskId && confirm('Delete this task?')) {
+      vscode.postMessage({ type: 'deleteTask', taskId });
+      editingTask = null;
+      fullViewTaskId = null;
       render();
     }
   });
@@ -693,6 +695,7 @@ function renderEditForm(task: KanbanTask): string {
           <div class="task-form__actions">
             <button type="submit" class="task-form__btn task-form__btn--save">Save</button>
             <button type="button" class="task-form__btn task-form__btn--cancel" id="task-form-cancel">Close</button>
+            ${editableProviderIds.includes(task.providerId) ? `<button type="button" class="task-form__btn task-form__btn--delete" id="task-form-delete" data-task-id="${escapeHtml(task.id)}">🗑 Delete</button>` : ''}
           </div>
         </form>
       </div>
@@ -1126,12 +1129,6 @@ function renderFullView(): string {
           </div>
         </div>
       </div>
-
-      ${isEditable && !isRunning ? `
-      <div class="fv-footer-bar">
-        <button class="fv-action-btn fv-action-btn--danger fv-action-btn--ghost" id="fv-btn-delete-task" data-task-id="${escapeHtml(task.id)}">🗑 Delete</button>
-      </div>
-      ` : ''}
 
     </div>
   `;

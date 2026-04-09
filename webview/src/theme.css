@@ -1001,6 +1001,9 @@ html, body, #root {
   gap: 8px;
   margin-top: 16px;
 }
+.task-form__actions .task-form__btn--delete {
+  margin-left: auto;
+}
 
 .task-form__row {
   display: flex;
@@ -1038,6 +1041,16 @@ html, body, #root {
 }
 .task-form__btn--cancel:hover {
   background: var(--vscode-button-secondaryHoverBackground, var(--vscode-button-hoverBackground));
+}
+
+.task-form__btn--delete {
+  background: transparent;
+  color: var(--vscode-errorForeground, #f44);
+  border: 1px solid var(--vscode-errorForeground, #f44);
+}
+.task-form__btn--delete:hover {
+  background: var(--vscode-errorForeground, #f44);
+  color: var(--vscode-editor-background, #fff);
 }
 
 /* ── Actions Toolbar (edit mode) ───────────────────────────────────── */
