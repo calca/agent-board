@@ -27,6 +27,7 @@ import { ITaskProvider } from './providers/ITaskProvider';
 import { JsonProvider } from './providers/JsonProvider';
 import { ProviderPicker } from './providers/ProviderPicker';
 import { ProviderRegistry } from './providers/ProviderRegistry';
+import { SettingsPanel } from './settings/SettingsPanel';
 import { TaskStore } from './taskStore';
 import { TaskTreeItem } from './tasksTreeProvider';
 import { COLUMN_IDS, COLUMN_LABELS, DEFAULT_COLUMN_COLORS } from './types/ColumnId';
@@ -828,6 +829,10 @@ export function activate(context: vscode.ExtensionContext): void {
     vscode.commands.executeCommand('workbench.action.toggleSidebarVisibility');
   });
 
+  const openSettings = vscode.commands.registerCommand('agentBoard.openSettings', () => {
+    SettingsPanel.createOrShow();
+  });
+
   const runAgent = vscode.commands.registerCommand('agentBoard.runAgent', async (item?: AgentTreeItem) => {
     if (item) {
       const started = agentManager.startAgent(item.agent.id);
@@ -899,6 +904,7 @@ export function activate(context: vscode.ExtensionContext): void {
     runAgent,
     stopAgent,
     openKanban,
+    openSettings,
     toggleMaximize,
     selectProvider,
     launchCopilot,

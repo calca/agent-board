@@ -83,6 +83,12 @@
         "category": "Agent Board"
       },
       {
+        "command": "agentBoard.openSettings",
+        "title": "Project Settings",
+        "icon": "$(gear)",
+        "category": "Agent Board"
+      },
+      {
         "command": "agentBoard.selectProvider",
         "title": "Select Task Provider",
         "icon": "$(plug)",

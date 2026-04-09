@@ -110,6 +110,14 @@ export class OverviewTreeProvider implements vscode.TreeDataProvider<OverviewIte
       ));
     }
 
+    // ── Settings CTA ────────────────────────────────────────────────────
+    items.push(new OverviewItem(
+      'Settings',
+      '',
+      new vscode.ThemeIcon('gear', new vscode.ThemeColor('foreground')),
+      { command: 'agentBoard.openSettings', title: 'Open Settings' },
+    ));
+
     return items;
   }
 }
