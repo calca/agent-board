@@ -598,12 +598,13 @@ function renderCard(task: KanbanTask): string {
   const assigneeHtml = avatarUrl
     ? `<img class="task-card__avatar" src="${escapeHtml(avatarUrl)}" alt="${escapeHtml(task.assignee ?? '')}" title="${escapeHtml(task.assignee ?? '')}" />`
     : (initials ? `<span class="task-card__assignee">${initials}</span>` : '');
+  const cardMerged = mergedSessions.has(task.id);
   const wtBadge = session?.worktreePath
     ? `<span class="task-card__wt-badge" title="${escapeHtml(relativeWorktreePath(session.worktreePath))}">🌿</span><button class="task-card__diff-btn card-review-wt" data-session-id="${escapeHtml(task.id)}" title="Review Diff vs Main">⇄</button>`
     : '';
   return `
     <div class="task-card${isActive ? ' task-card--running' : ''}" data-task-id="${escapeHtml(task.id)}">
-      <div class="task-card__title">${escapeHtml(task.title)}</div>
+      <div class="task-card__title">${escapeHtml(task.title)}${cardMerged ? ' <span class="task-card__merged">✅ Merged</span>' : ''}</div>
       <div class="task-card__meta">
         ${sessionBadge}
         ${task.labels.filter(l => !l.startsWith('kanban:')).map(l => `<span class="task-card__label">${escapeHtml(l)}</span>`).join('')}
@@ -836,7 +837,6 @@ function renderSessionPanel(): string {
         <div class="session-panel__action-bar">
           <button class="toolbar__btn toolbar__btn--small" id="session-btn-full-diff" title="Full Diff">Diff</button>
           <button class="toolbar__btn toolbar__btn--small" id="session-btn-export" title="Export Log">Export</button>
-          ${isRunning ? `<button class="toolbar__btn toolbar__btn--small toolbar__btn--danger" id="session-btn-stop" title="Stop Agent">■ Stop</button>` : ''}
           <button class="session-panel__close" id="session-panel-close">✕</button>
         </div>
       </div>
@@ -957,6 +957,7 @@ function renderFullView(): string {
           <button class="fv-topbar__back" id="fv-close" title="Back">←</button>
           <div class="fv-topbar__title-group">
             <span class="fv-topbar__title">${escapeHtml(task.title)}</span>
+            ${isMerged ? '<span class="fv-merged-badge fv-merged-badge--inline">✅ Merged</span>' : ''}
             <span class="fv-topbar__meta">
               ${sessionInfo ? `<span class="${stateClass}">${escapeHtml(sessionInfo.state)}</span>` : ''}
               <span class="fv-topbar__provider">${escapeHtml(task.providerId)}</span>
@@ -965,7 +966,6 @@ function renderFullView(): string {
           </div>
         </div>
         <div class="fv-topbar__actions">
-          ${isRunning ? `<button class="toolbar__btn toolbar__btn--small toolbar__btn--danger" id="fv-btn-stop">■ Stop</button>` : ''}
         </div>
       </div>
 
@@ -1032,18 +1032,20 @@ function renderFullView(): string {
             <div class="fv-panel__body fv-panel__body--scroll">
               <div class="fv-actions">
                 ${isMerged ? `
-                  <div class="fv-merged-badge">✅ Merged</div>
-                  <hr class="fv-actions__separator" />
                   <button class="fv-action-btn fv-action-btn--danger fv-delete-wt" data-session-id="${escapeHtml(task.id)}" title="Delete worktree directory and branch">🗑 Delete Worktree</button>
+                ` : `
+                ${isRunning ? `
+                  <div class="fv-actions__running-provider">🤖 ${escapeHtml(genAiProviders.find(p => p.id === activeProviderId)?.displayName ?? activeProviderId ?? 'Agent')}</div>
+                  <button class="fv-action-btn fv-action-btn--danger" id="fv-btn-stop">■ Stop</button>
+                  <hr class="fv-actions__separator" />
                 ` : `
                 <div class="fv-actions__providers">
                   ${genAiProviders.filter(p => !p.disabled).map(p => {
-                    const isActive = activeProviderId === p.id;
-                    const disabledAttr = isRunning && !isActive ? ' disabled' : '';
-                    return `<button class="fv-action-btn fv-launch-provider${isActive ? ' fv-action-btn--active' : ''}${isRunning && !isActive ? ' fv-action-btn--muted' : ''}" data-provider-id="${escapeHtml(p.id)}" title="${escapeHtml(p.displayName)}"${disabledAttr}>🤖 ${escapeHtml(p.displayName)}</button>`;
+                    return `<button class="fv-action-btn fv-launch-provider" data-provider-id="${escapeHtml(p.id)}" title="${escapeHtml(p.displayName)}">🤖 ${escapeHtml(p.displayName)}</button>`;
                   }).join('')}
                 </div>
                 <hr class="fv-actions__separator" />
+                `}
                 ${hasWorktree ? `
                   <button class="fv-action-btn fv-open-worktree" data-wt-path="${escapeHtml(sessionInfo!.worktreePath!)}" title="Open worktree folder in VS Code">↗ Open in VS Code</button>
                   <button class="fv-action-btn fv-review-wt" data-session-id="${escapeHtml(task.id)}" title="Review changes vs main branch">🔍 Review Diff</button>
@@ -1211,7 +1213,6 @@ function renderFvSessionPanel(
           <span class="fv-detail-label">Worktree</span>
           <code class="fv-wt-path">${escapeHtml(relativeWorktreePath(sessionInfo.worktreePath!))}</code>
         </div>
-        ${isMerged ? '<div class="fv-merged-badge">✅ Merged into main</div>' : ''}
       ` : ''}
     </div>
   `;

@@ -1660,6 +1660,16 @@ html, body, #root {
   font-weight: 600;
   margin-top: 4px;
 }
+.fv-merged-badge--inline {
+  margin-top: 0;
+  margin-left: 8px;
+  vertical-align: middle;
+}
+.task-card__merged {
+  font-size: 0.8em;
+  color: var(--vscode-terminal-ansiGreen, #16825d);
+  font-weight: 600;
+}
 
 /* ── Files panel ─── */
 .fv-files-empty {
@@ -1691,6 +1701,12 @@ html, body, #root {
   display: flex;
   flex-direction: column;
   gap: 4px;
+}
+.fv-actions__running-provider {
+  font-weight: 600;
+  padding: 6px 0;
+  color: var(--vscode-foreground);
+  font-size: 12px;
 }
 .fv-actions__separator {
   border: none;
