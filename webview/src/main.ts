@@ -115,6 +115,11 @@ function render(): void {
   const root = document.getElementById('root');
   if (!root) { return; }
 
+  // Skip full re-render when a form overlay is open to avoid losing user input
+  if ((showTaskForm || editingTask) && document.getElementById('task-form-overlay')) {
+    return;
+  }
+
   const filtered = currentTasks.filter(t => {
     if (!searchText) { return true; }
     const q = searchText.toLowerCase();
