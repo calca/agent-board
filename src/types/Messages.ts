@@ -14,6 +14,8 @@ export interface FileChangeInfo {
 export interface Column {
   id: ColumnId;
   label: string;
+  /** Optional background colour (hex). Applied with transparency in the webview. */
+  color?: string;
 }
 
 /** Snapshot of the squad manager state sent to the WebView. */

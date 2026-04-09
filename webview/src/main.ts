@@ -9,7 +9,7 @@
 // @ts-ignore — vscode webview API is injected at runtime
 const vscode = acquireVsCodeApi();
 
-interface Column { id: string; label: string }
+interface Column { id: string; label: string; color?: string }
 interface KanbanTask {
   id: string;
   title: string;
@@ -541,8 +541,9 @@ function render(): void {
 }
 
 function renderColumn(col: Column, tasks: KanbanTask[]): string {
+  const bgStyle = col.color ? ` style="background: ${col.color}0D"` : '';
   return `
-    <div class="kanban__column">
+    <div class="kanban__column"${bgStyle}>
       <div class="kanban__column-header">
         <span>${escapeHtml(col.label)}</span>
         <span class="kanban__column-count">${tasks.length}</span>

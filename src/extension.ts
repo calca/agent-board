@@ -29,7 +29,7 @@ import { ProviderPicker } from './providers/ProviderPicker';
 import { ProviderRegistry } from './providers/ProviderRegistry';
 import { TaskStore } from './taskStore';
 import { TaskTreeItem } from './tasksTreeProvider';
-import { COLUMN_IDS, COLUMN_LABELS } from './types/ColumnId';
+import { COLUMN_IDS, COLUMN_LABELS, DEFAULT_COLUMN_COLORS } from './types/ColumnId';
 import { AgentOption, GenAiProviderOption } from './types/Messages';
 import { Logger } from './utils/logger';
 
@@ -435,7 +435,7 @@ export function activate(context: vscode.ExtensionContext): void {
           break;
         }
         case 'addTask': {
-          const columns = COLUMN_IDS.map(id => ({ id, label: COLUMN_LABELS[id] }));
+          const columns = COLUMN_IDS.map(id => ({ id, label: COLUMN_LABELS[id], color: DEFAULT_COLUMN_COLORS[id] }));
           panel.postMessage({ type: 'showTaskForm', columns });
           break;
         }

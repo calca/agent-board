@@ -24,6 +24,14 @@ export const DEFAULT_COLUMN_LABELS: Record<string, string> = {
   done: 'Done',
 };
 
+/** Default background colours for the built-in columns (hex, applied at 20% opacity). */
+export const DEFAULT_COLUMN_COLORS: Record<string, string> = {
+  todo: '#888888',
+  inprogress: '#0078d4',
+  review: '#d9a500',
+  done: '#16825d',
+};
+
 /**
  * @deprecated Use {@link DEFAULT_COLUMN_LABELS} instead.
  */
