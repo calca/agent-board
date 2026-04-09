@@ -59,6 +59,7 @@ let currentColumns: Column[] = [];
 let selectedTask: KanbanTask | null = null;
 let editingTask: KanbanTask | null = null;
 let searchText = '';
+let showSearchInput = false;
 interface SquadStatus {
   activeCount: number;
   maxSessions: number;
@@ -82,6 +83,7 @@ let sessionFileChanges: FileChangeInfo[] = [];
 let repoIsGit = true;
 let repoIsGitHub = true;
 let workspaceRoot = '';
+let workspaceName = '';
 /** When true, auto-scroll to bottom on new output. Disabled when user scrolls up. */
 let streamAutoScroll = true;
 /** Per-session file change lists (all sessions, not just the open panel). */
@@ -131,20 +133,21 @@ function render(): void {
 
   root.innerHTML = `
     <header class="toolbar">
-      <div class="toolbar__row toolbar__row--main">
-        <span class="toolbar__title">Agent Board</span>
-
-        <div class="toolbar__group" data-label="Tasks">
-          <button class="toolbar__btn toolbar__btn--primary" id="btn-add-task">＋ Add</button>
-          <div class="toolbar__search">
-            <input class="toolbar__search-input" id="search-input" placeholder="Filter…" value="${escapeHtml(searchText)}" />
-            ${searchText ? `<span class="toolbar__badge">${filtered.length}</span>` : ''}
-          </div>
-          <button class="toolbar__btn toolbar__btn--icon" id="btn-refresh" title="Refresh">⟳</button>
+      <div class="project-bar">
+        <span class="project-bar__name" title="${escapeHtml(workspaceName)}">
+          <svg class="project-bar__icon" width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M1.5 1h5l1 2H14.5a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1h-13a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1z"/></svg>
+          ${escapeHtml(workspaceName || 'Workspace')}
+        </span>
+        <div class="project-bar__actions">
+          <button class="mcp-toggle${mcpEnabled ? ' mcp-toggle--on' : ''}" id="btn-mcp-toggle" title="MCP Server ${mcpEnabled ? 'On' : 'Off'}">
+            <span class="mcp-toggle__dot"></span>
+            <span class="mcp-toggle__label">MCP</span>
+          </button>
+          ${renderNotificationBell()}
         </div>
+      </div>
 
-        <div class="toolbar__separator"></div>
-
+      <div class="toolbar__row toolbar__row--main">
         <div class="toolbar__group" data-label="Squad">
           <select class="toolbar__select" id="squad-provider-select" title="Provider">
             ${(() => {
@@ -165,15 +168,17 @@ function render(): void {
           ${squadStatus.activeCount > 0 ? `<span class="toolbar__badge toolbar__badge--live">${squadStatus.activeCount}/${squadStatus.maxSessions}</span>` : ''}
         </div>
 
-        <div class="toolbar__separator"></div>
+        <div class="toolbar__spacer"></div>
 
-        <div class="toolbar__group" data-label="MCP">
-          <span class="toolbar__dot toolbar__dot--${mcpEnabled ? 'on' : 'off'}"></span>
-          <span class="toolbar__meta">${mcpEnabled ? 'On' : 'Off'}</span>
-          <button class="toolbar__btn toolbar__btn--small" id="btn-mcp-toggle">${mcpEnabled ? 'Disable' : 'Enable'}</button>
+        <div class="toolbar__group" data-label="Issues">
+          <button class="toolbar__btn toolbar__btn--icon" id="btn-filter" title="Filter">
+            <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M6 12h4v-1H6v1zm-3-4h10V7H3v1zm-2-5v1h14V3H1z"/></svg>
+            ${searchText ? `<span class="toolbar__badge toolbar__badge--inline">${filtered.length}</span>` : ''}
+          </button>
+          ${showSearchInput ? `<input class="toolbar__search-input toolbar__search-input--open" id="search-input" placeholder="Filter issues…" value="${escapeHtml(searchText)}" autofocus />` : ''}
+          <button class="toolbar__btn toolbar__btn--primary" id="btn-add-task">+ New Issue</button>
+          <button class="toolbar__btn toolbar__btn--secondary" id="btn-refresh">Sync</button>
         </div>
-
-        ${renderNotificationBell()}
       </div>
     </header>
     ${renderNotificationCenter()}
@@ -209,9 +214,19 @@ function render(): void {
     render();
   });
 
-  document.getElementById('search-input')?.addEventListener('input', (e: Event) => {
+  document.getElementById('btn-filter')?.addEventListener('click', () => {
+    showSearchInput = !showSearchInput;
+    if (!showSearchInput) { searchText = ''; }
+    render();
+    if (showSearchInput) { document.getElementById('search-input')?.focus(); }
+  });
+  const searchInput = document.getElementById('search-input') as HTMLInputElement | null;
+  searchInput?.addEventListener('input', (e: Event) => {
     searchText = (e.target as HTMLInputElement).value;
     render();
+  });
+  searchInput?.addEventListener('keydown', (e: KeyboardEvent) => {
+    if (e.key === 'Escape') { showSearchInput = false; searchText = ''; render(); }
   });
 
   document.getElementById('squad-provider-select')?.addEventListener('change', (e: Event) => {
@@ -1401,6 +1416,7 @@ window.addEventListener('message', (event: MessageEvent) => {
       repoIsGit = msg.isGit ?? true;
       repoIsGitHub = msg.isGitHub ?? true;
       workspaceRoot = msg.workspaceRoot ?? '';
+      workspaceName = msg.workspaceName ?? '';
       render();
       break;
     case 'mergeResult':

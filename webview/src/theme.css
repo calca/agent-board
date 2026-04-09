@@ -28,7 +28,87 @@ html, body, #root {
 .toolbar {
   background: var(--vscode-sideBar-background);
   border-bottom: 1px solid var(--vscode-panel-border);
-  padding: 14px 16px 16px;
+  padding: 0 16px 14px;
+}
+
+/* ── Project Bar (above toolbar row) ─────── */
+
+.project-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 0 8px;
+  border-bottom: 1px solid var(--vscode-panel-border);
+  margin-bottom: 10px;
+}
+
+.project-bar__name {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 600;
+  font-size: 0.92em;
+  letter-spacing: -0.01em;
+  color: var(--vscode-foreground);
+  opacity: 0.85;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 60%;
+}
+
+.project-bar__icon {
+  flex-shrink: 0;
+  opacity: 0.6;
+}
+
+.project-bar__actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+/* ── MCP Toggle Pill ─────────────────────── */
+
+.mcp-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 10px 3px 8px;
+  border: 1px solid var(--vscode-panel-border);
+  border-radius: 12px;
+  background: transparent;
+  color: var(--vscode-descriptionForeground, #888);
+  font-size: 0.75em;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+  line-height: 1.4;
+}
+
+.mcp-toggle:hover {
+  background: var(--vscode-toolbar-hoverBackground);
+}
+
+.mcp-toggle__dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--vscode-terminal-ansiRed, #f44747);
+  transition: background 0.15s;
+}
+
+.mcp-toggle--on {
+  border-color: var(--vscode-terminal-ansiGreen, #16825d);
+  color: var(--vscode-terminal-ansiGreen, #16825d);
+}
+
+.mcp-toggle--on .mcp-toggle__dot {
+  background: var(--vscode-terminal-ansiGreen, #16825d);
+}
+
+.mcp-toggle__label {
+  letter-spacing: 0.04em;
 }
 
 .toolbar__row {
@@ -38,14 +118,6 @@ html, body, #root {
   row-gap: 12px;
   min-height: 44px;
   flex-wrap: wrap;
-}
-
-.toolbar__title {
-  font-weight: 700;
-  font-size: 1.05em;
-  letter-spacing: -0.01em;
-  margin-right: 4px;
-  white-space: nowrap;
 }
 
 /* ── Group with label ────────────────────── */
@@ -80,6 +152,10 @@ html, body, #root {
   opacity: 0.6;
 }
 
+.toolbar__spacer {
+  flex: 1 1 auto;
+}
+
 /* ── Buttons ─────────────────────────────── */
 
 .toolbar__btn {
@@ -111,10 +187,19 @@ html, body, #root {
   font-size: 1em;
   padding: 3px 6px;
   opacity: 0.7;
+  position: relative;
 }
 .toolbar__btn--icon:hover {
   opacity: 1;
   background: var(--vscode-toolbar-hoverBackground);
+}
+
+.toolbar__btn--secondary {
+  background: var(--vscode-button-secondaryBackground, var(--vscode-input-background));
+  color: var(--vscode-button-secondaryForeground, var(--vscode-foreground));
+}
+.toolbar__btn--secondary:hover {
+  background: var(--vscode-button-secondaryHoverBackground, var(--vscode-toolbar-hoverBackground));
 }
 
 .toolbar__btn--small {
@@ -167,12 +252,37 @@ html, body, #root {
   border-radius: 4px;
   padding: 3px 8px;
   font-size: 0.82em;
-  width: 120px;
-  transition: width 0.2s;
+  width: 0;
+  max-width: 0;
+  opacity: 0;
+  overflow: hidden;
+  transition: width 0.2s, max-width 0.2s, opacity 0.15s, padding 0.2s;
 }
-.toolbar__search-input:focus {
-  width: 180px;
+.toolbar__search-input--open {
+  width: 160px;
+  max-width: 160px;
+  opacity: 1;
+}
+.toolbar__search-input--open:focus {
+  width: 200px;
+  max-width: 200px;
   outline: 1px solid var(--vscode-focusBorder);
+}
+
+.toolbar__badge--inline {
+  position: absolute;
+  top: -4px;
+  right: -6px;
+  min-width: 15px;
+  height: 15px;
+  padding: 0 3px;
+  font-size: 0.6em;
+  font-weight: 700;
+  line-height: 15px;
+  text-align: center;
+  border-radius: 8px;
+  background: var(--vscode-badge-background);
+  color: var(--vscode-badge-foreground);
 }
 
 /* ── Badges & dots ───────────────────────── */
@@ -640,13 +750,13 @@ html, body, #root {
 /* ── Notification Bell ──────────────────────────────────────────────── */
 .notification-bell {
   position: relative;
-  margin-left: auto;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   color: var(--vscode-foreground);
   opacity: 0.7;
   transition: opacity 0.12s;
+  cursor: pointer;
 }
 .notification-bell:hover {
   opacity: 1;

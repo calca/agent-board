@@ -59,7 +59,7 @@ export type HostToWebView =
   | { type: 'streamResume'; sessionId: string; log: string }
   | { type: 'toolCall'; sessionId: string; status: string }
   | { type: 'fileChanges'; sessionId: string; files: FileChangeInfo[] }
-  | { type: 'repoStatus'; isGit: boolean; isGitHub: boolean; workspaceRoot?: string }
+  | { type: 'repoStatus'; isGit: boolean; isGitHub: boolean; workspaceRoot?: string; workspaceName?: string }
   | { type: 'mergeResult'; sessionId: string; success: boolean; message: string }
   | { type: 'deleteWorktreeResult'; sessionId: string; success: boolean; message?: string };
 
