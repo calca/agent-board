@@ -188,6 +188,10 @@ export class CopilotLauncher {
 
     this.sessionStateManager?.markRunning(taskId);
     this.activeProviders.set(taskId, provider);
+
+    // Emit the prompt to the activity log so the user can see what was sent
+    stream.append(`-----------------\nPROMPT\n${prompt}\n-----------------`);
+
     let sessionSucceeded = false;
     let sessionError: string | undefined;
     try {
