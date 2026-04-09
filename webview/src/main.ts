@@ -176,8 +176,8 @@ function render(): void {
             ${searchText ? `<span class="toolbar__badge toolbar__badge--inline">${filtered.length}</span>` : ''}
           </button>
           ${showSearchInput ? `<input class="toolbar__search-input toolbar__search-input--open" id="search-input" placeholder="Filter issues…" value="${escapeHtml(searchText)}" autofocus />` : ''}
-          <button class="toolbar__btn toolbar__btn--primary" id="btn-add-task">+ New Issue</button>
           <button class="toolbar__btn toolbar__btn--secondary" id="btn-refresh">Sync</button>
+          <button class="toolbar__btn toolbar__btn--secondary" id="btn-add-task">+ New Issue</button>
         </div>
       </div>
     </header>
