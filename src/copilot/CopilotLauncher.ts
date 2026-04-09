@@ -114,7 +114,7 @@ export class CopilotLauncher {
     this.agents = agents;
   }
 
-  async launch(taskId: string, providerId: string, agentSlug?: string): Promise<void> {
+  async launch(taskId: string, providerId: string, agentSlug?: string, promptOverride?: string): Promise<void> {
     this.logger.info(`CopilotLauncher: launching provider "${providerId}" for task ${taskId}${agentSlug ? ` with agent "${agentSlug}"` : ''}`);
 
     const provider = this.genAiRegistry.get(providerId);
@@ -143,7 +143,7 @@ export class CopilotLauncher {
       }
     }
 
-    let prompt = ContextBuilder.build(task);
+    let prompt = promptOverride ?? ContextBuilder.build(task);
 
     // ── Compute log path for persistence ─────────────────────────────
     const logPath = this.computeLogPath(taskId);

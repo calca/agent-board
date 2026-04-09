@@ -674,17 +674,12 @@ export function activate(context: vscode.ExtensionContext): void {
             rebase: 'rebase and merge',
           };
 
-          // Pick the first canSquad agent (matching the toolbar selection)
-          const agent = discoveredAgents.find(a => a.canSquad);
-          if (!agent) {
-            vscode.window.showErrorMessage('Agent Merge: nessun agente squad disponibile.');
-            break;
-          }
-
-          // Determine which provider to use — pick the first non-chat provider
-          const provider = genAiRegistry?.getAll().find(p => p.id !== 'chat');
+          // Determine which provider to use — prefer the one used for the task
+          const provider = msg.providerId
+            ? genAiRegistry?.get(msg.providerId) ?? genAiRegistry?.getAll().find(p => p.id !== 'chat')
+            : genAiRegistry?.getAll().find(p => p.id !== 'chat');
           if (!provider) {
-            vscode.window.showErrorMessage('Agent Merge: nessun provider disponibile per il merge.');
+            vscode.window.showErrorMessage('Merge by AI: nessun provider disponibile.');
             break;
           }
 
@@ -709,20 +704,14 @@ export function activate(context: vscode.ExtensionContext): void {
               `4. If changes need fixes, apply them first, then merge\n` +
               `5. Report what you found and whether the merge was successful\n`;
 
-            // Launch the agent with the merge prompt
-            await squadManager.launchSingle(msg.sessionId, provider.id, agent.slug);
+            // Launch the provider directly with the merge prompt
+            await copilotLauncher.launch(msg.sessionId, provider.id, undefined, mergePrompt);
 
-            // Send the merge prompt as a follow-up (the launch built the base prompt from the task)
-            setTimeout(() => {
-              void copilotLauncher.sendFollowUp(msg.sessionId, mergePrompt);
-            }, 2000);
-
-            panel.updateSquadStatus(squadManager.getStatus());
             await sendTasksToPanel(panel, providerRegistry, genAiRegistry, squadManager, sessionStateManager);
           } catch (err) {
             const errMsg = err instanceof Error ? err.message : String(err);
-            logger.error('agentMerge failed:', errMsg);
-            vscode.window.showErrorMessage(`Agent Merge fallito: ${errMsg}`);
+            logger.error('Merge by AI failed:', errMsg);
+            vscode.window.showErrorMessage(`Merge by AI fallito: ${errMsg}`);
           }
           break;
         }
