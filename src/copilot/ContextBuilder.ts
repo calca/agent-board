@@ -72,9 +72,11 @@ export class ContextBuilder {
     if (mentionedFiles.length > 0 && workspacePath) {
       for (const relPath of mentionedFiles.slice(0, 5)) { // cap at 5 files
         try {
+          // eslint-disable-next-line @typescript-eslint/no-require-imports
           const absPath: string = require('path').resolve(workspacePath, relPath);
           // Only read files inside the workspace root (traversal guard)
           if (!absPath.startsWith(workspacePath)) { continue; }
+          // eslint-disable-next-line @typescript-eslint/no-require-imports
           const content = require('fs').readFileSync(absPath, 'utf-8') as string;
           const preview = content.length > 4_000 ? content.slice(0, 4_000) + '\n…(truncated)' : content;
           parts.push('');

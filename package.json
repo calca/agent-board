@@ -258,7 +258,9 @@
         },
         "agentBoard.squad.priorityLabels": {
           "type": "array",
-          "items": { "type": "string" },
+          "items": {
+            "type": "string"
+          },
           "default": [],
           "description": "Ordered list of labels used to prioritise tasks. Tasks matching an earlier label are launched first. Overridable in .agent-board/config.json."
         },
@@ -276,7 +278,9 @@
         },
         "agentBoard.squad.excludeLabels": {
           "type": "array",
-          "items": { "type": "string" },
+          "items": {
+            "type": "string"
+          },
           "default": [],
           "description": "Labels that cause a task to be skipped by the squad. Case-insensitive. Overridable in .agent-board/config.json."
         },
@@ -317,8 +321,7 @@
           "group": "navigation"
         }
       ],
-      "view/item/context": [
-      ]
+      "view/item/context": []
     },
     "jsonValidation": [
       {
@@ -342,13 +345,12 @@
     "@types/mocha": "^10.0.6",
     "@types/node": "18.x",
     "@types/vscode": "^1.85.0",
-    "@typescript-eslint/eslint-plugin": "^6.15.0",
-    "@typescript-eslint/parser": "^6.15.0",
     "@vscode/test-electron": "^2.3.8",
     "esbuild": "^0.27.4",
-    "eslint": "^8.56.0",
+    "eslint": "^9.39.4",
     "glob": "^10.3.10",
     "mocha": "^10.2.0",
-    "typescript": "^5.3.3"
+    "typescript": "^5.3.3",
+    "typescript-eslint": "^8.58.1"
   }
 }
