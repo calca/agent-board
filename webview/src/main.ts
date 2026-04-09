@@ -979,7 +979,7 @@ function renderFullView(): string {
           <div class="fv-panel fv-panel--fill">
             <div class="fv-panel__header fv-panel__header--static">
               <span class="fv-panel__header-text">📋 Task Details</span>
-              ${isEditable && !isMerged ? `<button class="fv-panel__header-btn" id="fv-edit-btn" title="Edit task">✏ Edit</button>` : ''}
+              ${isEditable && !isMerged && !isRunning ? `<button class="fv-panel__header-btn" id="fv-edit-btn" title="Edit task">✏ Edit</button>` : ''}
             </div>
             <div class="fv-panel__body fv-panel__body--scroll">
               ${renderFvReadOnlyDetails(task, statusCol)}
@@ -1049,7 +1049,7 @@ function renderFullView(): string {
                 ${hasWorktree ? `
                   <button class="fv-action-btn fv-open-worktree" data-wt-path="${escapeHtml(sessionInfo!.worktreePath!)}" title="Open worktree folder in VS Code">↗ Open in VS Code</button>
                   <button class="fv-action-btn fv-review-wt" data-session-id="${escapeHtml(task.id)}" title="Review changes vs main branch">🔍 Review Diff</button>
-                  ${sessionInfo?.state === 'completed' ? `
+                  ${sessionInfo?.state === 'completed' || task.status === 'done' ? `
                     <hr class="fv-actions__separator" />
                     <div class="fv-merge-panel" data-session-id="${escapeHtml(task.id)}">
                       <select class="fv-merge-select" data-session-id="${escapeHtml(task.id)}">
