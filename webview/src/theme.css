@@ -1351,6 +1351,19 @@ html, body, #root {
   overflow: hidden;
   min-height: 0;
   border-top: 1px solid var(--vscode-panel-border);
+  transition: flex 0.2s ease;
+}
+
+/* Hidden top row when log is expanded */
+.fv-row--hidden {
+  display: none !important;
+}
+
+/* Expanded log fills all space */
+.fv-row--expanded {
+  flex: 1;
+  padding-top: 10px;
+  border-top: none;
 }
 
 /* Each column in top row */

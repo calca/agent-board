@@ -81,6 +81,7 @@ let sessionStreamLines: string[] = [];
 let sessionFileChanges: FileChangeInfo[] = [];
 let repoIsGit = true;
 let repoIsGitHub = true;
+let workspaceRoot = '';
 /** When true, auto-scroll to bottom on new output. Disabled when user scrolls up. */
 let streamAutoScroll = true;
 /** Per-session file change lists (all sessions, not just the open panel). */
@@ -104,6 +105,7 @@ interface TaskLogEntry {
 let fullViewTaskId: string | null = null;
 const taskEventLogs = new Map<string, TaskLogEntry[]>();
 let fullViewAutoScroll = true;
+let logExpanded = false;
 /** Sessions whose worktree has been merged successfully — enables "Delete Workspace". */
 const mergedSessions = new Set<string>();
 
@@ -322,6 +324,10 @@ function render(): void {
       fullViewAutoScroll = atBottom;
     }, { passive: true });
   }
+  document.getElementById('fv-log-expand')?.addEventListener('click', () => {
+    logExpanded = !logExpanded;
+    render();
+  });
 
   document.getElementById('fv-btn-stop')?.addEventListener('click', () => {
     if (fullViewTaskId) { vscode.postMessage({ type: 'cancelSession', taskId: fullViewTaskId }); }
@@ -575,7 +581,7 @@ function renderCard(task: KanbanTask): string {
     ? `<img class="task-card__avatar" src="${escapeHtml(avatarUrl)}" alt="${escapeHtml(task.assignee ?? '')}" title="${escapeHtml(task.assignee ?? '')}" />`
     : (initials ? `<span class="task-card__assignee">${initials}</span>` : '');
   const wtBadge = session?.worktreePath
-    ? `<span class="task-card__wt-badge" title="${escapeHtml(session.worktreePath)}">🌿</span><button class="task-card__diff-btn card-review-wt" data-session-id="${escapeHtml(task.id)}" title="Review Diff vs Main">⇄</button>`
+    ? `<span class="task-card__wt-badge" title="${escapeHtml(relativeWorktreePath(session.worktreePath))}">🌿</span><button class="task-card__diff-btn card-review-wt" data-session-id="${escapeHtml(task.id)}" title="Review Diff vs Main">⇄</button>`
     : '';
   return `
     <div class="task-card${isActive ? ' task-card--running' : ''}" data-task-id="${escapeHtml(task.id)}">
@@ -838,6 +844,14 @@ function escapeHtml(str: string): string {
     .replace(/"/g, '&quot;');
 }
 
+function relativeWorktreePath(absPath: string): string {
+  if (!workspaceRoot) { return absPath; }
+  const root = workspaceRoot.endsWith('/') ? workspaceRoot : workspaceRoot + '/';
+  const parent = root.replace(/[^/]+\/$/, '');
+  if (absPath.startsWith(parent)) { return absPath.slice(parent.length); }
+  return absPath;
+}
+
 // ── Full view helpers ──────────────────────────────────────────────────
 
 function openFullView(taskId: string): void {
@@ -925,7 +939,7 @@ function renderFullView(): string {
       ${isInterrupted ? `<div class="session-interrupted-banner">⚡ Session interrupted. Log is read-only.</div>` : ''}
 
       <!-- ── ROW 1: four panels side by side (2/3 height) ── -->
-      <div class="fv-row fv-row--top">
+      <div class="fv-row fv-row--top${logExpanded ? ' fv-row--hidden' : ''}">
 
         <!-- Task Details -->
         <div class="fv-col">
@@ -1019,11 +1033,12 @@ function renderFullView(): string {
       </div>
 
       <!-- ── ROW 2: Activity Log (1/3 height) ── -->
-      <div class="fv-row fv-row--bottom">
+      <div class="fv-row fv-row--bottom${logExpanded ? ' fv-row--expanded' : ''}">
         <div class="fv-panel fv-panel--fill">
           <div class="fv-panel__header fv-panel__header--static fv-log-panel-header">
             <span class="fv-panel__header-text">📜 Activity Log</span>
             <span class="fv-panel__badge">${logs.length}</span>
+            <button class="fv-panel__header-btn" id="fv-log-expand" title="${logExpanded ? 'Collapse' : 'Expand'}">${logExpanded ? '⊖' : '⊕'}</button>
           </div>
           <div class="fv-panel__body fv-panel__body--log">
             <div class="fv-log-scroll" id="fv-log-scroll">
@@ -1155,7 +1170,7 @@ function renderFvSessionPanel(
       ${hasWorktree ? `
         <div class="fv-detail-row">
           <span class="fv-detail-label">Worktree</span>
-          <code class="fv-wt-path">${escapeHtml(sessionInfo.worktreePath!)}</code>
+          <code class="fv-wt-path">${escapeHtml(relativeWorktreePath(sessionInfo.worktreePath!))}</code>
         </div>
         ${isMerged ? '<div class="fv-merged-badge">✅ Merged into main</div>' : ''}
       ` : ''}
@@ -1343,6 +1358,7 @@ window.addEventListener('message', (event: MessageEvent) => {
     case 'repoStatus':
       repoIsGit = msg.isGit ?? true;
       repoIsGitHub = msg.isGitHub ?? true;
+      workspaceRoot = msg.workspaceRoot ?? '';
       render();
       break;
     case 'mergeResult':

@@ -344,6 +344,7 @@ export function activate(context: vscode.ExtensionContext): void {
             type: 'repoStatus',
             isGit: await isGitRepository(),
             isGitHub: await isGitHubRepository(),
+            workspaceRoot: vscode.workspace.workspaceFolders?.[0]?.uri.fsPath,
           });
           break;
         case 'refreshRequest':
