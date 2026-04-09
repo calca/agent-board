@@ -285,6 +285,13 @@ html, body, #root {
 .task-card--running {
   border-left: 3px solid var(--vscode-progressBar-background, #0078d4);
 }
+.task-card--state-idle       { border-left: 3px solid var(--vscode-descriptionForeground, #888); }
+.task-card--state-starting   { border-left: 3px solid var(--vscode-terminal-ansiYellow, #d9a500); }
+.task-card--state-running    { border-left: 3px solid var(--vscode-progressBar-background, #0078d4); }
+.task-card--state-paused     { border-left: 3px solid var(--vscode-terminal-ansiCyan, #11a8cd); }
+.task-card--state-completed  { border-left: 3px solid var(--vscode-terminal-ansiGreen, #16825d); }
+.task-card--state-error      { border-left: 3px solid var(--vscode-errorForeground, #f44747); }
+.task-card--state-interrupted { border-left: 3px solid var(--vscode-charts-orange, #d18616); }
 
 .task-card__session {
   font-size: 0.75em;

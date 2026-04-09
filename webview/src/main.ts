@@ -600,10 +600,11 @@ function renderCard(task: KanbanTask): string {
     : (initials ? `<span class="task-card__assignee">${initials}</span>` : '');
   const cardMerged = mergedSessions.has(task.id);
   const wtBadge = session?.worktreePath
-    ? `<span class="task-card__wt-badge" title="${escapeHtml(relativeWorktreePath(session.worktreePath))}">🌿</span><button class="task-card__diff-btn card-review-wt" data-session-id="${escapeHtml(task.id)}" title="Review Diff vs Main">⇄</button>`
+    ? `<span class="task-card__wt-badge" title="${escapeHtml(relativeWorktreePath(session.worktreePath))}">🌿</span>`
     : '';
+  const stateModifier = session ? ` task-card--state-${session.state}` : '';
   return `
-    <div class="task-card${isActive ? ' task-card--running' : ''}" data-task-id="${escapeHtml(task.id)}">
+    <div class="task-card${stateModifier}" data-task-id="${escapeHtml(task.id)}">
       <div class="task-card__title">${escapeHtml(task.title)}${cardMerged ? ' <span class="task-card__merged">✅ Merged</span>' : ''}</div>
       <div class="task-card__meta">
         ${sessionBadge}
