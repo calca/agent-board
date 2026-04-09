@@ -39,6 +39,8 @@ interface KanbanTask {
     worktreePath?: string;
     /** Human-readable error message when state is 'error'. */
     errorMessage?: string;
+    /** Whether the worktree branch has been merged locally. */
+    merged?: boolean;
   };
 }
 interface AgentOption {
@@ -1281,6 +1283,11 @@ window.addEventListener('message', (event: MessageEvent) => {
         }
       }
       currentTasks = newTasks;
+      // Sync mergedSessions from persisted metadata
+      mergedSessions.clear();
+      for (const t of currentTasks) {
+        if (t.copilotSession?.merged) { mergedSessions.add(t.id); }
+      }
       currentColumns = msg.columns ?? [];
       editableProviderIds = msg.editableProviderIds ?? [];
       genAiProviders = msg.genAiProviders ?? [];

@@ -29,6 +29,8 @@ export interface CopilotSessionInfo {
   worktreePath?: string;
   /** Human-readable error message (set when state is 'error'). */
   errorMessage?: string;
+  /** Whether the worktree branch has been merged locally. */
+  merged?: boolean;
 }
 
 /**

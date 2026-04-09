@@ -17,6 +17,8 @@ export interface PersistedSession {
   logPath?: string;
   /** Human-readable error message when state is 'error'. */
   errorMessage?: string;
+  /** Whether the worktree branch has been merged locally. */
+  merged?: boolean;
 }
 
 // ── Pure utilities (testable without VS Code) ─────────────────────────
@@ -71,6 +73,7 @@ export function toCopilotSessionInfo(session: PersistedSession): CopilotSessionI
     finishedAt: session.finishedAt,
     worktreePath: session.worktreePath,
     errorMessage: session.errorMessage,
+    merged: session.merged,
   };
 }
 

@@ -140,6 +140,14 @@ export class SessionStateManager {
     this.persist();
   }
 
+  /** Mark a session as merged (worktree branch merged locally). */
+  markMerged(taskId: string): void {
+    const session = this.sessions.get(taskId);
+    if (!session) { return; }
+    session.merged = true;
+    this.persist();
+  }
+
   /** Clear the worktree path from a session (after worktree deletion) while keeping all other info. */
   clearWorktree(taskId: string): void {
     const session = this.sessions.get(taskId);
