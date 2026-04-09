@@ -259,13 +259,11 @@ html, body, #root {
   transition: width 0.2s, max-width 0.2s, opacity 0.15s, padding 0.2s;
 }
 .toolbar__search-input--open {
-  width: 160px;
-  max-width: 160px;
+  width: 180px;
+  max-width: 180px;
   opacity: 1;
 }
 .toolbar__search-input--open:focus {
-  width: 200px;
-  max-width: 200px;
   outline: 1px solid var(--vscode-focusBorder);
 }
 

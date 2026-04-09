@@ -223,7 +223,10 @@ function render(): void {
   const searchInput = document.getElementById('search-input') as HTMLInputElement | null;
   searchInput?.addEventListener('input', (e: Event) => {
     searchText = (e.target as HTMLInputElement).value;
+    const pos = searchInput!.selectionStart;
     render();
+    const restored = document.getElementById('search-input') as HTMLInputElement | null;
+    if (restored) { restored.focus(); restored.selectionStart = restored.selectionEnd = pos; }
   });
   searchInput?.addEventListener('keydown', (e: KeyboardEvent) => {
     if (e.key === 'Escape') { showSearchInput = false; searchText = ''; render(); }
