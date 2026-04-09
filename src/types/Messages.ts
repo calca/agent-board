@@ -99,4 +99,5 @@ export type WebViewToHost =
   | { type: 'reviewWorktree'; sessionId: string }
   | { type: 'mergeWorktree'; sessionId: string; mergeStrategy: 'squash' | 'merge' | 'rebase' }
   | { type: 'agentMerge'; sessionId: string; mergeStrategy: 'squash' | 'merge' | 'rebase'; providerId: string }
-  | { type: 'deleteWorktree'; sessionId: string };
+  | { type: 'deleteWorktree'; sessionId: string }
+  | { type: 'deleteTask'; taskId: string };

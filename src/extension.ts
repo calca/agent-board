@@ -480,6 +480,16 @@ export function activate(context: vscode.ExtensionContext): void {
           await sendTasksToPanel(panel, providerRegistry, genAiRegistry, squadManager, sessionStateManager);
           break;
         }
+        case 'deleteTask': {
+          const [delProviderId] = msg.taskId.split(':');
+          const delProvider = providerRegistry.get(delProviderId);
+          if (delProvider && 'deleteTaskById' in delProvider && typeof (delProvider as any).deleteTaskById === 'function') {
+            await (delProvider as any).deleteTaskById(msg.taskId);
+          }
+          refresh();
+          await sendTasksToPanel(panel, providerRegistry, genAiRegistry, squadManager, sessionStateManager);
+          break;
+        }
         case 'launchProvider': {
           await squadManager.launchSingle(msg.taskId, msg.genAiProviderId, undefined);
           panel.updateSquadStatus(squadManager.getStatus());

@@ -358,6 +358,14 @@ function render(): void {
   document.getElementById('fv-btn-stop')?.addEventListener('click', () => {
     if (fullViewTaskId) { vscode.postMessage({ type: 'cancelSession', taskId: fullViewTaskId }); }
   });
+  document.getElementById('fv-btn-delete-task')?.addEventListener('click', () => {
+    const taskId = (document.getElementById('fv-btn-delete-task') as HTMLElement)?.dataset.taskId;
+    if (taskId && confirm('Delete this task? This action cannot be undone.')) {
+      vscode.postMessage({ type: 'deleteTask', taskId });
+      fullViewTaskId = null;
+      render();
+    }
+  });
   // ── Full view edit button → open overlay ────────────────────────────
   document.getElementById('fv-edit-btn')?.addEventListener('click', () => {
     if (!fullViewTaskId) { return; }
@@ -1116,6 +1124,12 @@ function renderFullView(): string {
           </div>
         </div>
       </div>
+
+      ${isEditable && !isRunning ? `
+      <div class="fv-footer-bar">
+        <button class="fv-action-btn fv-action-btn--danger fv-action-btn--ghost" id="fv-btn-delete-task" data-task-id="${escapeHtml(task.id)}">🗑 Delete</button>
+      </div>
+      ` : ''}
 
     </div>
   `;
