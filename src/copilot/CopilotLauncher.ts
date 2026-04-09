@@ -216,6 +216,8 @@ export class CopilotLauncher {
       // ── Update session state ──────────────────────────────────────
       if (sessionSucceeded) {
         this.sessionStateManager?.markCompleted(taskId);
+        // Move task to review column on successful completion
+        await this.moveTaskToReview(task);
       } else {
         this.sessionStateManager?.markError(taskId, sessionError);
       }
@@ -380,6 +382,22 @@ export class CopilotLauncher {
   }
 
   // ── Log persistence ─────────────────────────────────────────────────
+
+  /**
+   * Move a task to the 'review' column after successful GenAI completion.
+   */
+  private async moveTaskToReview(task: KanbanTask): Promise<void> {
+    if (task.status === 'review' || task.status === 'done') { return; }
+    const [providerId] = task.id.split(':');
+    const provider = this.registry.get(providerId);
+    if (provider) {
+      try {
+        await provider.updateTask({ ...task, status: 'review' });
+      } catch {
+        this.logger.warn('CopilotLauncher: failed to move task %s to review', task.id);
+      }
+    }
+  }
 
   /**
    * Compute the path where the stream log for a session will be stored.

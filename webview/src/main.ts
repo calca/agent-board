@@ -603,7 +603,6 @@ function renderCard(task: KanbanTask): string {
         ${wtBadge}
       </div>
       ${toolCallBadge}
-      ${session?.state === 'error' && session?.errorMessage ? `<div class="task-card__error">${escapeHtml(session.errorMessage)}</div>` : ''}
       ${agentBadge ? `<div class="task-card__footer">${agentBadge}</div>` : ''}
       <div class="task-card__actions">
         <button class="task-card__action-btn card-btn-edit" data-task-id="${escapeHtml(task.id)}" title="Edit">✎</button>
