@@ -99,7 +99,8 @@ export class SquadManager {
       if (launched > 0 && cfg.cooldownMs > 0) {
         await this.delay(cfg.cooldownMs);
       }
-      await this.launchSession(task, cfg, agentSlug, genAiProviderId);
+      // Fire-and-forget: register session and launch in background so all tasks start in parallel
+      this.launchSessionInBackground(task, cfg, agentSlug, genAiProviderId);
       launched++;
     }
 
@@ -351,6 +352,71 @@ export class SquadManager {
     const provider = this.providerRegistry.get(providerId);
     if (provider) {
       await provider.updateTask({ ...task, status: toColumn });
+    }
+  }
+
+  /**
+   * Register the session synchronously and launch the provider in the background.
+   * This allows multiple squad tasks to start in parallel.
+   */
+  private launchSessionInBackground(task: KanbanTask, cfg: SquadConfig, agentSlug?: string, genAiProviderId?: string): void {
+    const providerId = genAiProviderId ?? this.genAiProviderId();
+    const session: CopilotSessionInfo = {
+      state: 'starting',
+      providerId,
+      startedAt: new Date().toISOString(),
+    };
+    this.activeSessions.set(task.id, session);
+    this.fireStatusChange();
+
+    // Move to active column, then launch (all async, fire-and-forget)
+    void this.moveTask(task, cfg.activeColumn).then(() => {
+      if (cfg.notifyTaskActive) {
+        vscode.window.showInformationMessage(`Task "${task.title}" moved to ${cfg.activeColumn}`);
+      }
+      session.state = 'running';
+      this.fireStatusChange();
+
+      const launchPromise = this.copilotLauncher.launch(task.id, providerId, agentSlug);
+
+      const runPromise = cfg.sessionTimeout > 0
+        ? this.raceWithTimeout(launchPromise, task.id, cfg.sessionTimeout)
+        : launchPromise;
+
+      return runPromise
+        .then(async () => {
+          await this.moveTask(task, cfg.doneColumn);
+          if (cfg.notifyTaskDone) {
+            vscode.window.showInformationMessage(`Task "${task.title}" moved to ${cfg.doneColumn}`);
+          }
+          this.completeSession(task.id);
+        })
+        .catch(async () => {
+          vscode.window.showErrorMessage(`Task "${task.title}" failed`);
+          this.failSession(task.id);
+          const attempt = this.retryCount.get(task.id) ?? 0;
+          if (canRetry(attempt, cfg.maxRetries)) {
+            this.retryCount.set(task.id, attempt + 1);
+            this.logger.info('SquadManager: retrying task "%s" (attempt %d/%d)', task.title, attempt + 1, cfg.maxRetries);
+            await this.moveTask(task, cfg.sourceColumn);
+          }
+        });
+    });
+  }
+
+  /** Race a promise against a timeout, cancelling the session on timeout. */
+  private async raceWithTimeout(promise: Promise<void>, taskId: string, timeoutMs: number): Promise<void> {
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const timeoutPromise = new Promise<never>((_, reject) => {
+      timer = setTimeout(() => reject(new Error('Session timed out')), timeoutMs);
+    });
+    try {
+      await Promise.race([promise, timeoutPromise]);
+    } catch (err) {
+      this.copilotLauncher.cancelSession(taskId);
+      throw err;
+    } finally {
+      if (timer !== undefined) { clearTimeout(timer); }
     }
   }
 
