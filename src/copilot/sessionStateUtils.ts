@@ -58,6 +58,7 @@ export function mapStateToCopilot(state: SessionState): CopilotSessionState {
     case 'completed': return 'completed';
     case 'error': return 'error';
     case 'interrupted': return 'interrupted';
+    default: return 'completed'; // legacy 'done' or unknown → completed
   }
 }
 
@@ -85,6 +86,10 @@ export function isActive(state: SessionState): boolean {
  */
 export function fixInterruptedSessions(sessions: PersistedSession[]): PersistedSession[] {
   return sessions.map(s => {
+    // Migrate legacy 'done' → 'completed'
+    if ((s.state as string) === 'done') {
+      return { ...s, state: 'completed' as SessionState };
+    }
     if (s.state === 'starting' || s.state === 'running' || s.state === 'paused') {
       return { ...s, state: 'interrupted' as SessionState, finishedAt: new Date().toISOString() };
     }
