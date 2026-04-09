@@ -58,8 +58,8 @@ suite('SessionStateManager (pure utils)', () => {
     assert.strictEqual(mapStateToCopilot('completed'), 'completed');
   });
 
-  test('maps error to failed', () => {
-    assert.strictEqual(mapStateToCopilot('error'), 'failed');
+  test('maps error to error', () => {
+    assert.strictEqual(mapStateToCopilot('error'), 'error');
   });
 
   // ── isActive ──────────────────────────────────────────────────────
@@ -104,21 +104,21 @@ suite('SessionStateManager (pure utils)', () => {
 
   // ── fixInterruptedSessions ────────────────────────────────────────
 
-  test('marks running sessions as error', () => {
+  test('marks running sessions as interrupted', () => {
     const sessions: PersistedSession[] = [
       { taskId: 't:1', state: 'running', providerId: 'chat', startedAt: '2024-01-01T00:00:00Z' },
     ];
     const fixed = fixInterruptedSessions(sessions);
-    assert.strictEqual(fixed[0].state, 'error');
+    assert.strictEqual(fixed[0].state, 'interrupted');
     assert.ok(fixed[0].finishedAt);
   });
 
-  test('marks starting sessions as error', () => {
+  test('marks starting sessions as interrupted', () => {
     const sessions: PersistedSession[] = [
       { taskId: 't:2', state: 'starting', providerId: 'cloud' },
     ];
     const fixed = fixInterruptedSessions(sessions);
-    assert.strictEqual(fixed[0].state, 'error');
+    assert.strictEqual(fixed[0].state, 'interrupted');
   });
 
   test('leaves completed sessions unchanged', () => {
@@ -145,10 +145,10 @@ suite('SessionStateManager (pure utils)', () => {
       { taskId: 't:d', state: 'paused', providerId: 'cloud' },
     ];
     const fixed = fixInterruptedSessions(sessions);
-    assert.strictEqual(fixed[0].state, 'error');
+    assert.strictEqual(fixed[0].state, 'interrupted');
     assert.strictEqual(fixed[1].state, 'completed');
-    assert.strictEqual(fixed[2].state, 'error');
-    assert.strictEqual(fixed[3].state, 'paused');
+    assert.strictEqual(fixed[2].state, 'interrupted');
+    assert.strictEqual(fixed[3].state, 'interrupted');
   });
 
   test('does not mutate original array', () => {
@@ -157,6 +157,6 @@ suite('SessionStateManager (pure utils)', () => {
     ];
     const fixed = fixInterruptedSessions(sessions);
     assert.strictEqual(sessions[0].state, 'running');
-    assert.strictEqual(fixed[0].state, 'error');
+    assert.strictEqual(fixed[0].state, 'interrupted');
   });
 });
