@@ -108,6 +108,7 @@ let fullViewAutoScroll = true;
 let logExpanded = false;
 /** Sessions whose worktree has been merged successfully — enables "Delete Workspace". */
 const mergedSessions = new Set<string>();
+let showNotificationCenter = false;
 
 // ── Render ─────────────────────────────────────────────────────────────
 
@@ -171,9 +172,11 @@ function render(): void {
           <span class="toolbar__meta">${mcpEnabled ? 'On' : 'Off'}</span>
           <button class="toolbar__btn toolbar__btn--small" id="btn-mcp-toggle">${mcpEnabled ? 'Disable' : 'Enable'}</button>
         </div>
+
+        ${renderNotificationBell()}
       </div>
     </header>
-    ${renderRepoBanners()}
+    ${renderNotificationCenter()}
     <div class="kanban">
       ${currentColumns.map(col => renderColumn(col, filtered.filter(t => t.status === col.id))).join('')}
     </div>
@@ -190,6 +193,14 @@ function render(): void {
 
   document.getElementById('btn-mcp-toggle')?.addEventListener('click', () => {
     vscode.postMessage({ type: 'toggleMcp' });
+  });
+  document.getElementById('btn-notifications')?.addEventListener('click', () => {
+    showNotificationCenter = !showNotificationCenter;
+    render();
+  });
+  document.getElementById('notification-center-close')?.addEventListener('click', () => {
+    showNotificationCenter = false;
+    render();
   });
   document.getElementById('btn-add-task')?.addEventListener('click', () => {
     showTaskForm = true;
@@ -697,32 +708,48 @@ function renderTaskForm(): string {
 function renderRepoBanners(): string {
   const banners: string[] = [];
   if (!repoIsGit) {
-    banners.push(`
-      <div class="repo-banner repo-banner--warn">
-        <span class="repo-banner__icon">⚠</span>
-        <span class="repo-banner__text">
-          Questo progetto non è un repository Git.
-          <span class="repo-banner__provider">Squad</span>,
-          <span class="repo-banner__provider">Copilot LM API</span>,
-          <span class="repo-banner__provider">Copilot CLI</span> e
-          <span class="repo-banner__provider">Cloud</span> sono disabilitati.
-          <br/><small>Installa: <code>npm install -g @github/copilot</code></small>
-        </span>
-      </div>
-    `);
+    banners.push('Questo progetto non è un repository Git. Squad, Copilot LM API, Copilot CLI e Cloud sono disabilitati.');
   } else if (!repoIsGitHub) {
-    banners.push(`
-      <div class="repo-banner repo-banner--warn">
-        <span class="repo-banner__icon">⚠</span>
-        <span class="repo-banner__text">
-          Nessun remote GitHub collegato.
-          <span class="repo-banner__provider">Cloud</span> è disabilitato.
-        </span>
-      </div>
-    `);
+    banners.push('Nessun remote GitHub collegato. Cloud è disabilitato.');
   }
-  if (banners.length === 0) { return ''; }
-  return `<div class="repo-banners">${banners.join('')}</div>`;
+  return banners.join('');
+}
+
+function getNotifications(): string[] {
+  const notifications: string[] = [];
+  if (!repoIsGit) {
+    notifications.push('⚠ Questo progetto non è un repository Git. Squad, Copilot LM API, Copilot CLI e Cloud sono disabilitati.');
+  } else if (!repoIsGitHub) {
+    notifications.push('⚠ Nessun remote GitHub collegato. Cloud è disabilitato.');
+  }
+  return notifications;
+}
+
+function renderNotificationBell(): string {
+  const count = getNotifications().length;
+  return `
+    <button class="toolbar__btn toolbar__btn--icon notification-bell" id="btn-notifications" title="Notifications">
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" xmlns="http://www.w3.org/2000/svg"><path d="M8 1.5A3.5 3.5 0 0 0 4.5 5v2.5c0 .5-.2 1.1-.6 1.6L3 10.2V11h10v-.8l-.9-1.1c-.4-.5-.6-1.1-.6-1.6V5A3.5 3.5 0 0 0 8 1.5ZM6.5 12a1.5 1.5 0 0 0 3 0h-3Z"/></svg>${count > 0 ? `<span class="notification-bell__badge">${count}</span>` : ''}
+    </button>
+  `;
+}
+
+function renderNotificationCenter(): string {
+  if (!showNotificationCenter) { return ''; }
+  const items = getNotifications();
+  return `
+    <div class="notification-center" id="notification-center">
+      <div class="notification-center__header">
+        <span class="notification-center__title">Notifications</span>
+        <button class="notification-center__close" id="notification-center-close">✕</button>
+      </div>
+      <div class="notification-center__body">
+        ${items.length === 0
+          ? '<div class="notification-center__empty">No notifications</div>'
+          : items.map(n => `<div class="notification-center__item">${escapeHtml(n)}</div>`).join('')}
+      </div>
+    </div>
+  `;
 }
 
 // ── Stream output rich rendering ───────────────────────────────────
@@ -952,7 +979,7 @@ function renderFullView(): string {
           <div class="fv-panel fv-panel--fill">
             <div class="fv-panel__header fv-panel__header--static">
               <span class="fv-panel__header-text">📋 Task Details</span>
-              ${isEditable ? `<button class="fv-panel__header-btn" id="fv-edit-btn" title="Edit task">✏ Edit</button>` : ''}
+              ${isEditable && !isMerged ? `<button class="fv-panel__header-btn" id="fv-edit-btn" title="Edit task">✏ Edit</button>` : ''}
             </div>
             <div class="fv-panel__body fv-panel__body--scroll">
               ${renderFvReadOnlyDetails(task, statusCol)}
@@ -1004,6 +1031,11 @@ function renderFullView(): string {
             </div>
             <div class="fv-panel__body fv-panel__body--scroll">
               <div class="fv-actions">
+                ${isMerged ? `
+                  <div class="fv-merged-badge">✅ Merged</div>
+                  <hr class="fv-actions__separator" />
+                  <button class="fv-action-btn fv-action-btn--danger fv-delete-wt" data-session-id="${escapeHtml(task.id)}" title="Delete worktree directory and branch">🗑 Delete Worktree</button>
+                ` : `
                 <div class="fv-actions__providers">
                   ${genAiProviders.filter(p => !p.disabled).map(p => {
                     const isActive = activeProviderId === p.id;
@@ -1017,23 +1049,21 @@ function renderFullView(): string {
                   <button class="fv-action-btn fv-review-wt" data-session-id="${escapeHtml(task.id)}" title="Review changes vs main branch">🔍 Review Diff</button>
                   ${sessionInfo?.state === 'completed' ? `
                     <hr class="fv-actions__separator" />
-                    ${isMerged
-                      ? `<button class="fv-action-btn fv-action-btn--primary" disabled>⤴ Merge ✓</button>`
-                      : `<div class="fv-merge-panel" data-session-id="${escapeHtml(task.id)}">
-                          <select class="fv-merge-select" data-session-id="${escapeHtml(task.id)}">
-                            <option value="squash" selected>Squash and merge</option>
-                            <option value="merge">Create a merge commit</option>
-                            <option value="rebase">Rebase and merge</option>
-                          </select>
-                          <div class="fv-merge-panel__btns">
-                            <button class="fv-action-btn fv-action-btn--primary fv-merge-confirm" data-session-id="${escapeHtml(task.id)}">⤴ Merge</button>
-                            <button class="fv-action-btn fv-agent-merge" data-session-id="${escapeHtml(task.id)}" title="Launch AI provider to review and merge">🤖 Merge by AI</button>
-                          </div>
-                        </div>`
-                    }
-                    <button class="fv-action-btn fv-action-btn--danger fv-delete-wt" data-session-id="${escapeHtml(task.id)}" title="Delete worktree directory and branch" ${!isMerged ? 'disabled' : ''}>🗑 Delete Workspace</button>
+                    <div class="fv-merge-panel" data-session-id="${escapeHtml(task.id)}">
+                      <select class="fv-merge-select" data-session-id="${escapeHtml(task.id)}">
+                        <option value="squash" selected>Squash and merge</option>
+                        <option value="merge">Create a merge commit</option>
+                        <option value="rebase">Rebase and merge</option>
+                      </select>
+                      <div class="fv-merge-panel__btns">
+                        <button class="fv-action-btn fv-action-btn--primary fv-merge-confirm" data-session-id="${escapeHtml(task.id)}">⤴ Merge</button>
+                        <button class="fv-action-btn fv-agent-merge" data-session-id="${escapeHtml(task.id)}" title="Launch AI provider to review and merge">🤖 Merge by AI</button>
+                      </div>
+                    </div>
+                    <button class="fv-action-btn fv-action-btn--danger fv-delete-wt" data-session-id="${escapeHtml(task.id)}" title="Delete worktree directory and branch" disabled>🗑 Delete Worktree</button>
                   ` : ''}
                 ` : `<div class="fv-actions__empty">No worktree — actions require a worktree session.</div>`}
+                `}
               </div>
             </div>
           </div>

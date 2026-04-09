@@ -501,6 +501,19 @@ export function activate(context: vscode.ExtensionContext): void {
           const dw = copilotLauncher.getDiffWatcher(msg.sessionId);
           if (dw) {
             await dw.openDiff(msg.filePath);
+          } else {
+            // Fallback: try to open diff using session worktree path
+            const session = sessionStateManager.getSession(msg.sessionId);
+            const wtPath = session?.worktreePath;
+            if (wtPath) {
+              const absPath = path.join(wtPath, msg.filePath);
+              const headUri = vscode.Uri.file(absPath).with({
+                scheme: 'git',
+                query: JSON.stringify({ path: absPath, ref: 'main' }),
+              });
+              const workingUri = vscode.Uri.file(absPath);
+              await vscode.commands.executeCommand('vscode.diff', headUri, workingUri, `${msg.filePath} (main ↔ Working)`);
+            }
           }
           break;
         }
@@ -647,6 +660,17 @@ export function activate(context: vscode.ExtensionContext): void {
 
             panel.postMessage({ type: 'mergeResult', sessionId: msg.sessionId, success: true, message: `Branch "${branch}" mergiato in main (${strategyLabels[strategy]}).` });
             vscode.window.showInformationMessage(`✅ Branch "${branch}" mergiato in main (${strategyLabels[strategy]}).`);
+
+            // Move task to done after successful merge
+            const [mergeProviderId] = msg.sessionId.split(':');
+            const mergeProvider = providerRegistry.get(mergeProviderId);
+            if (mergeProvider) {
+              const mergeTasks = await mergeProvider.getTasks();
+              const mergeTask = mergeTasks.find(t => t.id === msg.sessionId);
+              if (mergeTask && mergeTask.status !== 'done') {
+                await mergeProvider.updateTask({ ...mergeTask, status: 'done' });
+              }
+            }
 
             // Refresh tasks to update the UI
             vscode.commands.executeCommand('agentBoard.refreshTasks');
