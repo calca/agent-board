@@ -255,7 +255,6 @@ function render(): void {
     });
   });
 
-  // Card action buttons
   document.querySelectorAll('.card-btn-edit').forEach(btn => {
     btn.addEventListener('click', (e: Event) => {
       e.stopPropagation();
@@ -268,13 +267,6 @@ function render(): void {
         showTaskForm = false;
         render();
       }
-    });
-  });
-  document.querySelectorAll('.card-btn-execute').forEach(btn => {
-    btn.addEventListener('click', (e: Event) => {
-      e.stopPropagation();
-      const taskId = (btn as HTMLElement).dataset.taskId;
-      if (taskId) { openFullView(taskId); }
     });
   });
 
@@ -596,13 +588,6 @@ function renderCard(task: KanbanTask): string {
       })()
     : '';
   const isActive = session?.state === 'running' || session?.state === 'starting';
-  const agentBadge = task.agent
-    ? `<span class="task-card__agent" title="Agent: ${escapeHtml(task.agent)}">🤖 ${escapeHtml(task.agent)}</span>`
-    : '';
-  const diffFiles = fileChangeLists.get(task.id);
-  const diffBadge = diffFiles && diffFiles.length > 0
-    ? `<span class="task-card__diff-badge" title="${diffFiles.length} file${diffFiles.length === 1 ? '' : 's'} changed">●&thinsp;${diffFiles.length}</span>`
-    : '';
   // PR badge from copilot session
   const pr = session?.prUrl
     ? `<a class="task-card__pr-badge task-card__pr-badge--${session.prState ?? 'open'}" href="${escapeHtml(session.prUrl)}" title="PR #${session.prNumber ?? ''}: ${session.prState ?? 'open'}">⤴ PR${session.prNumber ? ` #${session.prNumber}` : ''}</a>`
@@ -616,29 +601,49 @@ function renderCard(task: KanbanTask): string {
   const avatarUrl = (task.meta as Record<string, unknown>)?.avatarUrl as string | undefined;
   const assigneeHtml = avatarUrl
     ? `<img class="task-card__avatar" src="${escapeHtml(avatarUrl)}" alt="${escapeHtml(task.assignee ?? '')}" title="${escapeHtml(task.assignee ?? '')}" />`
-    : (initials ? `<span class="task-card__assignee">${initials}</span>` : '');
+    : (initials ? `<span class="task-card__assignee" title="${escapeHtml(task.assignee ?? '')}">${initials}</span>` : '');
   const cardMerged = mergedSessions.has(task.id);
-  const wtBadge = session?.worktreePath
-    ? `<span class="task-card__wt-badge" title="${escapeHtml(relativeWorktreePath(session.worktreePath))}">🌿</span>`
-    : '';
   const stateModifier = session ? ` task-card--state-${session.state}` : '';
+  // Short ID display (e.g. "GH-12" or provider prefix)
+  const shortId = task.id.includes(':') ? task.id.replace(':', '-').toUpperCase() : task.id;
+  // Body snippet — first ~80 chars
+  const bodySnippet = task.body ? task.body.slice(0, 80).replace(/\n/g, ' ') + (task.body.length > 80 ? '…' : '') : '';
+  // Priority label (look for priority/high/medium/low in labels)
+  const priorityMap: Record<string, { icon: string; cls: string }> = {
+    critical: { icon: '⬆⬆', cls: 'critical' },
+    high:     { icon: '⬆', cls: 'high' },
+    medium:   { icon: '⬍', cls: 'medium' },
+    low:      { icon: '⬇', cls: 'low' },
+  };
+  let priorityHtml = '';
+  const visibleLabels: string[] = [];
+  for (const l of task.labels) {
+    if (l.startsWith('kanban:')) { continue; }
+    const key = l.toLowerCase().replace(/^priority[:/]/, '');
+    if (priorityMap[key]) {
+      priorityHtml = `<span class="task-card__priority task-card__priority--${priorityMap[key].cls}">${priorityMap[key].icon} ${escapeHtml(l.replace(/^priority[:/]/i, ''))}</span>`;
+    } else {
+      visibleLabels.push(l);
+    }
+  }
   return `
     <div class="task-card${stateModifier}" data-task-id="${escapeHtml(task.id)}">
-      <div class="task-card__title">${escapeHtml(task.title)}${cardMerged ? ' <span class="task-card__merged">✅ Merged</span>' : ''}</div>
-      <div class="task-card__meta">
-        ${sessionBadge}
-        ${task.labels.filter(l => !l.startsWith('kanban:')).map(l => `<span class="task-card__label">${escapeHtml(l)}</span>`).join('')}
-        ${assigneeHtml}
-        <span class="task-card__provider">${escapeHtml(task.providerId)}</span>
-        ${diffBadge}
-        ${pr}
-        ${wtBadge}
+      <div class="task-card__header">
+        <span class="task-card__id">${escapeHtml(shortId)}</span>
+        ${sessionBadge}${cardMerged ? '<span class="task-card__merged">✅</span>' : ''}${pr}
       </div>
+      <div class="task-card__title">${escapeHtml(task.title)}</div>
+      ${bodySnippet ? `<div class="task-card__body">${escapeHtml(bodySnippet)}</div>` : ''}
       ${toolCallBadge}
-      ${agentBadge ? `<div class="task-card__footer">${agentBadge}</div>` : ''}
-      <div class="task-card__actions">
-        <button class="task-card__action-btn card-btn-edit" data-task-id="${escapeHtml(task.id)}" title="Edit">✎</button>
-        <button class="task-card__action-btn card-btn-execute" data-task-id="${escapeHtml(task.id)}" title="Execute">▶</button>
+      <div class="task-card__footer">
+        <div class="task-card__footer-left">
+          ${assigneeHtml}
+          ${priorityHtml}
+        </div>
+        <div class="task-card__footer-right">
+          ${visibleLabels.slice(0, 2).map(l => `<span class="task-card__label">${escapeHtml(l)}</span>`).join('')}
+          <button class="task-card__edit-btn card-btn-edit" data-task-id="${escapeHtml(task.id)}" title="Edit">✎</button>
+        </div>
       </div>
     </div>
   `;
