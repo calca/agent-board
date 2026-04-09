@@ -482,7 +482,7 @@ function render(): void {
 
   document.getElementById('task-form-delete')?.addEventListener('click', () => {
     const taskId = (document.getElementById('task-form-delete') as HTMLElement)?.dataset.taskId;
-    if (taskId && confirm('Delete this task?')) {
+    if (taskId) {
       vscode.postMessage({ type: 'deleteTask', taskId });
       editingTask = null;
       fullViewTaskId = null;
