@@ -607,7 +607,7 @@ function renderCard(task: KanbanTask): string {
   // Tool-call status badge (shown while session is running)
   const tcs = toolCallStatus.get(task.id);
   const toolCallBadge = tcs && isActive
-    ? `<div class="task-card__tool-status" title="${escapeHtml(tcs)}">🔧 ${escapeHtml(tcs)}</div>`
+    ? `<div class="task-card__tool-status" title="${escapeHtml(tcs)}">⚙ ${escapeHtml(tcs)}</div>`
     : '';
   // Avatar: prefer meta.avatarUrl populated by GitHubProvider, fallback to initials
   const avatarUrl = (task.meta as Record<string, unknown>)?.avatarUrl as string | undefined;
@@ -642,7 +642,7 @@ function renderCard(task: KanbanTask): string {
     <div class="task-card${stateModifier}" data-task-id="${escapeHtml(task.id)}">
       <div class="task-card__header">
         <span class="task-card__id">${escapeHtml(shortId)}</span>
-        ${sessionBadge}${cardMerged ? '<span class="task-card__merged">✅</span>' : ''}${pr}
+        ${sessionBadge}${cardMerged ? '<span class="task-card__merged">✓</span>' : ''}${pr}
       </div>
       <div class="task-card__title">${escapeHtml(task.title)}</div>
       ${bodySnippet ? `<div class="task-card__body">${escapeHtml(bodySnippet)}</div>` : ''}
@@ -695,7 +695,7 @@ function renderEditForm(task: KanbanTask): string {
           <div class="task-form__actions">
             <button type="submit" class="task-form__btn task-form__btn--save">Save</button>
             <button type="button" class="task-form__btn task-form__btn--cancel" id="task-form-cancel">Close</button>
-            ${editableProviderIds.includes(task.providerId) ? `<button type="button" class="task-form__btn task-form__btn--delete" id="task-form-delete" data-task-id="${escapeHtml(task.id)}">🗑 Delete</button>` : ''}
+            ${editableProviderIds.includes(task.providerId) ? `<button type="button" class="task-form__btn task-form__btn--delete" id="task-form-delete" data-task-id="${escapeHtml(task.id)}">⊘ Delete</button>` : ''}
           </div>
         </form>
       </div>
@@ -757,9 +757,9 @@ function renderRepoBanners(): string {
 function getNotifications(): string[] {
   const notifications: string[] = [];
   if (!repoIsGit) {
-    notifications.push('⚠ Questo progetto non è un repository Git. Squad, Copilot LM API, Copilot CLI e Cloud sono disabilitati.');
+    notifications.push('⚠︎ Questo progetto non è un repository Git. Squad, Copilot LM API, Copilot CLI e Cloud sono disabilitati.');
   } else if (!repoIsGitHub) {
-    notifications.push('⚠ Nessun remote GitHub collegato. Cloud è disabilitato.');
+    notifications.push('⚠︎ Nessun remote GitHub collegato. Cloud è disabilitato.');
   }
   return notifications;
 }
@@ -841,7 +841,7 @@ function renderStreamLine(rawLine: string, role?: 'user' | 'assistant' | 'tool')
   if (fileMatch) {
     const filePath = fileMatch[1].trim();
     return `<div class="stream-output__line stream-output__line--file">${tsHtml}` +
-      `<span class="stream-file-link" data-file-path="${escapeHtml(filePath)}" title="Open diff">📄 ${escapeHtml(filePath)}</span></div>`;
+      `<span class="stream-file-link" data-file-path="${escapeHtml(filePath)}" title="Open diff">◇ ${escapeHtml(filePath)}</span></div>`;
   }
 
   const roleClass = role && role !== 'assistant' ? ` stream-output__line--${role}` : '';
@@ -865,7 +865,7 @@ function renderSessionPanel(): string {
       : m.role === 'tool'
         ? 'chat-bubble chat-bubble--tool'
         : 'chat-bubble chat-bubble--assistant';
-    const icon = m.role === 'user' ? '👤' : m.role === 'tool' ? '🔧' : '🤖';
+    const icon = m.role === 'user' ? '●' : m.role === 'tool' ? '⚙' : '◆';
     return `<div class="${cls}"><span class="chat-bubble__icon">${icon}</span><div class="chat-bubble__body">${escapeHtml(m.text)}</div></div>`;
   }).join('');
   return `
@@ -878,7 +878,7 @@ function renderSessionPanel(): string {
           <button class="session-panel__close" id="session-panel-close">✕</button>
         </div>
       </div>
-      ${isInterrupted ? `<div class="session-interrupted-banner">⚡ Sessione interrotta al riavvio di VS Code. Il log precedente è mostrato sotto (sola lettura).</div>` : ''}
+      ${isInterrupted ? `<div class="session-interrupted-banner">↯ Sessione interrotta al riavvio di VS Code. Il log precedente è mostrato sotto (sola lettura).</div>` : ''}
       ${isRunning ? `<div id="tool-status-${sessionPanelTaskId}" class="session-tool-status"></div>` : ''}
       <div class="session-panel__body">
         ${sessionChatMessages.length > 0 ? `<div class="session-chat" id="session-chat">${chatHtml}</div>` : ''}
@@ -959,10 +959,10 @@ function addTaskLog(taskId: string, source: TaskLogEntry['source'], text: string
 
 function renderLogEntry(entry: TaskLogEntry): string {
   const sourceIcons: Record<string, string> = {
-    board: '📋',
-    agent: '🤖',
-    tool: '🔧',
-    system: 'ℹ️',
+    board: '☰',
+    agent: '◆',
+    tool: '⚙',
+    system: 'ⓘ',
   };
   const icon = sourceIcons[entry.source] ?? '●';
   return `<div class="fv-log__entry fv-log__entry--${entry.source}"><span class="fv-log__ts">[${escapeHtml(entry.ts)}]</span> <span class="fv-log__icon">${icon}</span> <span class="fv-log__text">${escapeHtml(entry.text)}</span></div>`;
@@ -995,7 +995,7 @@ function renderFullView(): string {
           <button class="fv-topbar__back" id="fv-close" title="Back">←</button>
           <div class="fv-topbar__title-group">
             <span class="fv-topbar__title">${escapeHtml(task.title)}</span>
-            ${isMerged ? '<span class="fv-merged-badge fv-merged-badge--inline">✅ Merged</span>' : ''}
+            ${isMerged ? '<span class="fv-merged-badge fv-merged-badge--inline">✓ Merged</span>' : ''}
             <span class="fv-topbar__meta">
               ${sessionInfo ? `<span class="${stateClass}">${escapeHtml(sessionInfo.state)}</span>` : ''}
               <span class="fv-topbar__provider">${escapeHtml(task.providerId)}</span>
@@ -1007,7 +1007,7 @@ function renderFullView(): string {
         </div>
       </div>
 
-      ${isInterrupted ? `<div class="session-interrupted-banner">⚡ Session interrupted. Log is read-only.</div>` : ''}
+      ${isInterrupted ? `<div class="session-interrupted-banner">↯ Session interrupted. Log is read-only.</div>` : ''}
 
       <!-- ── ROW 1: four panels side by side (2/3 height) ── -->
       <div class="fv-row fv-row--top${logExpanded ? ' fv-row--hidden' : ''}">
@@ -1016,8 +1016,8 @@ function renderFullView(): string {
         <div class="fv-col">
           <div class="fv-panel fv-panel--fill">
             <div class="fv-panel__header fv-panel__header--static">
-              <span class="fv-panel__header-text">📋 Task Details</span>
-              ${isEditable && !isMerged && !isRunning ? `<button class="fv-panel__header-btn" id="fv-edit-btn" title="Edit task">✏ Edit</button>` : ''}
+              <span class="fv-panel__header-text">☰ Task Details</span>
+              ${isEditable && !isMerged && !isRunning ? `<button class="fv-panel__header-btn" id="fv-edit-btn" title="Edit task">✎ Edit</button>` : ''}
             </div>
             <div class="fv-panel__body fv-panel__body--scroll">
               ${renderFvReadOnlyDetails(task, statusCol)}
@@ -1029,7 +1029,7 @@ function renderFullView(): string {
         <div class="fv-col">
           <div class="fv-panel fv-panel--fill">
             <div class="fv-panel__header fv-panel__header--static">
-              <span class="fv-panel__header-text">⚙ Session</span>
+              <span class="fv-panel__header-text">⊙ Session</span>
             </div>
             <div class="fv-panel__body fv-panel__body--scroll">
               ${sessionInfo || hasWorktree
@@ -1043,7 +1043,7 @@ function renderFullView(): string {
         <div class="fv-col">
           <div class="fv-panel fv-panel--fill">
             <div class="fv-panel__header fv-panel__header--static">
-              <span class="fv-panel__header-text">📂 Files</span>
+              <span class="fv-panel__header-text">⊞ Files</span>
               ${files.length > 0 ? `<span class="fv-panel__badge">${files.length}</span>` : ''}
             </div>
             <div class="fv-panel__body fv-panel__body--scroll fv-panel__body--flush">
@@ -1065,28 +1065,28 @@ function renderFullView(): string {
         <div class="fv-col">
           <div class="fv-panel fv-panel--fill">
             <div class="fv-panel__header fv-panel__header--static">
-              <span class="fv-panel__header-text">⚡ Actions</span>
+              <span class="fv-panel__header-text">↯ Actions</span>
             </div>
             <div class="fv-panel__body fv-panel__body--scroll">
               <div class="fv-actions">
                 ${isMerged ? `
-                  <button class="fv-action-btn fv-action-btn--danger fv-delete-wt" data-session-id="${escapeHtml(task.id)}" title="Delete worktree directory and branch">🗑 Delete Worktree</button>
+                  <button class="fv-action-btn fv-action-btn--danger fv-delete-wt" data-session-id="${escapeHtml(task.id)}" title="Delete worktree directory and branch">⊘ Delete Worktree</button>
                 ` : `
                 ${isRunning ? `
-                  <div class="fv-actions__running-provider">🤖 ${escapeHtml(genAiProviders.find(p => p.id === activeProviderId)?.displayName ?? activeProviderId ?? 'Agent')}</div>
+                  <div class="fv-actions__running-provider">◆ ${escapeHtml(genAiProviders.find(p => p.id === activeProviderId)?.displayName ?? activeProviderId ?? 'Agent')}</div>
                   <button class="fv-action-btn fv-action-btn--danger" id="fv-btn-stop">■ Stop</button>
                   <hr class="fv-actions__separator" />
                 ` : `
                 <div class="fv-actions__providers">
                   ${genAiProviders.filter(p => !p.disabled).map(p => {
-                    return `<button class="fv-action-btn fv-launch-provider" data-provider-id="${escapeHtml(p.id)}" title="${escapeHtml(p.displayName)}">🤖 ${escapeHtml(p.displayName)}</button>`;
+                    return `<button class="fv-action-btn fv-launch-provider" data-provider-id="${escapeHtml(p.id)}" title="${escapeHtml(p.displayName)}">◆ ${escapeHtml(p.displayName)}</button>`;
                   }).join('')}
                 </div>
                 <hr class="fv-actions__separator" />
                 `}
                 ${hasWorktree ? `
                   <button class="fv-action-btn fv-open-worktree" data-wt-path="${escapeHtml(sessionInfo!.worktreePath!)}" title="Open worktree folder in VS Code">↗ Open in VS Code</button>
-                  <button class="fv-action-btn fv-review-wt" data-session-id="${escapeHtml(task.id)}" title="Review changes vs main branch">🔍 Review Diff</button>
+                  <button class="fv-action-btn fv-review-wt" data-session-id="${escapeHtml(task.id)}" title="Review changes vs main branch">◎ Review Diff</button>
                   ${sessionInfo?.state === 'completed' || task.status === 'done' ? `
                     <hr class="fv-actions__separator" />
                     <div class="fv-merge-panel" data-session-id="${escapeHtml(task.id)}">
@@ -1097,10 +1097,10 @@ function renderFullView(): string {
                       </select>
                       <div class="fv-merge-panel__btns">
                         <button class="fv-action-btn fv-action-btn--primary fv-merge-confirm" data-session-id="${escapeHtml(task.id)}">⤴ Merge</button>
-                        <button class="fv-action-btn fv-agent-merge" data-session-id="${escapeHtml(task.id)}" title="Launch AI provider to review and merge">🤖 Merge by AI</button>
+                        <button class="fv-action-btn fv-agent-merge" data-session-id="${escapeHtml(task.id)}" title="Launch AI provider to review and merge">◆ Merge by AI</button>
                       </div>
                     </div>
-                    <button class="fv-action-btn fv-action-btn--danger fv-delete-wt" data-session-id="${escapeHtml(task.id)}" title="Delete worktree directory and branch" disabled>🗑 Delete Worktree</button>
+                    <button class="fv-action-btn fv-action-btn--danger fv-delete-wt" data-session-id="${escapeHtml(task.id)}" title="Delete worktree directory and branch" disabled>⊘ Delete Worktree</button>
                   ` : ''}
                 ` : `<div class="fv-actions__empty">No worktree — actions require a worktree session.</div>`}
                 `}
@@ -1115,7 +1115,7 @@ function renderFullView(): string {
       <div class="fv-row fv-row--bottom${logExpanded ? ' fv-row--expanded' : ''}">
         <div class="fv-panel fv-panel--fill">
           <div class="fv-panel__header fv-panel__header--static fv-log-panel-header">
-            <span class="fv-panel__header-text">📜 Activity Log</span>
+            <span class="fv-panel__header-text">≡ Activity Log</span>
             <span class="fv-panel__badge">${logs.length}</span>
             <button class="fv-panel__header-btn" id="fv-log-expand" title="${logExpanded ? 'Collapse' : 'Expand'}">${logExpanded ? '⊖' : '⊕'}</button>
           </div>
@@ -1160,7 +1160,7 @@ function renderFvReadOnlyDetails(task: KanbanTask, statusCol: Column | undefined
       ${task.agent ? `
         <div class="fv-detail-row">
           <span class="fv-detail-label">Agent</span>
-          <span>🤖 ${escapeHtml(task.agent)}</span>
+          <span>◆ ${escapeHtml(task.agent)}</span>
         </div>
       ` : ''}
     </div>
@@ -1193,7 +1193,7 @@ function renderFvEditableDetails(task: KanbanTask, statusCol: Column | undefined
         ${task.agent ? `
           <div class="fv-detail-row">
             <span class="fv-detail-label">Agent</span>
-            <span>🤖 ${escapeHtml(task.agent)}</span>
+            <span>◆ ${escapeHtml(task.agent)}</span>
           </div>
         ` : ''}
       </div>
@@ -1274,7 +1274,7 @@ window.addEventListener('message', (event: MessageEvent) => {
           if (ot.copilotSession?.state !== nt.copilotSession?.state && nt.copilotSession) {
             addTaskLog(nt.id, 'board', `Session → ${nt.copilotSession.state}`);
             if (nt.copilotSession.state === 'error' && nt.copilotSession.errorMessage) {
-              addTaskLog(nt.id, 'board', `❌ ${nt.copilotSession.errorMessage}`);
+              addTaskLog(nt.id, 'board', `✗ ${nt.copilotSession.errorMessage}`);
             }
           }
         }
@@ -1388,7 +1388,7 @@ window.addEventListener('message', (event: MessageEvent) => {
         if (outputEl3) {
           const ts = new Date().toISOString().slice(11, 19);
           outputEl3.insertAdjacentHTML('beforeend',
-            `<div class="stream-output__line stream-output__line--tool">🔧 ${escapeHtml(msg.status)}</div>`);
+            `<div class="stream-output__line stream-output__line--tool">⚙ ${escapeHtml(msg.status)}</div>`);
           const scrollEl3 = document.getElementById('session-stream-scroll');
           if (streamAutoScroll && scrollEl3) { scrollEl3.scrollTop = scrollEl3.scrollHeight; }
         }
@@ -1448,12 +1448,12 @@ window.addEventListener('message', (event: MessageEvent) => {
     case 'mergeResult':
       if (msg.success) { mergedSessions.add(msg.sessionId); }
       addTaskLog(msg.sessionId, msg.success ? 'system' : 'board',
-        msg.success ? `✅ ${msg.message}` : `❌ Merge fallito: ${msg.message}`);
+        msg.success ? `✓ ${msg.message}` : `✗ Merge fallito: ${msg.message}`);
       render();
       break;
     case 'deleteWorktreeResult':
       addTaskLog(msg.sessionId, msg.success ? 'system' : 'board',
-        msg.success ? '🗑 Worktree eliminato.' : `❌ Eliminazione fallita: ${msg.message ?? ''}`);
+        msg.success ? '⊘ Worktree eliminato.' : `✗ Eliminazione fallita: ${msg.message ?? ''}`);
       if (msg.success) { mergedSessions.delete(msg.sessionId); }
       render();
       break;
