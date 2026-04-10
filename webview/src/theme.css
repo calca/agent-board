@@ -1050,6 +1050,72 @@ html, body, #root {
   background: var(--vscode-editor-background);
 }
 
+.task-form__readonly-value {
+  display: block;
+  padding: 6px 8px;
+  font-size: 13px;
+  color: var(--vscode-foreground);
+  opacity: 0.85;
+  border: 1px solid var(--vscode-panel-border, transparent);
+  border-radius: 4px;
+  background: var(--vscode-editor-background);
+  min-height: 1.4em;
+  word-break: break-word;
+}
+
+.task-form__readonly-value--badge {
+  display: inline-block;
+  padding: 2px 10px;
+  border-radius: 12px;
+  font-weight: 600;
+  font-size: 12px;
+  background: var(--vscode-badge-background, #4d4d4d);
+  color: var(--vscode-badge-foreground, #fff);
+  border: none;
+  opacity: 1;
+}
+
+.task-form__readonly-body {
+  padding: 8px 10px;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--vscode-foreground);
+  border: 1px solid var(--vscode-panel-border, transparent);
+  border-radius: 4px;
+  background: var(--vscode-editor-background);
+  max-height: 300px;
+  overflow-y: auto;
+  word-break: break-word;
+}
+.task-form__readonly-body img {
+  max-width: 100%;
+  height: auto;
+}
+.task-form__readonly-body a {
+  color: var(--vscode-textLink-foreground);
+}
+.task-form__readonly-body pre,
+.task-form__readonly-body code {
+  background: var(--vscode-textCodeBlock-background, rgba(0,0,0,0.15));
+  padding: 2px 4px;
+  border-radius: 3px;
+  font-size: 12px;
+}
+.task-form__readonly-body pre {
+  padding: 8px;
+  overflow-x: auto;
+}
+.task-form__readonly-body table {
+  border-collapse: collapse;
+  width: 100%;
+}
+.task-form__readonly-body th,
+.task-form__readonly-body td {
+  border: 1px solid var(--vscode-panel-border, #444);
+  padding: 4px 8px;
+  text-align: left;
+}
+
 .task-form__actions {
   display: flex;
   gap: 8px;

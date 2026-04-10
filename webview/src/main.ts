@@ -530,19 +530,26 @@ function render(): void {
   document.getElementById('task-form')?.addEventListener('submit', (e: Event) => {
     e.preventDefault();
     const form = e.target as HTMLFormElement;
-    const title = (form.querySelector('#tf-title') as HTMLInputElement).value.trim();
+    const remoteProviders = ['github', 'azure-devops', 'beads'];
+    const isRemoteEdit = editingTask && remoteProviders.includes(editingTask.providerId);
+
+    const titleEl = form.querySelector('#tf-title') as HTMLInputElement | null;
+    const bodyEl = form.querySelector('#tf-body') as HTMLTextAreaElement | null;
+    const labelsEl = form.querySelector('#tf-labels') as HTMLInputElement | null;
+    const assigneeEl = form.querySelector('#tf-assignee') as HTMLInputElement | null;
+
+    const title = titleEl?.value.trim() ?? editingTask?.title ?? '';
     if (!title) { return; }
-    const body = (form.querySelector('#tf-body') as HTMLTextAreaElement).value.trim();
+    const body = bodyEl?.value.trim() ?? editingTask?.body ?? '';
     const status = editingTask
       ? (form.querySelector('#tf-status') as HTMLSelectElement)?.value ?? currentColumns[0]?.id ?? 'todo'
       : currentColumns[0]?.id ?? 'todo';
-    const labels = (form.querySelector('#tf-labels') as HTMLInputElement).value.trim();
-    const assignee = (form.querySelector('#tf-assignee') as HTMLInputElement).value.trim();
+    const labels = labelsEl?.value.trim() ?? editingTask?.labels.join(', ') ?? '';
+    const assignee = assigneeEl?.value.trim() ?? editingTask?.assignee ?? '';
 
-    const remoteProviders = ['github', 'azure-devops', 'beads'];
     if (editingTask) {
-      if (remoteProviders.includes(editingTask.providerId)) {
-        // Remote task: only send status change
+      if (isRemoteEdit) {
+        // Remote task: only send status change, keep original values
         vscode.postMessage({ type: 'editTask', taskId: editingTask.id, data: { title: editingTask.title, body: editingTask.body, status, labels: editingTask.labels.join(', '), assignee: editingTask.assignee ?? '' } });
       } else {
         vscode.postMessage({ type: 'editTask', taskId: editingTask.id, data: { title, body, status, labels, assignee } });
@@ -715,19 +722,49 @@ function renderEditForm(task: KanbanTask): string {
   const remoteProviders = ['github', 'azure-devops', 'beads'];
   const isRemote = remoteProviders.includes(task.providerId);
   const ro = isRemote ? ' readonly' : '';
-  const dis = isRemote ? ' disabled' : '';
   const roClass = isRemote ? ' task-form__input--readonly' : '';
+
+  const isHtml = (s: string) => /<[a-z][\s\S]*>/i.test(s);
+
+  // Title: readonly → plain text span, editable → input
+  const titleField = isRemote
+    ? `<span class="task-form__readonly-value">${escapeHtml(task.title)}</span>`
+    : `<input class="task-form__input" id="tf-title" type="text" value="${escapeHtml(task.title)}" required />`;
+
+  // Description: readonly → rendered HTML (if body is HTML) or escaped text, editable → textarea
+  const bodyField = isRemote
+    ? `<div class="task-form__readonly-body">${isHtml(task.body) ? sanitizeHtml(task.body) : escapeHtml(task.body)}</div>`
+    : `<textarea class="task-form__textarea" id="tf-body" rows="8">${escapeHtml(task.body)}</textarea>`;
+
+  // Labels
+  const labelsField = isRemote
+    ? `<span class="task-form__readonly-value">${escapeHtml(task.labels.join(', ')) || '—'}</span>`
+    : `<input class="task-form__input" id="tf-labels" type="text" value="${escapeHtml(task.labels.join(', '))}" placeholder="bug, feature" />`;
+
+  // Assignee
+  const assigneeField = isRemote
+    ? `<span class="task-form__readonly-value">${escapeHtml(task.assignee ?? '') || '—'}</span>`
+    : `<input class="task-form__input" id="tf-assignee" type="text" value="${escapeHtml(task.assignee ?? '')}" placeholder="Username" />`;
+
+  // Remote status (only for remote providers)
+  const remoteStatusField = isRemote
+    ? `<div class="task-form__field">
+              <label class="task-form__label">Remote Status</label>
+              <span class="task-form__readonly-value task-form__readonly-value--badge">${escapeHtml(String(task.meta?.remoteStatus ?? ''))}</span>
+            </div>`
+    : '';
+
   return `
     <div class="task-form-overlay" id="task-form-overlay">
       <div class="task-form-panel">
         <button class="task-form-panel__close" id="task-form-close">✕</button>
         <div class="task-form-panel__heading">Edit Issue${isRemote ? ' <span style="opacity:0.5;font-size:0.8em">(remote — read-only fields)</span>' : ''}</div>
         <form id="task-form" class="task-form">
-          <label class="task-form__label" for="tf-title">Title *</label>
-          <input class="task-form__input${roClass}" id="tf-title" type="text" value="${escapeHtml(task.title)}" required${ro} />
+          <label class="task-form__label">Title${isRemote ? '' : ' *'}</label>
+          ${titleField}
 
-          <label class="task-form__label" for="tf-body">Description</label>
-          <textarea class="task-form__textarea${roClass}" id="tf-body" rows="8"${ro}>${escapeHtml(task.body)}</textarea>
+          <label class="task-form__label">Description</label>
+          ${bodyField}
 
           <div class="task-form__row">
             <div class="task-form__field">
@@ -736,17 +773,14 @@ function renderEditForm(task: KanbanTask): string {
                 ${cols.map(c => `<option value="${escapeHtml(c.id)}"${c.id === task.status ? ' selected' : ''}>${escapeHtml(c.label)}</option>`).join('')}
               </select>
             </div>
-${isRemote ? `            <div class="task-form__field">
-              <label class="task-form__label" for="tf-remote-status">Remote Status</label>
-              <input class="task-form__input task-form__input--readonly" id="tf-remote-status" type="text" value="${escapeHtml(String(task.meta?.remoteStatus ?? ''))}" readonly />
-            </div>` : ''}
+${remoteStatusField}
             <div class="task-form__field">
-              <label class="task-form__label" for="tf-labels">Labels</label>
-              <input class="task-form__input${roClass}" id="tf-labels" type="text" value="${escapeHtml(task.labels.join(', '))}" placeholder="bug, feature"${ro} />
+              <label class="task-form__label"${!isRemote ? ' for="tf-labels"' : ''}>Labels</label>
+              ${labelsField}
             </div>
             <div class="task-form__field">
-              <label class="task-form__label" for="tf-assignee">Assignee</label>
-              <input class="task-form__input${roClass}" id="tf-assignee" type="text" value="${escapeHtml(task.assignee ?? '')}" placeholder="Username"${ro} />
+              <label class="task-form__label"${!isRemote ? ' for="tf-assignee"' : ''}>Assignee</label>
+              ${assigneeField}
             </div>
           </div>
 
@@ -969,6 +1003,48 @@ function escapeHtml(str: string): string {
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;');
+}
+
+/** Strip dangerous tags/attributes but allow safe formatting HTML. */
+function sanitizeHtml(html: string): string {
+  const allowedTags = new Set([
+    'p', 'br', 'b', 'i', 'em', 'strong', 'u', 's', 'ul', 'ol', 'li',
+    'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'a', 'code', 'pre', 'blockquote',
+    'table', 'thead', 'tbody', 'tr', 'th', 'td', 'div', 'span', 'hr', 'img',
+  ]);
+  const allowedAttrs = new Set(['href', 'src', 'alt', 'title', 'class', 'id']);
+
+  const tmp = document.createElement('div');
+  tmp.innerHTML = html;
+
+  function walk(node: Element): void {
+    // Remove disallowed elements entirely
+    const children = Array.from(node.children);
+    for (const child of children) {
+      if (!allowedTags.has(child.tagName.toLowerCase())) {
+        // Replace disallowed element with its text content
+        const text = document.createTextNode(child.textContent ?? '');
+        node.replaceChild(text, child);
+        continue;
+      }
+      // Strip disallowed attributes
+      for (const attr of Array.from(child.attributes)) {
+        if (!allowedAttrs.has(attr.name.toLowerCase())) {
+          child.removeAttribute(attr.name);
+        }
+      }
+      // Sanitise href/src to prevent javascript: URLs
+      for (const urlAttr of ['href', 'src']) {
+        const val = child.getAttribute(urlAttr);
+        if (val && !/^https?:\/\//i.test(val.trim()) && !val.trim().startsWith('#')) {
+          child.removeAttribute(urlAttr);
+        }
+      }
+      walk(child);
+    }
+  }
+  walk(tmp);
+  return tmp.innerHTML;
 }
 
 function relativeWorktreePath(absPath: string): string {

@@ -47,9 +47,13 @@ export class BeadsProvider implements ITaskProvider {
     return this.tasks;
   }
 
-  async updateTask(_task: KanbanTask): Promise<void> {
-    // Beads CLI doesn't support updating via this path — noop
-    vscode.window.showWarningMessage('Beads provider does not support inline task updates.');
+  async updateTask(task: KanbanTask): Promise<void> {
+    // Update local status immediately (Beads CLI doesn't support remote writes)
+    const idx = this.tasks.findIndex(t => t.id === task.id);
+    if (idx !== -1) {
+      this.tasks[idx] = { ...this.tasks[idx], status: task.status };
+      this._onDidChangeTasks.fire(this.tasks);
+    }
   }
 
   async refresh(): Promise<void> {
@@ -131,7 +135,14 @@ export class BeadsProvider implements ITaskProvider {
       const { stdout } = await execShell(this.executable, args, { timeout: 15_000 });
       try {
         const raw: BeadsIssue[] = JSON.parse(stdout);
-        this.tasks = raw.map(issue => this.mapBeadsToTask(issue));
+        const newTasks = raw.map(issue => this.mapBeadsToTask(issue));
+        // Preserve local status overrides (e.g. user moved card locally)
+        const oldStatusMap = new Map(this.tasks.map(t => [t.id, t.status]));
+        for (const t of newTasks) {
+          const oldStatus = oldStatusMap.get(t.id);
+          if (oldStatus && oldStatus !== t.status) { t.status = oldStatus; }
+        }
+        this.tasks = newTasks;
       } catch {
         vscode.window.showWarningMessage('Beads CLI: failed to parse output.');
       }

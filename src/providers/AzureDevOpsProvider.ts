@@ -62,7 +62,7 @@ export class AzureDevOpsProvider implements ITaskProvider {
       this._onDidChangeTasks.fire(this.tasks);
     }
 
-    // Try to sync to Azure DevOps for terminal states (best-effort)
+    // Try to sync to Azure DevOps for terminal states (fire-and-forget)
     const nativeId = task.id.replace(`${this.id}:`, '');
     const azState = this.reverseMapStatus(task.status);
     if (azState) {
@@ -73,11 +73,9 @@ export class AzureDevOpsProvider implements ITaskProvider {
         '--output', 'json',
       ];
       if (this.organization) { args.push('--org', this.organization); }
-      try {
-        await execShell('az', args, { timeout: 15_000 });
-      } catch {
+      void execShell('az', args, { timeout: 15_000 }).catch(() => {
         // Non-fatal: local status is already updated
-      }
+      });
     }
   }
 

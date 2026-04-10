@@ -65,44 +65,46 @@ export class GitHubProvider implements ITaskProvider {
   }
 
   async updateTask(task: KanbanTask): Promise<void> {
+    // Always update local cache immediately
+    const idx = this.cache.findIndex(t => t.id === task.id);
+    if (idx !== -1) {
+      this.cache[idx] = { ...this.cache[idx], status: task.status };
+      this._onDidChangeTasks.fire(this.cache);
+    }
+
+    // Fire-and-forget remote sync
     const nativeId = task.id.replace(`${this.id}:`, '');
     const issueNumber = parseInt(nativeId, 10);
     const state = task.status === 'done' ? 'closed' : 'open';
 
-    if (await this.hasGhCli()) {
-      const repoSlug = `${this.owner}/${this.repo}`;
-      const args = ['issue', 'edit', nativeId, '--repo', repoSlug];
-      if (state === 'closed') {
-        // gh issue close
-        await this.execGh(['issue', 'close', nativeId, '--repo', repoSlug]);
+    const syncRemote = async () => {
+      if (await this.hasGhCli()) {
+        const repoSlug = `${this.owner}/${this.repo}`;
+        if (state === 'closed') {
+          await this.execGh(['issue', 'close', nativeId, '--repo', repoSlug]);
+        } else {
+          await this.execGh(['issue', 'reopen', nativeId, '--repo', repoSlug]);
+        }
       } else {
-        // gh issue reopen
-        await this.execGh(['issue', 'reopen', nativeId, '--repo', repoSlug]);
+        await this.ensureToken();
+        if (!this.token) { return; }
+        const res = await fetch(
+          `https://api.github.com/repos/${this.owner}/${this.repo}/issues/${nativeId}`,
+          {
+            method: 'PATCH',
+            headers: this.apiHeaders(),
+            body: JSON.stringify({ state }),
+          },
+        );
+        if (!res.ok) { return; }
       }
-    } else {
-      await this.ensureToken();
-      if (!this.token) {
-        throw new Error('GitHub authentication required. Please sign in via the Accounts menu or install the gh CLI.');
-      }
-      const res = await fetch(
-        `https://api.github.com/repos/${this.owner}/${this.repo}/issues/${nativeId}`,
-        {
-          method: 'PATCH',
-          headers: this.apiHeaders(),
-          body: JSON.stringify({ state }),
-        },
-      );
-      if (!res.ok) {
-        throw new Error(`GitHub API error: ${res.status} ${res.statusText}`);
-      }
-    }
 
-    // Sync kanban column label
-    if (!isNaN(issueNumber) && this.issueManager) {
-      await this.issueManager.syncIssueColumn(issueNumber, task.status).catch(() => { /* non-fatal */ });
-    }
-
-    await this.refresh();
+      // Sync kanban column label
+      if (!isNaN(issueNumber) && this.issueManager) {
+        await this.issueManager.syncIssueColumn(issueNumber, task.status).catch(() => { /* non-fatal */ });
+      }
+    };
+    void syncRemote().catch(() => { /* non-fatal: local status already updated */ });
   }
 
   async refresh(): Promise<void> {
@@ -295,7 +297,14 @@ export class GitHubProvider implements ITaskProvider {
       const closedIssues = JSON.parse(closedStdout) as GhCliIssue[];
       const all = [...openIssues, ...closedIssues];
 
-      this.cache = all.map(issue => this.mapGhCliIssue(issue));
+      const newCache = all.map(issue => this.mapGhCliIssue(issue));
+      // Preserve local status overrides (e.g. user moved card locally)
+      const oldStatusMap = new Map(this.cache.map(t => [t.id, t.status]));
+      for (const t of newCache) {
+        const oldStatus = oldStatusMap.get(t.id);
+        if (oldStatus && oldStatus !== t.status) { t.status = oldStatus; }
+      }
+      this.cache = newCache;
       this.cacheTimestamp = Date.now();
       return this.cache;
     } catch {
@@ -340,7 +349,14 @@ export class GitHubProvider implements ITaskProvider {
       page++;
     }
 
-    this.cache = issues.map(issue => this.mapIssue(issue));
+    // Preserve local status overrides
+    const oldStatusMap = new Map(this.cache.map(t => [t.id, t.status]));
+    const newCache = issues.map(issue => this.mapIssue(issue));
+    for (const t of newCache) {
+      const oldStatus = oldStatusMap.get(t.id);
+      if (oldStatus && oldStatus !== t.status) { t.status = oldStatus; }
+    }
+    this.cache = newCache;
     this.cacheTimestamp = Date.now();
     return this.cache;
   }
