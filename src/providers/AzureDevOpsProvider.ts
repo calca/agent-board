@@ -55,11 +55,16 @@ export class AzureDevOpsProvider implements ITaskProvider {
   }
 
   async updateTask(task: KanbanTask): Promise<void> {
+    // Always update local task status immediately
+    const idx = this.tasks.findIndex(t => t.id === task.id);
+    if (idx !== -1) {
+      this.tasks[idx] = { ...this.tasks[idx], status: task.status };
+      this._onDidChangeTasks.fire(this.tasks);
+    }
+
+    // Try to sync to Azure DevOps for terminal states (best-effort)
     const nativeId = task.id.replace(`${this.id}:`, '');
     const azState = this.reverseMapStatus(task.status);
-
-    // Only push to Azure DevOps if the target state is a known Azure state
-    // (local column moves like todo→inprogress stay local-only).
     if (azState) {
       const args = [
         'boards', 'work-item', 'update',
@@ -70,16 +75,9 @@ export class AzureDevOpsProvider implements ITaskProvider {
       if (this.organization) { args.push('--org', this.organization); }
       try {
         await execShell('az', args, { timeout: 15_000 });
-      } catch (err) {
-        throw new Error(`Azure DevOps CLI error: ${err instanceof Error ? err.message : String(err)}`);
+      } catch {
+        // Non-fatal: local status is already updated
       }
-    }
-
-    // Update local task status immediately (no re-fetch to avoid overwrite)
-    const idx = this.tasks.findIndex(t => t.id === task.id);
-    if (idx !== -1) {
-      this.tasks[idx] = { ...this.tasks[idx], status: task.status };
-      this._onDidChangeTasks.fire(this.tasks);
     }
   }
 
@@ -270,7 +268,7 @@ export class AzureDevOpsProvider implements ITaskProvider {
       url: `${this.organization.replace(/\/+$/, '')}/${encodeURIComponent(this.project)}/_workitems/edit/${item.id}`,
       providerId: this.id,
       createdAt: fields['System.CreatedDate'] ? new Date(fields['System.CreatedDate'] as string) : undefined,
-      meta: fields as unknown as Record<string, unknown>,
+      meta: { ...(fields as unknown as Record<string, unknown>), remoteStatus: (fields['System.State'] as string) ?? 'Unknown' },
     };
   }
 

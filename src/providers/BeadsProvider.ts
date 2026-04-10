@@ -149,7 +149,7 @@ export class BeadsProvider implements ITaskProvider {
       status: this.mapStatus(raw.state),
       labels: raw.tags ?? [],
       providerId: this.id,
-      meta: raw as unknown as Record<string, unknown>,
+      meta: { ...(raw as unknown as Record<string, unknown>), remoteStatus: raw.state ?? 'unknown' },
     };
   }
 

@@ -366,7 +366,7 @@ export class GitHubProvider implements ITaskProvider {
       url: issue.url,
       providerId: this.id,
       createdAt: issue.createdAt ? new Date(issue.createdAt) : undefined,
-      meta: issue as unknown as Record<string, unknown>,
+      meta: { ...(issue as unknown as Record<string, unknown>), remoteStatus: issue.state === 'OPEN' || issue.state === 'open' ? 'Open' : 'Closed' },
     };
   }
 
@@ -389,6 +389,7 @@ export class GitHubProvider implements ITaskProvider {
       meta: {
         ...(issue as unknown as Record<string, unknown>),
         avatarUrl: (issue as unknown as { assignee?: { avatar_url?: string } }).assignee?.avatar_url,
+        remoteStatus: issue.state === 'open' ? 'Open' : 'Closed',
       },
     };
   }

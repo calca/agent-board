@@ -736,6 +736,10 @@ function renderEditForm(task: KanbanTask): string {
                 ${cols.map(c => `<option value="${escapeHtml(c.id)}"${c.id === task.status ? ' selected' : ''}>${escapeHtml(c.label)}</option>`).join('')}
               </select>
             </div>
+${isRemote ? `            <div class="task-form__field">
+              <label class="task-form__label" for="tf-remote-status">Remote Status</label>
+              <input class="task-form__input task-form__input--readonly" id="tf-remote-status" type="text" value="${escapeHtml(String(task.meta?.remoteStatus ?? ''))}" readonly />
+            </div>` : ''}
             <div class="task-form__field">
               <label class="task-form__label" for="tf-labels">Labels</label>
               <input class="task-form__input${roClass}" id="tf-labels" type="text" value="${escapeHtml(task.labels.join(', '))}" placeholder="bug, feature"${ro} />
