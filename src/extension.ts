@@ -745,14 +745,15 @@ export function activate(context: vscode.ExtensionContext): void {
             const alignPrompt =
               `## Align Worktree from main\n\n` +
               `You are working in the worktree at **${wtPath}** on branch **${branch}**.\n` +
+              `The main repository root is at **${repoRoot}**.\n` +
               `The branch is **${behindCount}** commit(s) behind main.\n\n` +
               `### Current diff vs main\n\`\`\`\n${mainDiff}\n\`\`\`\n\n` +
               `### Instructions\n` +
-              `1. From the worktree directory (${wtPath}), rebase or merge from main to align the branch:\n` +
-              `   - Run: cd ${wtPath} && git fetch origin main && git rebase main\n` +
+              `1. From the worktree directory, fetch and rebase on top of origin/main:\n` +
+              `   - Run: cd ${wtPath} && git fetch origin && git rebase origin/main\n` +
               `2. If there are merge conflicts, resolve them intelligently by understanding both sides\n` +
-              `3. After resolving conflicts, ensure the code compiles and tests pass\n` +
-              `4. Commit the resolution if needed\n` +
+              `3. After resolving conflicts, run: git add . && git rebase --continue\n` +
+              `4. Ensure the code compiles and tests pass\n` +
               `5. Report what changed and whether the alignment was successful\n`;
 
             await copilotLauncher.launch(msg.sessionId, alignProvider.id, undefined, alignPrompt);
@@ -795,19 +796,21 @@ export function activate(context: vscode.ExtensionContext): void {
 
             const mergePrompt =
               `## Merge Task\n\n` +
-              `You are reviewing and merging branch "${branch}" into main.\n` +
+              `You are reviewing and merging branch **${branch}** into main.\n` +
               `Strategy: **${strategyLabels[strategy]}**.\n\n` +
+              `- Worktree: ${wtPath}\n` +
+              `- Main repo root: ${repoRoot}\n\n` +
               `### Changed files\n\`\`\`\n${diffSummary}\n\`\`\`\n\n` +
               `### Instructions\n` +
               `1. Review all changes in the worktree at ${wtPath}\n` +
               `2. Ensure code quality, check for bugs, security issues, and style\n` +
-              `3. If changes are acceptable, perform the merge using the "${strategyLabels[strategy]}" strategy:\n` +
+              `3. If changes are acceptable, perform the merge **from the main repo root** using the "${strategyLabels[strategy]}" strategy:\n` +
               (strategy === 'squash'
-                ? `   - Run: git checkout main && git merge --squash ${branch} && git commit -m "squash: ${branch}"\n`
+                ? `   - Run: cd ${repoRoot} && git fetch origin && git checkout main && git merge --squash ${branch} && git commit -m "squash: ${branch}"\n`
                 : strategy === 'rebase'
-                  ? `   - Run: git checkout main && git rebase ${branch}\n`
-                  : `   - Run: git checkout main && git merge ${branch} --no-edit\n`) +
-              `4. If changes need fixes, apply them first, then merge\n` +
+                  ? `   - Run: cd ${repoRoot} && git fetch origin && git checkout main && git rebase ${branch}\n`
+                  : `   - Run: cd ${repoRoot} && git fetch origin && git checkout main && git merge ${branch} --no-edit\n`) +
+              `4. If changes need fixes, apply them in the worktree first (cd ${wtPath}), commit, then merge from repo root\n` +
               `5. Report what you found and whether the merge was successful\n`;
 
             // Launch the provider directly with the merge prompt
