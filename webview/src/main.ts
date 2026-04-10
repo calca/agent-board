@@ -375,6 +375,17 @@ function render(): void {
   document.getElementById('fv-btn-stop')?.addEventListener('click', () => {
     if (fullViewTaskId) { vscode.postMessage({ type: 'cancelSession', taskId: fullViewTaskId }); }
   });
+  document.querySelectorAll('.fv-reset-session').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const sessionId = (btn as HTMLElement).dataset.sessionId;
+      if (sessionId) {
+        vscode.postMessage({ type: 'resetSession', sessionId });
+        editingTask = null;
+        fullViewTaskId = null;
+        render();
+      }
+    });
+  });
   // ── Full view edit button → open inline form ────────────────────────
   document.getElementById('fv-edit-btn')?.addEventListener('click', () => {
     if (!fullViewTaskId) { return; }
@@ -1102,6 +1113,10 @@ function renderFullView(): string {
             </div>
             <div class="fv-panel__body fv-panel__body--scroll">
               <div class="fv-actions">
+                ${sessionInfo && !isRunning ? `
+                  <button class="fv-action-btn fv-reset-session" data-session-id="${escapeHtml(task.id)}" title="Reset session and move task back to first column"><svg class="fv-icon" width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M5.563 2.063A6 6 0 0 1 14 8h-1.5A4.5 4.5 0 1 0 8 12.5v1.5A6 6 0 0 1 5.563 2.063Z"/><path d="M14 4v4h-4l1.5-1.5L10 5l2.5-1L14 4Z"/></svg> Reset</button>
+                  <hr class="fv-actions__separator" />
+                ` : ''}
                 ${isRunning ? `
                   <div class="fv-actions__running-provider"><svg class="fv-icon" width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M8 1a7 7 0 1 0 0 14A7 7 0 0 0 8 1Zm0 12.5a5.5 5.5 0 1 1 0-11 5.5 5.5 0 0 1 0 11ZM7 5v4.5l3.5 2 .75-1.25L8.5 8.5V5H7Z"/></svg> ${escapeHtml(genAiProviders.find(p => p.id === activeProviderId)?.displayName ?? activeProviderId ?? 'Agent')}</div>
                   <button class="fv-action-btn fv-action-btn--danger" id="fv-btn-stop"><svg class="fv-icon" width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><rect x="3" y="3" width="10" height="10" rx="1"/></svg> Stop</button>

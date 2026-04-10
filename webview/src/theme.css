@@ -1989,8 +1989,11 @@ html, body, #root {
   opacity: 0.4;
 }
 .fv-icon {
+  display: inline-flex;
   flex-shrink: 0;
   vertical-align: middle;
+  width: 14px;
+  height: 14px;
 }
 .fv-action-btn {
   display: flex;
@@ -2071,6 +2074,17 @@ html, body, #root {
 .fv-agent-merge:hover:not(:disabled) {
   background: #0078d41A;
   border-color: #0078d466;
+}
+
+/* ── Reset session ── */
+.fv-reset-session {
+  border-color: #88888833;
+  background: #8888880D;
+}
+.fv-reset-session .fv-icon { color: #888888; }
+.fv-reset-session:hover:not(:disabled) {
+  background: #8888881A;
+  border-color: #88888866;
 }
 
 .fv-action-btn--primary {

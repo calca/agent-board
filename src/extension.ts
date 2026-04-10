@@ -484,6 +484,36 @@ export function activate(context: vscode.ExtensionContext): void {
           await sendTasksToPanel(panel, providerRegistry, genAiRegistry, squadManager, sessionStateManager);
           break;
         }
+        case 'resetSession': {
+          logger.info('resetSession: sessionId=%s', msg.sessionId);
+          // Cancel any running session
+          copilotLauncher.cancelSession(msg.sessionId);
+          squadManager.failSession(msg.sessionId);
+          // Remove session state entirely
+          sessionStateManager.removeSession(msg.sessionId);
+          logger.info('resetSession: session removed, verify=%s', !sessionStateManager.getSession(msg.sessionId));
+          // Move task back to first column
+          const [resetProviderId] = msg.sessionId.split(':');
+          const resetProvider = providerRegistry.get(resetProviderId);
+          if (resetProvider) {
+            const resetTasks = await resetProvider.getTasks();
+            const resetTask = resetTasks.find(t => t.id === msg.sessionId);
+            if (resetTask) {
+              const resetColumns = ProjectConfig.getProjectConfig()?.kanban?.columns ?? [...COLUMN_IDS];
+              const firstCol = resetColumns[0];
+              logger.info('resetSession: task found, status=%s -> %s', resetTask.status, firstCol);
+              await resetProvider.updateTask({ ...resetTask, status: firstCol });
+            } else {
+              logger.warn('resetSession: task not found in provider "%s"', resetProviderId);
+            }
+          } else {
+            logger.warn('resetSession: provider "%s" not found', resetProviderId);
+          }
+          panel.updateSquadStatus(squadManager.getStatus());
+          await sendTasksToPanel(panel, providerRegistry, genAiRegistry, squadManager, sessionStateManager);
+          logger.info('resetSession: done, tasks sent to panel');
+          break;
+        }
         case 'reopenSession': {
           // Focus the VS Code chat panel so the user can see the running session
           await vscode.commands.executeCommand('workbench.action.chat.open');

@@ -101,4 +101,5 @@ export type WebViewToHost =
   | { type: 'agentMerge'; sessionId: string; mergeStrategy: 'squash' | 'merge' | 'rebase'; providerId: string }
   | { type: 'alignWorktree'; sessionId: string }
   | { type: 'deleteWorktree'; sessionId: string }
+  | { type: 'resetSession'; sessionId: string }
   | { type: 'deleteTask'; taskId: string };
