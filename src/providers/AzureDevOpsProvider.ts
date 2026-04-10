@@ -100,7 +100,7 @@ export class AzureDevOpsProvider implements ITaskProvider {
       execFile('az', ['--version'], { timeout: 5_000 }, (err) => resolve(!err));
     });
     if (!azOk) {
-      return { severity: 'error', message: 'Azure CLI (az) not found. Install it from https://aka.ms/installazurecli.' };
+      return { severity: 'error', message: 'Azure CLI (az) not found. Install: brew install azure-cli' };
     }
 
     // Check azure-devops extension
@@ -108,7 +108,7 @@ export class AzureDevOpsProvider implements ITaskProvider {
       execFile('az', ['extension', 'show', '--name', 'azure-devops', '--output', 'json'], { timeout: 5_000 }, (err) => resolve(!err));
     });
     if (!devopsOk) {
-      return { severity: 'error', message: 'Azure DevOps CLI extension not installed. Run: az extension add --name azure-devops' };
+      return { severity: 'error', message: 'Azure DevOps CLI extension missing. Install: az extension add --name azure-devops' };
     }
 
     if (!this.organization || !this.project) {
