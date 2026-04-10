@@ -84,6 +84,7 @@ let sessionStreamLines: string[] = [];
 let sessionFileChanges: FileChangeInfo[] = [];
 let repoIsGit = true;
 let repoIsGitHub = true;
+let repoIsAzureDevOps = false;
 let workspaceRoot = '';
 let workspaceName = '';
 /** When true, auto-scroll to bottom on new output. Disabled when user scrolls up. */
@@ -502,6 +503,12 @@ function render(): void {
     btn.addEventListener('click', () => {
       const sessionId = (btn as HTMLElement).dataset.sessionId;
       if (sessionId) { vscode.postMessage({ type: 'deleteWorktree', sessionId }); }
+    });
+  });
+  document.querySelectorAll('.fv-create-pr').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const sessionId = (btn as HTMLElement).dataset.sessionId;
+      if (sessionId) { vscode.postMessage({ type: 'createPullRequest', sessionId }); }
     });
   });
 
@@ -1255,6 +1262,14 @@ function renderFullView(): string {
                     <button class="fv-action-btn fv-align-wt" data-session-id="${escapeHtml(task.id)}" title="Align worktree from main with AI"><svg class="fv-icon" width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M8 1a.75.75 0 0 1 .75.75v2.5a.75.75 0 0 1-1.5 0v-2.5A.75.75 0 0 1 8 1ZM3.1 3.1a.75.75 0 0 1 1.06 0l1.77 1.77a.75.75 0 0 1-1.06 1.06L3.1 4.16a.75.75 0 0 1 0-1.06Zm9.8 0a.75.75 0 0 1 0 1.06l-1.77 1.77a.75.75 0 1 1-1.06-1.06l1.77-1.77a.75.75 0 0 1 1.06 0ZM8 6a2 2 0 1 0 0 4 2 2 0 0 0 0-4ZM1 8a.75.75 0 0 1 .75-.75h2.5a.75.75 0 0 1 0 1.5h-2.5A.75.75 0 0 1 1 8Zm10 0a.75.75 0 0 1 .75-.75h2.5a.75.75 0 0 1 0 1.5h-2.5A.75.75 0 0 1 11 8Zm-7.9 4.9a.75.75 0 0 1 1.06 0l1.77-1.77a.75.75 0 0 1 1.06 1.06l-1.77 1.77a.75.75 0 0 1-1.06 0l-1.06-1.06Zm7.03-1.77a.75.75 0 0 1 1.06-1.06l1.77 1.77a.75.75 0 0 1-1.06 1.06l-1.77-1.77ZM8 11a.75.75 0 0 1 .75.75v2.5a.75.75 0 0 1-1.5 0v-2.5A.75.75 0 0 1 8 11Z"/></svg> Align from main with AI</button>
                     ` : ''}
                     ${sessionInfo?.state === 'completed' || task.status === 'done' ? `
+                      ${(repoIsGitHub || repoIsAzureDevOps) && !sessionInfo?.prUrl ? `
+                        <button class="fv-action-btn fv-action-btn--primary fv-create-pr" data-session-id="${escapeHtml(task.id)}" title="Create a Pull Request on ${repoIsGitHub ? 'GitHub' : 'Azure DevOps'}"><svg class="fv-icon" width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M7.177 3.073 9.573.677A.25.25 0 0 1 10 .854v4.792a.25.25 0 0 1-.427.177L7.177 3.427a.25.25 0 0 1 0-.354ZM3.75 2.5a.75.75 0 1 0 0 1.5.75.75 0 0 0 0-1.5Zm-2.25.75a2.25 2.25 0 1 1 3 2.122v5.256a2.251 2.251 0 1 1-1.5 0V5.372A2.25 2.25 0 0 1 1.5 3.25ZM11 2.5h-1V4h1a1 1 0 0 1 1 1v5.628a2.251 2.251 0 1 0 1.5 0V5A2.5 2.5 0 0 0 11 2.5Zm1 10.25a.75.75 0 1 1 1.5 0 .75.75 0 0 1-1.5 0ZM3.75 12a.75.75 0 1 0 0 1.5.75.75 0 0 0 0-1.5Z"/></svg> Create Pull Request</button>
+                        <hr class="fv-actions__separator" />
+                      ` : ''}
+                      ${sessionInfo?.prUrl ? `
+                        <a class="fv-action-btn fv-action-btn--primary" href="${escapeHtml(sessionInfo.prUrl)}" title="Open Pull Request${sessionInfo.prNumber ? ` #${sessionInfo.prNumber}` : ''}"><svg class="fv-icon" width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M7.177 3.073 9.573.677A.25.25 0 0 1 10 .854v4.792a.25.25 0 0 1-.427.177L7.177 3.427a.25.25 0 0 1 0-.354ZM3.75 2.5a.75.75 0 1 0 0 1.5.75.75 0 0 0 0-1.5Zm-2.25.75a2.25 2.25 0 1 1 3 2.122v5.256a2.251 2.251 0 1 1-1.5 0V5.372A2.25 2.25 0 0 1 1.5 3.25ZM11 2.5h-1V4h1a1 1 0 0 1 1 1v5.628a2.251 2.251 0 1 0 1.5 0V5A2.5 2.5 0 0 0 11 2.5Zm1 10.25a.75.75 0 1 1 1.5 0 .75.75 0 0 1-1.5 0ZM3.75 12a.75.75 0 1 0 0 1.5.75.75 0 0 0 0-1.5Z"/></svg> ${sessionInfo.prNumber ? `Open PR #${sessionInfo.prNumber}` : 'Open PR'}</a>
+                        <hr class="fv-actions__separator" />
+                      ` : ''}
                       <button class="fv-action-btn fv-agent-merge" data-session-id="${escapeHtml(task.id)}" title="Launch AI to review and merge"><svg class="fv-icon" width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M5 3.25a2.25 2.25 0 1 1 4.5 0A2.25 2.25 0 0 1 8 5.37V7h2.75A2.25 2.25 0 0 1 13 9.25v.38a2.25 2.25 0 1 1-1.5 0v-.38a.75.75 0 0 0-.75-.75h-5.5a.75.75 0 0 0-.75.75v.38a2.25 2.25 0 1 1-1.5 0v-.38A2.25 2.25 0 0 1 5.25 7H8V5.37A2.25 2.25 0 0 1 5 3.25Z"/></svg> Merge to main with AI</button>
                       <hr class="fv-actions__separator" />
                       <div class="fv-merge-panel" data-session-id="${escapeHtml(task.id)}">
@@ -1609,6 +1624,7 @@ window.addEventListener('message', (event: MessageEvent) => {
     case 'repoStatus':
       repoIsGit = msg.isGit ?? true;
       repoIsGitHub = msg.isGitHub ?? true;
+      repoIsAzureDevOps = msg.isAzureDevOps ?? false;
       workspaceRoot = msg.workspaceRoot ?? '';
       workspaceName = msg.workspaceName ?? '';
       render();
@@ -1623,6 +1639,11 @@ window.addEventListener('message', (event: MessageEvent) => {
       addTaskLog(msg.sessionId, msg.success ? 'system' : 'board',
         msg.success ? '⊘ Worktree eliminato.' : `✗ Eliminazione fallita: ${msg.message ?? ''}`);
       if (msg.success) { mergedSessions.delete(msg.sessionId); }
+      render();
+      break;
+    case 'createPullRequestResult':
+      addTaskLog(msg.sessionId, msg.success ? 'system' : 'board',
+        msg.success ? `⤴ Pull Request created: ${msg.prUrl ?? ''}` : `✗ Create PR failed: ${msg.message ?? ''}`);
       render();
       break;
   }
