@@ -22,7 +22,7 @@ import { GenAiProviderScope, IGenAiProvider } from '../IGenAiProvider';
  */
 export class LmApiGenAiProvider implements IGenAiProvider {
   readonly id = 'copilot-lm';
-  readonly displayName = 'Copilot LM API';
+  readonly displayName = 'Copilot - lm';
   readonly icon = 'copilot';
   readonly scope: GenAiProviderScope = 'global';
   readonly supportsWorktree = true;

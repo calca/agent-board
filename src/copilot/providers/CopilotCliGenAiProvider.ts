@@ -9,7 +9,7 @@ import { GenAiProviderConfig, GenAiProviderScope, IGenAiProvider } from '../IGen
 /** GenAI provider that invokes the `copilot` CLI (`npm i -g @github/copilot`) as a background subprocess. */
 export class CopilotCliGenAiProvider implements IGenAiProvider {
   readonly id = 'copilot-cli';
-  readonly displayName = 'Copilot CLI';
+  readonly displayName = 'Copilot - cli';
   readonly icon = 'terminal';
   readonly scope: GenAiProviderScope = 'global';
   readonly supportsWorktree = true;

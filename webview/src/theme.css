@@ -1995,26 +1995,84 @@ html, body, #root {
 .fv-action-btn {
   display: flex;
   align-items: center;
-  justify-content: center;
+  justify-content: flex-start;
   gap: 6px;
   width: 100%;
   padding: 7px 14px;
-  border: 1px solid var(--vscode-panel-border);
+  border: 1px solid transparent;
   border-radius: 4px;
-  background: var(--vscode-button-secondaryBackground, var(--vscode-editor-background));
-  color: var(--vscode-button-secondaryForeground, var(--vscode-foreground));
+  background: var(--vscode-editor-background);
+  color: var(--vscode-foreground);
   cursor: pointer;
   font-size: 0.88em;
   font-weight: 500;
-  transition: background 0.12s, opacity 0.12s;
+  transition: background 0.12s, opacity 0.12s, border-color 0.12s;
 }
 .fv-action-btn:hover:not(:disabled) {
-  background: var(--vscode-button-secondaryHoverBackground, var(--vscode-list-hoverBackground));
+  background: var(--vscode-list-hoverBackground);
+  border-color: var(--vscode-focusBorder);
 }
 .fv-action-btn:disabled {
   opacity: 0.35;
   cursor: not-allowed;
 }
+
+/* ── Provider launch buttons (play) ── */
+.fv-launch-provider {
+  border-color: #0078d433;
+  background: #0078d40D;
+  color: var(--vscode-foreground);
+}
+.fv-launch-provider .fv-icon { color: #0078d4; }
+.fv-launch-provider:hover:not(:disabled) {
+  background: #0078d41A;
+  border-color: #0078d466;
+}
+
+/* ── Open in VS Code ── */
+.fv-open-worktree {
+  border-color: #16825d33;
+  background: #16825d0D;
+}
+.fv-open-worktree .fv-icon { color: #16825d; }
+.fv-open-worktree:hover:not(:disabled) {
+  background: #16825d1A;
+  border-color: #16825d66;
+}
+
+/* ── Review Diff ── */
+.fv-review-wt {
+  border-color: #d9a50033;
+  background: #d9a5000D;
+}
+.fv-review-wt .fv-icon { color: #d9a500; }
+.fv-review-wt:hover:not(:disabled) {
+  background: #d9a5001A;
+  border-color: #d9a50066;
+}
+
+/* ── Align from main with AI ── */
+.fv-align-wt {
+  border-color: #9b59b633;
+  background: #9b59b60D;
+}
+.fv-align-wt .fv-icon { color: #9b59b6; }
+.fv-align-wt:hover:not(:disabled) {
+  background: #9b59b61A;
+  border-color: #9b59b666;
+}
+
+/* ── Merge AI ── */
+.fv-agent-merge {
+  border-color: #0078d433;
+  background: #0078d40D;
+}
+.fv-agent-merge .fv-icon { color: #0078d4; }
+.fv-agent-merge:hover:not(:disabled) {
+  background: #0078d41A;
+  border-color: #0078d466;
+}
+
 .fv-action-btn--primary {
   background: var(--vscode-button-background);
   color: var(--vscode-button-foreground);
@@ -2024,12 +2082,14 @@ html, body, #root {
   background: var(--vscode-button-hoverBackground);
 }
 .fv-action-btn--danger {
-  background: transparent;
+  border-color: rgba(244,71,71,0.2);
+  background: rgba(244,71,71,0.06);
   color: var(--vscode-errorForeground, #f44747);
-  border-color: var(--vscode-errorForeground, #f44747);
 }
+.fv-action-btn--danger .fv-icon { color: var(--vscode-errorForeground, #f44747); }
 .fv-action-btn--danger:hover:not(:disabled) {
-  background: var(--vscode-inputValidation-errorBackground, rgba(244,71,71,0.15));
+  background: rgba(244,71,71,0.15);
+  border-color: rgba(244,71,71,0.4);
 }
 .fv-action-btn--ghost {
   background: transparent;

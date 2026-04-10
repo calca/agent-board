@@ -17,7 +17,7 @@ import { GenAiProviderScope, IGenAiProvider } from '../IGenAiProvider';
  */
 export class ChatGenAiProvider implements IGenAiProvider {
   readonly id = 'chat';
-  readonly displayName = 'Chat';
+  readonly displayName = 'Copilot - chat';
   readonly icon = 'comment-discussion';
   readonly scope: GenAiProviderScope = 'global';
   /**
