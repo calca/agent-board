@@ -6,6 +6,12 @@
  * that communicates with the host via the typed message protocol.
  */
 
+import {
+  mountMarkdownEditor,
+  getMarkdownEditorValue,
+  unmountAllMarkdownEditors,
+} from './markdownEditor';
+
 // @ts-ignore — vscode webview API is injected at runtime
 const vscode = acquireVsCodeApi();
 
@@ -138,6 +144,9 @@ function render(): void {
     return;
   }
 
+  // Unmount any active markdown editors before replacing the DOM
+  unmountAllMarkdownEditors();
+
   const filtered = currentTasks.filter(t => {
     if (!searchText) { return true; }
     const q = searchText.toLowerCase();
@@ -208,6 +217,20 @@ function render(): void {
     ${sessionPanelTaskId ? renderSessionPanel() : ''}
     ${fullViewTaskId ? renderFullView() : ''}
   `;
+
+  // Mount markdown editors in any visible form containers
+  if (document.getElementById('tf-body-editor')) {
+    const initialBody = editingTask?.body ?? '';
+    mountMarkdownEditor(
+      'tf-body-editor',
+      initialBody,
+      'Describe the task in detail — the agent will use this as instructions…',
+    );
+  }
+  if (document.getElementById('fv-edit-body-editor')) {
+    const task = currentTasks.find(t => t.id === fullViewTaskId);
+    mountMarkdownEditor('fv-edit-body-editor', task?.body ?? '');
+  }
 
   // Event listeners
   document.getElementById('btn-refresh')?.addEventListener('click', () => {
@@ -416,7 +439,7 @@ function render(): void {
     if (!fullViewTaskId) { return; }
     const title = (document.getElementById('fv-edit-title') as HTMLInputElement)?.value.trim();
     if (!title) { return; }
-    const body = (document.getElementById('fv-edit-body') as HTMLTextAreaElement)?.value.trim() ?? '';
+    const body = getMarkdownEditorValue('fv-edit-body-editor') || currentTasks.find(t => t.id === fullViewTaskId)?.body || '';
     const status = (document.getElementById('fv-edit-status') as HTMLSelectElement)?.value ?? '';
     const labels = (document.getElementById('fv-edit-labels') as HTMLInputElement)?.value.trim() ?? '';
     const assignee = (document.getElementById('fv-edit-assignee') as HTMLInputElement)?.value.trim() ?? '';
@@ -549,13 +572,12 @@ function render(): void {
     const isRemoteEdit = editingTask && remoteProviders.includes(editingTask.providerId);
 
     const titleEl = form.querySelector('#tf-title') as HTMLInputElement | null;
-    const bodyEl = form.querySelector('#tf-body') as HTMLTextAreaElement | null;
     const labelsEl = form.querySelector('#tf-labels') as HTMLInputElement | null;
     const assigneeEl = form.querySelector('#tf-assignee') as HTMLInputElement | null;
 
     const title = titleEl?.value.trim() ?? editingTask?.title ?? '';
     if (!title) { return; }
-    const body = bodyEl?.value.trim() ?? editingTask?.body ?? '';
+    const body = getMarkdownEditorValue('tf-body-editor') || editingTask?.body || '';
     const status = editingTask
       ? (form.querySelector('#tf-status') as HTMLSelectElement)?.value ?? currentColumns[0]?.id ?? 'todo'
       : currentColumns[0]?.id ?? 'todo';
@@ -762,10 +784,10 @@ function renderEditForm(task: KanbanTask): string {
     ? `<span class="task-form__readonly-value">${escapeHtml(task.title)}</span>`
     : `<input class="task-form__input" id="tf-title" type="text" value="${escapeHtml(task.title)}" required />`;
 
-  // Description: readonly → rendered HTML (if body is HTML) or escaped text, editable → textarea
+  // Description: readonly → rendered HTML (if body is HTML) or escaped text, editable → MDXEditor
   const bodyField = isRemote
     ? `<div class="task-form__readonly-body">${isHtml(task.body) ? sanitizeHtml(task.body) : escapeHtml(task.body)}</div>`
-    : `<textarea class="task-form__textarea" id="tf-body" rows="8">${escapeHtml(task.body)}</textarea>`;
+    : `<div id="tf-body-editor" class="md-editor-container"></div>`;
 
   // Labels
   const labelsField = isRemote
@@ -837,8 +859,8 @@ function renderTaskForm(): string {
           <label class="task-form__label" for="tf-title">Title *</label>
           <input class="task-form__input" id="tf-title" type="text" placeholder="What needs to be done?" required autofocus />
 
-          <label class="task-form__label" for="tf-body">Description</label>
-          <textarea class="task-form__textarea" id="tf-body" rows="8" placeholder="Describe the task in detail — the agent will use this as instructions…"></textarea>
+          <label class="task-form__label">Description</label>
+          <div id="tf-body-editor" class="md-editor-container"></div>
 
           <div class="task-form__row">
             <div class="task-form__field">
@@ -1380,8 +1402,8 @@ function renderFvEditableDetails(task: KanbanTask, statusCol: Column | undefined
         ` : ''}
       </div>
       <div class="fv-edit-body-group">
-        <label class="fv-detail-label" for="fv-edit-body">Description</label>
-        <textarea class="task-form__textarea" id="fv-edit-body" rows="3">${escapeHtml(task.body)}</textarea>
+        <label class="fv-detail-label">Description</label>
+        <div id="fv-edit-body-editor" class="md-editor-container"></div>
       </div>
       <button type="submit" class="toolbar__btn toolbar__btn--primary fv-save-btn">Save Changes</button>
     </form>

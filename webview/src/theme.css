@@ -2408,3 +2408,57 @@ html, body, #root {
   opacity: 0.85;
 }
 
+
+/* ── MDXEditor integration ────────────────────────────────────────────── */
+
+.md-editor-container {
+  min-height: 180px;
+  border: 1px solid var(--vscode-input-border, rgba(128, 128, 128, 0.4));
+  border-radius: 4px;
+  background: var(--vscode-input-background);
+  margin-bottom: 4px;
+  overflow: hidden;
+}
+
+/* Override MDXEditor colours to match VS Code theme */
+.md-editor-container .mdxeditor {
+  --accentBase: var(--vscode-focusBorder);
+  --accentBgSubtle: var(--vscode-editor-selectionBackground);
+  font-family: var(--vscode-font-family);
+  font-size: var(--vscode-font-size);
+  color: var(--vscode-foreground);
+  background: var(--vscode-input-background);
+}
+
+.md-editor-container .mdxeditor-root-contenteditable {
+  color: var(--vscode-foreground);
+  caret-color: var(--vscode-foreground);
+}
+
+/* Toolbar */
+.md-editor-container [class*="toolbar"] {
+  background: var(--vscode-editorGroupHeader-tabsBackground, var(--vscode-sideBar-background));
+  border-bottom: 1px solid var(--vscode-input-border, rgba(128, 128, 128, 0.3));
+}
+
+.md-editor-container [class*="_toolbarRoot_"] {
+  background: var(--vscode-editorGroupHeader-tabsBackground, var(--vscode-sideBar-background));
+  border-bottom: 1px solid var(--vscode-input-border, rgba(128, 128, 128, 0.3));
+}
+
+.md-editor-container button[class*="_toolbarToggleItem_"],
+.md-editor-container button[class*="_toolbarButton_"] {
+  color: var(--vscode-foreground);
+  border-radius: 3px;
+}
+
+.md-editor-container button[class*="_toolbarToggleItem_"]:hover,
+.md-editor-container button[class*="_toolbarButton_"]:hover {
+  background: var(--vscode-toolbar-hoverBackground);
+}
+
+/* Dark theme adjustments */
+body.vscode-dark .md-editor-container,
+body.vscode-high-contrast .md-editor-container {
+  border-color: var(--vscode-input-border, rgba(255, 255, 255, 0.15));
+}

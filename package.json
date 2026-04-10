@@ -350,6 +350,8 @@
   "devDependencies": {
     "@types/mocha": "^10.0.6",
     "@types/node": "18.x",
+    "@types/react": "^19.2.14",
+    "@types/react-dom": "^19.2.3",
     "@types/vscode": "^1.85.0",
     "@vscode/test-electron": "^2.3.8",
     "esbuild": "^0.27.4",
@@ -358,5 +360,10 @@
     "mocha": "^10.2.0",
     "typescript": "^5.3.3",
     "typescript-eslint": "^8.58.1"
+  },
+  "dependencies": {
+    "@mdxeditor/editor": "^3.54.0",
+    "react": "^19.2.5",
+    "react-dom": "^19.2.5"
   }
 }

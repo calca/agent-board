@@ -28,6 +28,8 @@ const webviewBuildOptions = {
   target: 'es2020',
   sourcemap: true,
   minify: false,
+  jsx: 'automatic',
+  loader: { '.css': 'text' },
 };
 
 async function main() {
