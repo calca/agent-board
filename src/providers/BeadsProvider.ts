@@ -72,6 +72,7 @@ export class BeadsProvider implements ITaskProvider {
   }
 
   async diagnose(): Promise<ProviderDiagnostic> {
+    this.readConfig();
     const ok = await execShellOk(this.executable, ['--version'], { timeout: 5_000 });
     if (!ok) {
       return { severity: 'error', message: `Beads binary not found (${this.executable}). Install beads or set the correct path.` };

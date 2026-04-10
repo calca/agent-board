@@ -155,6 +155,7 @@ export class GitHubProvider implements ITaskProvider {
   }
 
   async diagnose(): Promise<ProviderDiagnostic> {
+    this.readConfig();
     // Check gh CLI first (preferred)
     if (await this.hasGhCli()) {
       // Verify auth status

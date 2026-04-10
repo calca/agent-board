@@ -91,6 +91,7 @@ export class AzureDevOpsProvider implements ITaskProvider {
   }
 
   async diagnose(): Promise<ProviderDiagnostic> {
+    this.readConfig();
     // Check az CLI availability
     const azOk = await execShellOk('az', ['--version'], { timeout: 5_000 });
     if (!azOk) {

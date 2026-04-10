@@ -32,9 +32,6 @@ export class SettingsPanel {
 
     this.panel.onDidDispose(() => this.dispose(), null, this.disposables);
     this.panel.webview.onDidReceiveMessage((msg) => this.handleMessage(msg), null, this.disposables);
-
-    // Send provider diagnostics after the webview is ready
-    void this.sendProviderDiagnostics();
   }
 
   static createOrShow(registry?: ProviderRegistry): SettingsPanel {
@@ -61,6 +58,10 @@ export class SettingsPanel {
 
   private handleMessage(msg: { type: string; config?: ProjectConfigData }): void {
     switch (msg.type) {
+      case 'ready':
+        this.sendConfig();
+        void this.sendProviderDiagnostics();
+        break;
       case 'save':
         if (msg.config) {
           ProjectConfig.updateConfig(msg.config);
@@ -130,10 +131,27 @@ export class SettingsPanel {
     font-size: var(--vscode-font-size, 13px);
     color: var(--vscode-foreground);
     background: var(--vscode-editor-background);
+    padding: 0;
+    height: 100vh;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+  }
+  .sticky-header {
+    position: sticky; top: 0; z-index: 10;
+    background: var(--vscode-editor-background);
+    padding: 20px 32px 12px;
+    border-bottom: 1px solid var(--vscode-panel-border);
+    display: flex; align-items: center; gap: 16px;
+  }
+  .sticky-header .header-text { flex: 1; }
+  .sticky-header h1 { font-size: 1.3em; margin-bottom: 2px; }
+  .sticky-header .subtitle { opacity: 0.6; font-size: 0.85em; margin: 0; }
+  .sticky-header .header-actions { display: flex; gap: 8px; flex-shrink: 0; }
+  .scroll-content {
+    flex: 1; overflow-y: auto;
     padding: 24px 32px;
   }
-  h1 { font-size: 1.3em; margin-bottom: 4px; }
-  .subtitle { opacity: 0.6; font-size: 0.85em; margin-bottom: 24px; }
   .section { margin-bottom: 28px; }
   .section__title {
     font-weight: 600; font-size: 0.95em; text-transform: uppercase;
@@ -199,9 +217,19 @@ export class SettingsPanel {
 </style>
 </head>
 <body>
-  <h1>⚙ Project Settings</h1>
-  <p class="subtitle">.agent-board/config.json</p>
-  <div id="root"></div>
+  <div class="sticky-header">
+    <div class="header-text">
+      <h1>⚙ Project Settings</h1>
+      <p class="subtitle">.agent-board/config.json</p>
+    </div>
+    <div class="header-actions">
+      <button class="btn btn--secondary" id="btn-reset-header">Reset to file</button>
+      <button class="btn btn--primary" id="btn-save-header">Save</button>
+    </div>
+  </div>
+  <div class="scroll-content">
+    <div id="root"></div>
+  </div>
 
 <script>
 const vscode = acquireVsCodeApi();
@@ -217,11 +245,11 @@ function render() {
     renderSquad() +
     renderMcp() +
     renderNotifications() +
-    renderMisc() +
-    renderActions();
+    renderMisc();
 
-  document.getElementById('btn-save')?.addEventListener('click', save);
-  document.getElementById('btn-reset')?.addEventListener('click', () => {
+  // Header buttons (always present)
+  document.getElementById('btn-save-header')?.addEventListener('click', save);
+  document.getElementById('btn-reset-header')?.addEventListener('click', () => {
     vscode.postMessage({ type: 'requestConfig' });
   });
   document.getElementById('btn-refresh-diag')?.addEventListener('click', () => {
@@ -422,10 +450,7 @@ function renderMisc() {
 }
 
 function renderActions() {
-  return '<div class="actions">' +
-    '<button class="btn btn--primary" id="btn-save">Save</button>' +
-    '<button class="btn btn--secondary" id="btn-reset">Reset to file</button>' +
-    '</div>';
+  return '';
 }
 
 function field(id, label, type, value, hint, placeholder) {
@@ -524,6 +549,8 @@ window.addEventListener('message', (e) => {
 });
 
 render();
+// Signal the host that the webview is ready to receive messages
+vscode.postMessage({ type: 'ready' });
 </script>
 </body>
 </html>`;
