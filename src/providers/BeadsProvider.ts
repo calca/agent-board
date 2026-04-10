@@ -148,6 +148,11 @@ export class BeadsProvider implements ITaskProvider {
           const oldStatus = oldStatusMap.get(t.id);
           if (oldStatus && oldStatus !== t.status) { t.status = oldStatus; }
         }
+        // Keep locally-tracked tasks that disappeared from remote until manual cleanup
+        const newIds = new Set(newTasks.map(t => t.id));
+        for (const old of this.tasks) {
+          if (!newIds.has(old.id)) { newTasks.push(old); }
+        }
         this.tasks = newTasks;
       } catch {
         vscode.window.showWarningMessage('Beads CLI: failed to parse output.');

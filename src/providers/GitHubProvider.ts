@@ -310,6 +310,11 @@ export class GitHubProvider implements ITaskProvider {
         const oldStatus = oldStatusMap.get(t.id);
         if (oldStatus && oldStatus !== t.status) { t.status = oldStatus; }
       }
+      // Keep locally-tracked tasks that disappeared from remote until manual cleanup
+      const newIds = new Set(newCache.map(t => t.id));
+      for (const old of this.cache) {
+        if (!newIds.has(old.id)) { newCache.push(old); }
+      }
       this.cache = newCache;
       this.cacheTimestamp = Date.now();
       return this.cache;
@@ -362,6 +367,11 @@ export class GitHubProvider implements ITaskProvider {
       if (t.status === 'done') { continue; } // remote terminal state wins
       const oldStatus = oldStatusMap.get(t.id);
       if (oldStatus && oldStatus !== t.status) { t.status = oldStatus; }
+    }
+    // Keep locally-tracked tasks that disappeared from remote until manual cleanup
+    const newIds2 = new Set(newCache.map(t => t.id));
+    for (const old of this.cache) {
+      if (!newIds2.has(old.id)) { newCache.push(old); }
     }
     this.cache = newCache;
     this.cacheTimestamp = Date.now();

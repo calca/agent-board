@@ -178,7 +178,7 @@ export class AzureDevOpsProvider implements ITaskProvider {
       return Promise.resolve();
     }
 
-    let wiql = `SELECT [System.Id], [System.Title], [System.Description], [System.State], [System.Tags], [System.AssignedTo], [System.CreatedDate] FROM WorkItems WHERE [System.TeamProject] = '${this.project.replace(/'/g, "''")}' AND [System.State] = 'Active'`;
+    let wiql = `SELECT [System.Id], [System.Title], [System.Description], [System.State], [System.Tags], [System.AssignedTo], [System.CreatedDate] FROM WorkItems WHERE [System.TeamProject] = '${this.project.replace(/'/g, "''")}' AND [System.State] <> 'Removed'`;
     if (this.onlyAssignedToMe) {
       wiql += ` AND [System.AssignedTo] = @Me`;
     }
@@ -251,6 +251,14 @@ export class AzureDevOpsProvider implements ITaskProvider {
       const oldStatus = oldStatusMap.get(t.id);
       if (oldStatus && oldStatus !== t.status) {
         t.status = oldStatus;
+      }
+    }
+    // Keep locally-tracked tasks that disappeared from the remote query
+    // (e.g. moved to review/done locally) until manual cleanup
+    const newIds = new Set(newTasks.map(t => t.id));
+    for (const old of this.tasks) {
+      if (!newIds.has(old.id)) {
+        newTasks.push(old);
       }
     }
     this.tasks = newTasks;
