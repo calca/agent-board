@@ -2032,6 +2032,13 @@ html, body, #root {
   flex-direction: column;
   gap: 6px;
 }
+.fv-merge-panel__label {
+  font-size: 0.78em;
+  font-weight: 600;
+  color: var(--vscode-descriptionForeground, #888);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
 .fv-merge-select {
   width: 100%;
   padding: 6px 10px;

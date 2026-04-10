@@ -1093,14 +1093,11 @@ function renderFullView(): string {
             </div>
             <div class="fv-panel__body fv-panel__body--scroll">
               <div class="fv-actions">
-                ${isMerged ? `
-                  <button class="fv-action-btn fv-action-btn--danger fv-delete-wt" data-session-id="${escapeHtml(task.id)}" title="Delete worktree directory and branch">⊘ Delete Worktree</button>
-                ` : `
                 ${isRunning ? `
                   <div class="fv-actions__running-provider">◆ ${escapeHtml(genAiProviders.find(p => p.id === activeProviderId)?.displayName ?? activeProviderId ?? 'Agent')}</div>
                   <button class="fv-action-btn fv-action-btn--danger" id="fv-btn-stop">■ Stop</button>
                   <hr class="fv-actions__separator" />
-                ` : sessionInfo?.state !== 'completed' ? `
+                ` : sessionInfo?.state !== 'completed' && !isMerged ? `
                 <div class="fv-actions__providers">
                   ${genAiProviders.filter(p => !p.disabled).map(p => {
                     return `<button class="fv-action-btn fv-launch-provider" data-provider-id="${escapeHtml(p.id)}" title="${escapeHtml(p.displayName)}">◆ ${escapeHtml(p.displayName)}</button>`;
@@ -1111,24 +1108,26 @@ function renderFullView(): string {
                 ${hasWorktree ? `
                   <button class="fv-action-btn fv-open-worktree" data-wt-path="${escapeHtml(sessionInfo!.worktreePath!)}" title="Open worktree folder in VS Code">↗ Open in VS Code</button>
                   <button class="fv-action-btn fv-review-wt" data-session-id="${escapeHtml(task.id)}" title="Review changes vs main branch">◎ Review Diff</button>
-                  <button class="fv-action-btn fv-align-wt" data-session-id="${escapeHtml(task.id)}" title="Launch AI to align worktree from main">◆ Align from main</button>
+                  <hr class="fv-actions__separator" />
+                  <button class="fv-action-btn fv-align-wt" data-session-id="${escapeHtml(task.id)}" title="Launch AI to align worktree from main">◆ Align from main with GenAI</button>
                   ${sessionInfo?.state === 'completed' || task.status === 'done' ? `
+                    <button class="fv-action-btn fv-agent-merge" data-session-id="${escapeHtml(task.id)}" title="Launch AI provider to review and merge">◆ Merge to main with GenAI</button>
                     <hr class="fv-actions__separator" />
                     <div class="fv-merge-panel" data-session-id="${escapeHtml(task.id)}">
+                      <label class="fv-merge-panel__label">Manual merge</label>
                       <select class="fv-merge-select" data-session-id="${escapeHtml(task.id)}">
                         <option value="squash" selected>Squash and merge</option>
                         <option value="merge">Create a merge commit</option>
                         <option value="rebase">Rebase and merge</option>
                       </select>
-                      <div class="fv-merge-panel__btns">
-                        <button class="fv-action-btn fv-action-btn--primary fv-merge-confirm" data-session-id="${escapeHtml(task.id)}">⤴ Merge</button>
-                        <button class="fv-action-btn fv-agent-merge" data-session-id="${escapeHtml(task.id)}" title="Launch AI provider to review and merge">◆ Merge by AI</button>
-                      </div>
+                      <button class="fv-action-btn fv-action-btn--primary fv-merge-confirm" data-session-id="${escapeHtml(task.id)}">⤴ Merge</button>
                     </div>
-                    <button class="fv-action-btn fv-action-btn--danger fv-delete-wt" data-session-id="${escapeHtml(task.id)}" title="Delete worktree directory and branch" disabled>⊘ Delete Worktree</button>
+                  ` : ''}
+                  ${isMerged ? `
+                    <hr class="fv-actions__separator" />
+                    <button class="fv-action-btn fv-action-btn--danger fv-delete-wt" data-session-id="${escapeHtml(task.id)}" title="Delete worktree directory and branch">⊘ Delete Workspace</button>
                   ` : ''}
                 ` : `<div class="fv-actions__empty">No worktree — actions require a worktree session.</div>`}
-                `}
               </div>
             </div>
           </div>
