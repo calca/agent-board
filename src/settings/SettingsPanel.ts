@@ -1,7 +1,7 @@
 import * as vscode from 'vscode';
 import { ProjectConfig, ProjectConfigData } from '../config/ProjectConfig';
-import { ProviderRegistry } from '../providers/ProviderRegistry';
 import { ProviderDiagnosticSeverity } from '../providers/ITaskProvider';
+import { ProviderRegistry } from '../providers/ProviderRegistry';
 
 /** Serialisable provider info sent to the webview. */
 interface ProviderInfo {

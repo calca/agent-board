@@ -1,9 +1,9 @@
-import * as vscode from 'vscode';
 import { execFile } from 'child_process';
-import { ITaskProvider, ProviderConfigField, ProviderDiagnostic } from './ITaskProvider';
-import { KanbanTask } from '../types/KanbanTask';
-import { ColumnId } from '../types/ColumnId';
+import * as vscode from 'vscode';
 import { ProjectConfig } from '../config/ProjectConfig';
+import { ColumnId } from '../types/ColumnId';
+import { KanbanTask } from '../types/KanbanTask';
+import { ITaskProvider, ProviderConfigField, ProviderDiagnostic } from './ITaskProvider';
 
 interface BeadsIssue {
   id: string | number;

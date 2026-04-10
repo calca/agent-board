@@ -1,5 +1,5 @@
-import * as vscode from 'vscode';
 import { execFile } from 'child_process';
+import * as vscode from 'vscode';
 import { ProjectConfig } from '../config/ProjectConfig';
 import { GitHubIssueManager } from '../github/GitHubIssueManager';
 import { ColumnId } from '../types/ColumnId';

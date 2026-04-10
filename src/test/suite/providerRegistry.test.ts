@@ -1,7 +1,7 @@
 import * as assert from 'assert';
-import { ProviderRegistry } from '../../providers/ProviderRegistry';
-import { DuplicateProviderError } from '../../providers/ProviderError';
 import { ITaskProvider } from '../../providers/ITaskProvider';
+import { DuplicateProviderError } from '../../providers/ProviderError';
+import { ProviderRegistry } from '../../providers/ProviderRegistry';
 import { KanbanTask } from '../../types/KanbanTask';
 
 /** Minimal stub provider for testing the registry. */

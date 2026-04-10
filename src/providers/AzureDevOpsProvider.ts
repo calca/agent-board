@@ -1,5 +1,5 @@
-import * as vscode from 'vscode';
 import { execFile } from 'child_process';
+import * as vscode from 'vscode';
 import { ProjectConfig } from '../config/ProjectConfig';
 import { ColumnId } from '../types/ColumnId';
 import { KanbanTask } from '../types/KanbanTask';

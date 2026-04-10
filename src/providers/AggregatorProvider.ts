@@ -1,6 +1,6 @@
 import * as vscode from 'vscode';
-import { ITaskProvider, ProviderConfigField, ProviderDiagnostic } from './ITaskProvider';
 import { KanbanTask } from '../types/KanbanTask';
+import { ITaskProvider, ProviderConfigField, ProviderDiagnostic } from './ITaskProvider';
 
 /**
  * Aggregates tasks from multiple `ITaskProvider` instances.
