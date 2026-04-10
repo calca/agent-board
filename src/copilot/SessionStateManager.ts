@@ -192,6 +192,18 @@ export class SessionStateManager {
     this.onStateChangeEmitter.dispose();
   }
 
+  /**
+   * Reset the inactivity timeout for a running session.
+   * Call this whenever the session produces output so that active
+   * sessions are not incorrectly marked as timed-out.
+   */
+  resetTimeout(taskId: string): void {
+    const session = this.sessions.get(taskId);
+    if (session && session.state === 'running' && this.timers.has(taskId)) {
+      this.armTimeout(taskId);
+    }
+  }
+
   // ── Persistence ─────────────────────────────────────────────────────
 
   private persist(): void {

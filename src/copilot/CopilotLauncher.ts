@@ -169,7 +169,11 @@ export class CopilotLauncher {
     // ── Stream + DiffWatcher ──────────────────────────────────────────
     const stream = this.streamRegistry.getOrCreate(taskId);
     // Wire provider streaming → StreamController so output flows to the webview
-    const streamSub = provider.onDidStream?.((text: string) => stream.append(text));
+    const streamSub = provider.onDidStream?.((text: string) => {
+      stream.append(text);
+      // Reset the inactivity timeout: the session is still alive while producing output
+      this.sessionStateManager?.resetTimeout(taskId);
+    });
     // Wire tool-call events → onDidToolCall aggregate event
     const toolCallSub = provider.onDidToolCall?.(status => this._onDidToolCall.fire({ sessionId: taskId, status }));
 
