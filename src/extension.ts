@@ -646,7 +646,7 @@ export function activate(context: vscode.ExtensionContext): void {
             panel.postMessage({ type: 'mergeResult', sessionId: msg.sessionId, success: true, message: `Branch "${branch}" mergiato in main (${strategyLabels[strategy]}).` });
             vscode.window.showInformationMessage(`✅ Branch "${branch}" mergiato in main (${strategyLabels[strategy]}).`);
 
-            // Move task to next column after successful merge
+            // Move task to last column (done) after successful merge
             const [mergeProviderId] = msg.sessionId.split(':');
             const mergeProvider = providerRegistry.get(mergeProviderId);
             if (mergeProvider) {
@@ -654,12 +654,9 @@ export function activate(context: vscode.ExtensionContext): void {
               const mergeTask = mergeTasks.find(t => t.id === msg.sessionId);
               if (mergeTask) {
                 const columnOrder = ProjectConfig.getProjectConfig()?.kanban?.columns ?? [...COLUMN_IDS];
-                const currentIdx = columnOrder.indexOf(mergeTask.status);
-                const nextCol = currentIdx >= 0 && currentIdx < columnOrder.length - 1
-                  ? columnOrder[currentIdx + 1]
-                  : columnOrder[columnOrder.length - 1];
-                if (mergeTask.status !== nextCol) {
-                  await mergeProvider.updateTask({ ...mergeTask, status: nextCol });
+                const lastCol = columnOrder[columnOrder.length - 1];
+                if (mergeTask.status !== lastCol) {
+                  await mergeProvider.updateTask({ ...mergeTask, status: lastCol });
                 }
               }
             }
