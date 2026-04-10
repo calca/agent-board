@@ -212,24 +212,18 @@ function render(): void {
     <div class="kanban">
       ${currentColumns.map(col => renderColumn(col, filtered.filter(t => t.status === col.id))).join('')}
     </div>
-    ${editingTask ? renderEditForm(editingTask) : ''}
-    ${showTaskForm && !editingTask ? renderTaskForm() : ''}
+    ${(showTaskForm || editingTask) ? renderTaskFormPanel(editingTask ?? undefined) : ''}
     ${sessionPanelTaskId ? renderSessionPanel() : ''}
     ${fullViewTaskId ? renderFullView() : ''}
   `;
 
-  // Mount markdown editors in any visible form containers
+  // Mount markdown editor if the form panel is visible
   if (document.getElementById('tf-body-editor')) {
-    const initialBody = editingTask?.body ?? '';
     mountMarkdownEditor(
       'tf-body-editor',
-      initialBody,
+      editingTask?.body ?? '',
       'Describe the task in detail — the agent will use this as instructions…',
     );
-  }
-  if (document.getElementById('fv-edit-body-editor')) {
-    const task = currentTasks.find(t => t.id === fullViewTaskId);
-    mountMarkdownEditor('fv-edit-body-editor', task?.body ?? '');
   }
 
   // Event listeners
@@ -418,7 +412,7 @@ function render(): void {
       }
     });
   });
-  // ── Full view edit button → open inline form ────────────────────────
+  // ── Full view edit button → open unified form panel overlay ──────────
   document.getElementById('fv-edit-btn')?.addEventListener('click', () => {
     if (!fullViewTaskId) { return; }
     const task = currentTasks.find(t => t.id === fullViewTaskId);
@@ -429,31 +423,8 @@ function render(): void {
       render();
     }
   });
-  document.getElementById('fv-edit-cancel')?.addEventListener('click', () => {
-    editingTask = null;
-    render();
-  });
-  // ── Full view inline edit form ──────────────────────────────────────
-  document.getElementById('fv-edit-form')?.addEventListener('submit', (e: Event) => {
-    e.preventDefault();
-    if (!fullViewTaskId) { return; }
-    const title = (document.getElementById('fv-edit-title') as HTMLInputElement)?.value.trim();
-    if (!title) { return; }
-    const body = getMarkdownEditorValue('fv-edit-body-editor') || currentTasks.find(t => t.id === fullViewTaskId)?.body || '';
-    const status = (document.getElementById('fv-edit-status') as HTMLSelectElement)?.value ?? '';
-    const labels = (document.getElementById('fv-edit-labels') as HTMLInputElement)?.value.trim() ?? '';
-    const assignee = (document.getElementById('fv-edit-assignee') as HTMLInputElement)?.value.trim() ?? '';
-    vscode.postMessage({ type: 'editTask', taskId: fullViewTaskId, data: { title, body, status, labels, assignee } });
-    editingTask = null;
-  });
   // Immediate status change from any full-view status select
   document.getElementById('fv-status-select')?.addEventListener('change', (e: Event) => {
-    const newStatus = (e.target as HTMLSelectElement).value;
-    if (fullViewTaskId && newStatus) {
-      vscode.postMessage({ type: 'taskMoved', taskId: fullViewTaskId, toCol: newStatus, index: 0 });
-    }
-  });
-  document.getElementById('fv-edit-status')?.addEventListener('change', (e: Event) => {
     const newStatus = (e.target as HTMLSelectElement).value;
     if (fullViewTaskId && newStatus) {
       vscode.postMessage({ type: 'taskMoved', taskId: fullViewTaskId, toCol: newStatus, index: 0 });
@@ -770,50 +741,75 @@ function renderCard(task: KanbanTask): string {
   `;
 }
 
-function renderEditForm(task: KanbanTask): string {
-  const cols = currentColumns;
+/**
+ * Renders the unified new/edit task overlay panel.
+ * When `task` is provided the form is in edit mode; otherwise it is in create mode.
+ */
+function renderTaskFormPanel(task?: KanbanTask): string {
+  const cols = formColumns.length > 0 ? formColumns : currentColumns;
   const remoteProviders = ['github', 'azure-devops', 'beads'];
-  const isRemote = remoteProviders.includes(task.providerId);
-  const ro = isRemote ? ' readonly' : '';
-  const roClass = isRemote ? ' task-form__input--readonly' : '';
+  const isRemote = task ? remoteProviders.includes(task.providerId) : false;
 
   const isHtml = (s: string) => /<[a-z][\s\S]*>/i.test(s);
 
-  // Title: readonly → plain text span, editable → input
-  const titleField = isRemote
-    ? `<span class="task-form__readonly-value">${escapeHtml(task.title)}</span>`
-    : `<input class="task-form__input" id="tf-title" type="text" value="${escapeHtml(task.title)}" required />`;
+  const heading = task
+    ? `Edit Issue${isRemote ? ' <span style="opacity:0.5;font-size:0.8em">(remote — read-only fields)</span>' : ''}`
+    : 'New Issue';
 
-  // Description: readonly → rendered HTML (if body is HTML) or escaped text, editable → MDXEditor
-  const bodyField = isRemote
+  // Title
+  const titleField = task
+    ? (isRemote
+      ? `<span class="task-form__readonly-value">${escapeHtml(task.title)}</span>`
+      : `<input class="task-form__input" id="tf-title" type="text" value="${escapeHtml(task.title)}" required />`)
+    : `<input class="task-form__input" id="tf-title" type="text" placeholder="What needs to be done?" required autofocus />`;
+
+  // Description: readonly view for remote providers, MDXEditor for local
+  const bodyField = isRemote && task
     ? `<div class="task-form__readonly-body">${isHtml(task.body) ? sanitizeHtml(task.body) : escapeHtml(task.body)}</div>`
     : `<div id="tf-body-editor" class="md-editor-container"></div>`;
 
+  // Status
+  const statusField = task
+    ? `<select class="task-form__select" id="tf-status">
+                ${cols.map(c => `<option value="${escapeHtml(c.id)}"${c.id === task.status ? ' selected' : ''}>${escapeHtml(c.label)}</option>`).join('')}
+              </select>`
+    : `<input class="task-form__input" id="tf-status" type="text" value="${escapeHtml(cols[0]?.label ?? '')}" disabled />`;
+
   // Labels
-  const labelsField = isRemote
-    ? `<span class="task-form__readonly-value">${escapeHtml(task.labels.join(', ')) || '—'}</span>`
-    : `<input class="task-form__input" id="tf-labels" type="text" value="${escapeHtml(task.labels.join(', '))}" placeholder="bug, feature" />`;
+  const labelsField = task
+    ? (isRemote
+      ? `<span class="task-form__readonly-value">${escapeHtml(task.labels.join(', ')) || '—'}</span>`
+      : `<input class="task-form__input" id="tf-labels" type="text" value="${escapeHtml(task.labels.join(', '))}" placeholder="bug, feature" />`)
+    : `<input class="task-form__input" id="tf-labels" type="text" placeholder="bug, feature" />`;
 
   // Assignee
-  const assigneeField = isRemote
-    ? `<span class="task-form__readonly-value">${escapeHtml(task.assignee ?? '') || '—'}</span>`
-    : `<input class="task-form__input" id="tf-assignee" type="text" value="${escapeHtml(task.assignee ?? '')}" placeholder="Username" />`;
+  const assigneeField = task
+    ? (isRemote
+      ? `<span class="task-form__readonly-value">${escapeHtml(task.assignee ?? '') || '—'}</span>`
+      : `<input class="task-form__input" id="tf-assignee" type="text" value="${escapeHtml(task.assignee ?? '')}" placeholder="Username" />`)
+    : `<input class="task-form__input" id="tf-assignee" type="text" placeholder="Username" />`;
 
-  // Remote status (only for remote providers)
-  const remoteStatusField = isRemote
+  // Remote status badge (edit mode only)
+  const remoteStatusField = isRemote && task
     ? `<div class="task-form__field">
               <label class="task-form__label">Remote Status</label>
               <span class="task-form__readonly-value task-form__readonly-value--badge">${escapeHtml(String(task.meta?.remoteStatus ?? ''))}</span>
             </div>`
     : '';
 
+  const saveLabel = task ? (isRemote ? 'Update Status' : 'Save') : 'Save';
+  const cancelLabel = task ? 'Close' : 'Cancel';
+  const deleteBtn = task && !isRemote && editableProviderIds.includes(task.providerId)
+    ? `<button type="button" class="task-form__btn task-form__btn--delete" id="task-form-delete" data-task-id="${escapeHtml(task.id)}">⊘ Delete</button>`
+    : '';
+
   return `
     <div class="task-form-overlay" id="task-form-overlay">
       <div class="task-form-panel">
         <button class="task-form-panel__close" id="task-form-close">✕</button>
-        <div class="task-form-panel__heading">Edit Issue${isRemote ? ' <span style="opacity:0.5;font-size:0.8em">(remote — read-only fields)</span>' : ''}</div>
+        <div class="task-form-panel__heading">${heading}</div>
         <form id="task-form" class="task-form">
-          <label class="task-form__label">Title${isRemote ? '' : ' *'}</label>
+          <label class="task-form__label"${!isRemote ? ' for="tf-title"' : ''}>Title${!task || !isRemote ? ' *' : ''}</label>
           ${titleField}
 
           <label class="task-form__label">Description</label>
@@ -822,11 +818,9 @@ function renderEditForm(task: KanbanTask): string {
           <div class="task-form__row">
             <div class="task-form__field">
               <label class="task-form__label" for="tf-status">Status</label>
-              <select class="task-form__select" id="tf-status">
-                ${cols.map(c => `<option value="${escapeHtml(c.id)}"${c.id === task.status ? ' selected' : ''}>${escapeHtml(c.label)}</option>`).join('')}
-              </select>
+              ${statusField}
             </div>
-${remoteStatusField}
+            ${remoteStatusField}
             <div class="task-form__field">
               <label class="task-form__label"${!isRemote ? ' for="tf-labels"' : ''}>Labels</label>
               ${labelsField}
@@ -838,48 +832,9 @@ ${remoteStatusField}
           </div>
 
           <div class="task-form__actions">
-            <button type="submit" class="task-form__btn task-form__btn--save">${isRemote ? 'Update Status' : 'Save'}</button>
-            <button type="button" class="task-form__btn task-form__btn--cancel" id="task-form-cancel">Close</button>
-            ${!isRemote && editableProviderIds.includes(task.providerId) ? `<button type="button" class="task-form__btn task-form__btn--delete" id="task-form-delete" data-task-id="${escapeHtml(task.id)}">⊘ Delete</button>` : ''}
-          </div>
-        </form>
-      </div>
-    </div>
-  `;
-}
-
-function renderTaskForm(): string {
-  const cols = formColumns.length > 0 ? formColumns : currentColumns;
-  return `
-    <div class="task-form-overlay" id="task-form-overlay">
-      <div class="task-form-panel">
-        <button class="task-form-panel__close" id="task-form-close">✕</button>
-        <div class="task-form-panel__heading">New Issue</div>
-        <form id="task-form" class="task-form">
-          <label class="task-form__label" for="tf-title">Title *</label>
-          <input class="task-form__input" id="tf-title" type="text" placeholder="What needs to be done?" required autofocus />
-
-          <label class="task-form__label">Description</label>
-          <div id="tf-body-editor" class="md-editor-container"></div>
-
-          <div class="task-form__row">
-            <div class="task-form__field">
-              <label class="task-form__label" for="tf-status">Status</label>
-              <input class="task-form__input" id="tf-status" type="text" value="${escapeHtml(cols[0]?.label ?? '')}" disabled />
-            </div>
-            <div class="task-form__field">
-              <label class="task-form__label" for="tf-labels">Labels</label>
-              <input class="task-form__input" id="tf-labels" type="text" placeholder="bug, feature" />
-            </div>
-            <div class="task-form__field">
-              <label class="task-form__label" for="tf-assignee">Assignee</label>
-              <input class="task-form__input" id="tf-assignee" type="text" placeholder="Username" />
-            </div>
-          </div>
-
-          <div class="task-form__actions">
-            <button type="submit" class="task-form__btn task-form__btn--save">Save</button>
-            <button type="button" class="task-form__btn task-form__btn--cancel" id="task-form-cancel">Cancel</button>
+            <button type="submit" class="task-form__btn task-form__btn--save">${saveLabel}</button>
+            <button type="button" class="task-form__btn task-form__btn--cancel" id="task-form-cancel">${cancelLabel}</button>
+            ${deleteBtn}
           </div>
         </form>
       </div>
@@ -1203,12 +1158,10 @@ function renderFullView(): string {
           <div class="fv-panel fv-panel--fill"${statusCol?.color ? ` style="background:${statusCol.color}0D;"` : ''}>
             <div class="fv-panel__header fv-panel__header--static"${statusCol?.color ? ` style="background:${statusCol.color}1A;"` : ''}>
               <span class="fv-panel__header-text">☰ Issue Details</span>
-              ${isEditable && !isRunning && !isLastCol ? (editingTask?.id === task.id
-                ? `<button class="fv-panel__header-btn" id="fv-edit-cancel" title="Cancel edit">✕ Cancel</button>`
-                : `<button class="fv-panel__header-btn" id="fv-edit-btn" title="Edit task">✎ Edit</button>`) : ''}
+              ${isEditable && !isRunning && !isLastCol ? `<button class="fv-panel__header-btn" id="fv-edit-btn" title="Edit task">✎ Edit</button>` : ''}
             </div>
             <div class="fv-panel__body fv-panel__body--scroll">
-              ${editingTask?.id === task.id ? renderFvEditableDetails(task, statusCol) : renderFvReadOnlyDetails(task, statusCol)}
+              ${renderFvReadOnlyDetails(task, statusCol)}
             </div>
           </div>
         </div>
@@ -1369,44 +1322,6 @@ function renderFvReadOnlyDetails(task: KanbanTask, statusCol: Column | undefined
       ` : ''}
     </div>
     ${task.body ? `<div class="fv-description">${/<[a-z][\s\S]*>/i.test(task.body) ? sanitizeHtml(task.body) : escapeHtml(task.body)}</div>` : ''}
-  `;
-}
-
-function renderFvEditableDetails(task: KanbanTask, statusCol: Column | undefined): string {
-  return `
-    <form id="fv-edit-form" class="fv-edit-form">
-      <div class="fv-detail-grid">
-        <div class="fv-detail-row">
-          <label class="fv-detail-label" for="fv-edit-title">Title</label>
-          <input class="task-form__input" id="fv-edit-title" type="text" value="${escapeHtml(task.title)}" required />
-        </div>
-        <div class="fv-detail-row">
-          <label class="fv-detail-label" for="fv-edit-status">Status</label>
-          <select class="task-form__select" id="fv-edit-status">
-            ${currentColumns.map(c => `<option value="${escapeHtml(c.id)}"${c.id === task.status ? ' selected' : ''}>${escapeHtml(c.label)}</option>`).join('')}
-          </select>
-        </div>
-        <div class="fv-detail-row">
-          <label class="fv-detail-label" for="fv-edit-labels">Labels</label>
-          <input class="task-form__input" id="fv-edit-labels" type="text" value="${escapeHtml(task.labels.join(', '))}" placeholder="bug, feature" />
-        </div>
-        <div class="fv-detail-row">
-          <label class="fv-detail-label" for="fv-edit-assignee">Assignee</label>
-          <input class="task-form__input" id="fv-edit-assignee" type="text" value="${escapeHtml(task.assignee ?? '')}" placeholder="Username" />
-        </div>
-        ${task.agent ? `
-          <div class="fv-detail-row">
-            <span class="fv-detail-label">Agent</span>
-            <span>◆ ${escapeHtml(task.agent)}</span>
-          </div>
-        ` : ''}
-      </div>
-      <div class="fv-edit-body-group">
-        <label class="fv-detail-label">Description</label>
-        <div id="fv-edit-body-editor" class="md-editor-container"></div>
-      </div>
-      <button type="submit" class="toolbar__btn toolbar__btn--primary fv-save-btn">Save Changes</button>
-    </form>
   `;
 }
 
