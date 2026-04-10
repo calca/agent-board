@@ -1,8 +1,8 @@
-import { execFile } from 'child_process';
 import * as vscode from 'vscode';
 import { ProjectConfig } from '../config/ProjectConfig';
 import { ColumnId } from '../types/ColumnId';
 import { KanbanTask } from '../types/KanbanTask';
+import { execShell, execShellOk } from './execShell';
 import { ITaskProvider, ProviderConfigField, ProviderDiagnostic } from './ITaskProvider';
 
 interface BeadsIssue {
@@ -72,15 +72,11 @@ export class BeadsProvider implements ITaskProvider {
   }
 
   async diagnose(): Promise<ProviderDiagnostic> {
-    return new Promise((resolve) => {
-      execFile(this.executable, ['--version'], { timeout: 5_000 }, (err) => {
-        if (err) {
-          resolve({ severity: 'error', message: `Beads binary not found (${this.executable}). Install beads or set the correct path.` });
-        } else {
-          resolve({ severity: 'ok', message: `Beads CLI available (${this.executable}).` });
-        }
-      });
-    });
+    const ok = await execShellOk(this.executable, ['--version'], { timeout: 5_000 });
+    if (!ok) {
+      return { severity: 'error', message: `Beads binary not found (${this.executable}). Install beads or set the correct path.` };
+    }
+    return { severity: 'ok', message: `Beads CLI available (${this.executable}).` };
   }
 
   isEnabled(): boolean {
@@ -118,23 +114,18 @@ export class BeadsProvider implements ITaskProvider {
     }, this.pollIntervalMs);
   }
 
-  private fetchTasks(): Promise<void> {
-    return new Promise((resolve) => {
-      execFile(this.executable, ['list', '--format=json'], { timeout: 15_000 }, (err, stdout) => {
-        if (err) {
-          vscode.window.showWarningMessage(`Beads CLI error: ${err.message}`);
-          resolve();
-          return;
-        }
-        try {
-          const raw: BeadsIssue[] = JSON.parse(stdout);
-          this.tasks = raw.map(issue => this.mapBeadsToTask(issue));
-        } catch {
-          vscode.window.showWarningMessage('Beads CLI: failed to parse output.');
-        }
-        resolve();
-      });
-    });
+  private async fetchTasks(): Promise<void> {
+    try {
+      const { stdout } = await execShell(this.executable, ['list', '--format=json'], { timeout: 15_000 });
+      try {
+        const raw: BeadsIssue[] = JSON.parse(stdout);
+        this.tasks = raw.map(issue => this.mapBeadsToTask(issue));
+      } catch {
+        vscode.window.showWarningMessage('Beads CLI: failed to parse output.');
+      }
+    } catch (err) {
+      vscode.window.showWarningMessage(`Beads CLI error: ${err instanceof Error ? err.message : String(err)}`);
+    }
   }
 
   /** Single point of contact with the Beads schema. */

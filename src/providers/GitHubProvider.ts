@@ -1,9 +1,9 @@
-import { execFile } from 'child_process';
 import * as vscode from 'vscode';
 import { ProjectConfig } from '../config/ProjectConfig';
 import { GitHubIssueManager } from '../github/GitHubIssueManager';
 import { ColumnId } from '../types/ColumnId';
 import { KanbanTask } from '../types/KanbanTask';
+import { execShell, execShellOk } from './execShell';
 import { ITaskProvider, ProviderConfigField, ProviderDiagnostic } from './ITaskProvider';
 
 export interface GitHubIssue {
@@ -158,9 +158,7 @@ export class GitHubProvider implements ITaskProvider {
     // Check gh CLI first (preferred)
     if (await this.hasGhCli()) {
       // Verify auth status
-      const authOk = await new Promise<boolean>((resolve) => {
-        execFile('gh', ['auth', 'status'], { timeout: 5_000 }, (err) => resolve(!err));
-      });
+      const authOk = await execShellOk('gh', ['auth', 'status'], { timeout: 5_000 });
       if (!authOk) {
         return { severity: 'error', message: 'gh CLI found but not authenticated. Run: gh auth login' };
       }
@@ -203,21 +201,15 @@ export class GitHubProvider implements ITaskProvider {
   /** Check (and cache) whether `gh` is on PATH. */
   private async hasGhCli(): Promise<boolean> {
     if (this.ghCliAvailable !== undefined) { return this.ghCliAvailable; }
-    this.ghCliAvailable = await new Promise<boolean>((resolve) => {
-      execFile('gh', ['--version'], { timeout: 5_000 }, (err) => resolve(!err));
-    });
+    this.ghCliAvailable = await execShellOk('gh', ['--version'], { timeout: 5_000 });
     return this.ghCliAvailable;
   }
 
   /** Run a `gh` command and return stdout. Throws on non-zero exit. */
-  private execGh(args: string[]): Promise<string> {
-    return new Promise((resolve, reject) => {
-      const cwd = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
-      execFile('gh', args, { timeout: 30_000, cwd }, (err, stdout) => {
-        if (err) { reject(new Error(`gh ${args[0]} ${args[1] ?? ''}: ${err.message}`)); }
-        else { resolve(stdout); }
-      });
-    });
+  private async execGh(args: string[]): Promise<string> {
+    const cwd = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
+    const { stdout } = await execShell('gh', args, { timeout: 30_000, cwd });
+    return stdout;
   }
 
   /**

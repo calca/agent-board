@@ -1,8 +1,8 @@
-import { execFile } from 'child_process';
 import * as vscode from 'vscode';
 import { ProjectConfig } from '../config/ProjectConfig';
 import { ColumnId } from '../types/ColumnId';
 import { KanbanTask } from '../types/KanbanTask';
+import { execShell, execShellOk } from './execShell';
 import { ITaskProvider, ProviderConfigField, ProviderDiagnostic } from './ITaskProvider';
 
 interface AzWorkItem {
@@ -55,23 +55,19 @@ export class AzureDevOpsProvider implements ITaskProvider {
   async updateTask(task: KanbanTask): Promise<void> {
     const nativeId = task.id.replace(`${this.id}:`, '');
     const state = this.reverseMapStatus(task.status);
-    return new Promise((resolve, reject) => {
-      const args = [
-        'boards', 'work-item', 'update',
-        '--id', nativeId,
-        '--state', state,
-        '--output', 'json',
-      ];
-      if (this.organization) { args.push('--org', this.organization); }
-      execFile('az', args, { timeout: 15_000 }, (err) => {
-        if (err) {
-          reject(new Error(`Azure DevOps CLI error: ${err.message}`));
-        } else {
-          void this.refresh();
-          resolve();
-        }
-      });
-    });
+    const args = [
+      'boards', 'work-item', 'update',
+      '--id', nativeId,
+      '--state', state,
+      '--output', 'json',
+    ];
+    if (this.organization) { args.push('--org', this.organization); }
+    try {
+      await execShell('az', args, { timeout: 15_000 });
+      void this.refresh();
+    } catch (err) {
+      throw new Error(`Azure DevOps CLI error: ${err instanceof Error ? err.message : String(err)}`);
+    }
   }
 
   async refresh(): Promise<void> {
@@ -96,17 +92,13 @@ export class AzureDevOpsProvider implements ITaskProvider {
 
   async diagnose(): Promise<ProviderDiagnostic> {
     // Check az CLI availability
-    const azOk = await new Promise<boolean>((resolve) => {
-      execFile('az', ['--version'], { timeout: 5_000 }, (err) => resolve(!err));
-    });
+    const azOk = await execShellOk('az', ['--version'], { timeout: 5_000 });
     if (!azOk) {
       return { severity: 'error', message: 'Azure CLI (az) not found. Install: brew install azure-cli' };
     }
 
     // Check azure-devops extension
-    const devopsOk = await new Promise<boolean>((resolve) => {
-      execFile('az', ['extension', 'show', '--name', 'azure-devops', '--output', 'json'], { timeout: 5_000 }, (err) => resolve(!err));
-    });
+    const devopsOk = await execShellOk('az', ['extension', 'show', '--name', 'azure-devops', '--output', 'json'], { timeout: 5_000 });
     if (!devopsOk) {
       return { severity: 'error', message: 'Azure DevOps CLI extension missing. Install: az extension add --name azure-devops' };
     }
@@ -156,90 +148,66 @@ export class AzureDevOpsProvider implements ITaskProvider {
     }, this.pollIntervalMs);
   }
 
-  private fetchTasks(): Promise<void> {
+  private async fetchTasks(): Promise<void> {
     if (!this.organization || !this.project) {
       this.tasks = [];
       return Promise.resolve();
     }
 
-    return new Promise((resolve) => {
-      // WIQL query: all non-removed work items assigned to the project
-      const wiql = `SELECT [System.Id] FROM WorkItems WHERE [System.TeamProject] = '${this.project.replace(/'/g, "''")}' AND [System.State] <> 'Removed' ORDER BY [System.CreatedDate] DESC`;
-
-      const args = [
-        'boards', 'query',
-        '--wiql', wiql,
-        '--org', this.organization,
-        '--output', 'json',
-      ];
-
-      execFile('az', args, { timeout: 30_000 }, (err, stdout) => {
-        if (err) {
-          vscode.window.showWarningMessage(`Azure DevOps CLI error: ${err.message}`);
-          resolve();
-          return;
-        }
-        try {
-          const raw = JSON.parse(stdout) as AzWorkItem[];
-          this.tasks = raw.map(item => this.mapWorkItem(item));
-        } catch {
-          // Query returns IDs only; need to fetch details
-          this.fetchWorkItemDetails(stdout).then(resolve).catch(() => resolve());
-          return;
-        }
-        resolve();
-      });
-    });
+    const wiql = `SELECT [System.Id] FROM WorkItems WHERE [System.TeamProject] = '${this.project.replace(/'/g, "''")}' AND [System.State] <> 'Removed' ORDER BY [System.CreatedDate] DESC`;
+    const args = [
+      'boards', 'query',
+      '--wiql', wiql,
+      '--org', this.organization,
+      '--output', 'json',
+    ];
+    try {
+      const { stdout } = await execShell('az', args, { timeout: 30_000 });
+      try {
+        const raw = JSON.parse(stdout) as AzWorkItem[];
+        this.tasks = raw.map(item => this.mapWorkItem(item));
+      } catch {
+        await this.fetchWorkItemDetails(stdout);
+      }
+    } catch (err) {
+      vscode.window.showWarningMessage(`Azure DevOps CLI error: ${err instanceof Error ? err.message : String(err)}`);
+    }
   }
 
   /**
    * When `az boards query` returns only IDs, fetch full work item details.
    */
-  private fetchWorkItemDetails(queryOutput: string): Promise<void> {
-    return new Promise((resolve) => {
-      let ids: number[];
-      try {
-        const parsed = JSON.parse(queryOutput);
-        // az boards query returns { workItems: [{ id: N }] } or an array
-        const items = parsed.workItems ?? parsed;
-        ids = (items as Array<{ id: number }>).map(w => w.id);
-      } catch {
-        this.tasks = [];
-        resolve();
-        return;
-      }
+  private async fetchWorkItemDetails(queryOutput: string): Promise<void> {
+    let ids: number[];
+    try {
+      const parsed = JSON.parse(queryOutput);
+      const items = parsed.workItems ?? parsed;
+      ids = (items as Array<{ id: number }>).map(w => w.id);
+    } catch {
+      this.tasks = [];
+      return;
+    }
 
-      if (ids.length === 0) {
-        this.tasks = [];
-        resolve();
-        return;
-      }
+    if (ids.length === 0) {
+      this.tasks = [];
+      return;
+    }
 
-      // Fetch in batches of 200
-      const batch = ids.slice(0, 200).join(',');
-      const args = [
-        'boards', 'work-item', 'show',
-        '--ids', batch,
-        '--org', this.organization,
-        '--output', 'json',
-      ];
-
-      execFile('az', args, { timeout: 30_000 }, (err, stdout) => {
-        if (err) {
-          vscode.window.showWarningMessage(`Azure DevOps: failed to fetch work items.`);
-          resolve();
-          return;
-        }
-        try {
-          const items: AzWorkItem[] = JSON.parse(stdout);
-          const itemsArray = Array.isArray(items) ? items : [items];
-          this.tasks = itemsArray.map(item => this.mapWorkItem(item));
-        } catch {
-          vscode.window.showWarningMessage('Azure DevOps: failed to parse work items.');
-        }
-        resolve();
-      });
-    });
+    const batch = ids.slice(0, 200).join(',');
+    const args = [
+      'boards', 'work-item', 'show',
+      '--ids', batch,
+      '--org', this.organization,
+      '--output', 'json',
+    ];
+    try {
+      const { stdout } = await execShell('az', args, { timeout: 30_000 });
+      const items: AzWorkItem[] = JSON.parse(stdout);
+      const itemsArray = Array.isArray(items) ? items : [items];
+      this.tasks = itemsArray.map(item => this.mapWorkItem(item));
+    } catch {
+      vscode.window.showWarningMessage('Azure DevOps: failed to fetch work items.');
+    }
   }
 
   private mapWorkItem(item: AzWorkItem): KanbanTask {
