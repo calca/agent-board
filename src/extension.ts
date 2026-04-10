@@ -810,8 +810,12 @@ export function activate(context: vscode.ExtensionContext): void {
                 : strategy === 'rebase'
                   ? `   - Run: cd ${repoRoot} && git fetch origin && git checkout main && git rebase ${branch}\n`
                   : `   - Run: cd ${repoRoot} && git fetch origin && git checkout main && git merge ${branch} --no-edit\n`) +
-              `4. If changes need fixes, apply them in the worktree first (cd ${wtPath}), commit, then merge from repo root\n` +
-              `5. Report what you found and whether the merge was successful\n`;
+              `4. If the merge fails or produces conflicts, **abort immediately** to leave main clean:\n` +
+              (strategy === 'rebase'
+                ? `   - Run: cd ${repoRoot} && git rebase --abort\n`
+                : `   - Run: cd ${repoRoot} && git merge --abort\n`) +
+              `5. If changes need fixes, apply them in the worktree first (cd ${wtPath}), commit, then retry the merge from repo root\n` +
+              `6. Report what you found and whether the merge was successful\n`;
 
             // Launch the provider directly with the merge prompt
             await copilotLauncher.launch(msg.sessionId, provider.id, undefined, mergePrompt);
