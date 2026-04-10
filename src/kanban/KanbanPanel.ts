@@ -90,8 +90,11 @@ export class KanbanPanel {
     this.panel.onDidDispose(callback, null, this.disposables);
   }
 
+  private disposed = false;
+
   /** Send a typed message to the WebView. */
   postMessage(msg: HostToWebView): void {
+    if (this.disposed) { return; }
     this.panel.webview.postMessage(msg);
   }
 
@@ -136,6 +139,7 @@ export class KanbanPanel {
   }
 
   dispose(): void {
+    this.disposed = true;
     KanbanPanel.instance = undefined;
     this.panel.dispose();
     for (const d of this.disposables) {

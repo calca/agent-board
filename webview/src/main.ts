@@ -178,7 +178,10 @@ function render(): void {
             })()}
           </select>
           <button class="toolbar__btn toolbar__btn--primary" id="btn-start-squad" ${!repoIsGit || squadStatus.activeCount >= squadStatus.maxSessions ? 'disabled' : ''} title="Start Squad">▶ Start</button>
-          <button class="toolbar__btn toolbar__btn--toggle${squadStatus.autoSquadEnabled ? ' toolbar__btn--on' : ''}" id="btn-toggle-auto" ${!repoIsGit ? 'disabled' : ''} title="Toggle Auto‑Squad">⟳ Auto</button>
+          <button class="mcp-toggle${squadStatus.autoSquadEnabled ? ' mcp-toggle--on' : ''}" id="btn-toggle-auto" ${!repoIsGit ? 'disabled' : ''} title="Toggle Auto‑Squad">
+            <span class="mcp-toggle__dot"></span>
+            <span class="mcp-toggle__label">Auto</span>
+          </button>
           ${squadStatus.activeCount > 0 ? `<span class="toolbar__badge toolbar__badge--live">${squadStatus.activeCount}/${squadStatus.maxSessions}</span>` : ''}
         </div>
 
@@ -465,6 +468,12 @@ function render(): void {
       vscode.postMessage({ type: 'agentMerge', sessionId, mergeStrategy, providerId });
     });
   });
+  document.querySelectorAll('.fv-align-wt').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const sessionId = (btn as HTMLElement).dataset.sessionId;
+      if (sessionId) { vscode.postMessage({ type: 'alignWorktree', sessionId }); }
+    });
+  });
   document.querySelectorAll('.fv-delete-wt').forEach(btn => {
     btn.addEventListener('click', () => {
       const sessionId = (btn as HTMLElement).dataset.sessionId;
@@ -597,6 +606,7 @@ function renderCard(task: KanbanTask): string {
     ? task.assignee.slice(0, 2).toUpperCase()
     : '';
   const session = task.copilotSession;
+  const cardMerged = mergedSessions.has(task.id);
   const SESSION_LABELS: Record<string, string> = {
     idle:        'Idle',
     starting:    'Starting',
@@ -608,6 +618,8 @@ function renderCard(task: KanbanTask): string {
   };
   const sessionBadge = session
     ? (() => {
+        // When merged, show a single compact badge instead of two
+        if (cardMerged) { return ''; }
         const label = SESSION_LABELS[session.state] ?? session.state;
         return `<span class="task-card__session task-card__session--${session.state}">${escapeHtml(label)}</span>`;
       })()
@@ -627,7 +639,6 @@ function renderCard(task: KanbanTask): string {
   const assigneeHtml = avatarUrl
     ? `<img class="task-card__avatar" src="${escapeHtml(avatarUrl)}" alt="${escapeHtml(task.assignee ?? '')}" title="${escapeHtml(task.assignee ?? '')}" />`
     : (initials ? `<span class="task-card__assignee" title="${escapeHtml(task.assignee ?? '')}">${initials}</span>` : '');
-  const cardMerged = mergedSessions.has(task.id);
   const stateModifier = session ? ` task-card--state-${session.state}` : '';
   // Short ID display (e.g. "GH-12" or provider prefix)
   const shortId = task.id.includes(':') ? task.id.replace(':', '-').toUpperCase() : task.id;
@@ -655,7 +666,7 @@ function renderCard(task: KanbanTask): string {
     <div class="task-card${stateModifier}" data-task-id="${escapeHtml(task.id)}">
       <div class="task-card__header">
         <span class="task-card__id">${escapeHtml(shortId)}</span>
-        ${sessionBadge}${cardMerged ? '<span class="task-card__merged">✓</span>' : ''}${pr}
+        ${sessionBadge}${cardMerged ? '<span class="task-card__session task-card__session--merged">Merged</span>' : ''}${pr}
       </div>
       <div class="task-card__title">${escapeHtml(task.title)}</div>
       ${bodySnippet ? `<div class="task-card__body">${escapeHtml(bodySnippet)}</div>` : ''}
@@ -1089,17 +1100,18 @@ function renderFullView(): string {
                   <div class="fv-actions__running-provider">◆ ${escapeHtml(genAiProviders.find(p => p.id === activeProviderId)?.displayName ?? activeProviderId ?? 'Agent')}</div>
                   <button class="fv-action-btn fv-action-btn--danger" id="fv-btn-stop">■ Stop</button>
                   <hr class="fv-actions__separator" />
-                ` : `
+                ` : sessionInfo?.state !== 'completed' ? `
                 <div class="fv-actions__providers">
                   ${genAiProviders.filter(p => !p.disabled).map(p => {
                     return `<button class="fv-action-btn fv-launch-provider" data-provider-id="${escapeHtml(p.id)}" title="${escapeHtml(p.displayName)}">◆ ${escapeHtml(p.displayName)}</button>`;
                   }).join('')}
                 </div>
                 <hr class="fv-actions__separator" />
-                `}
+                ` : ''}
                 ${hasWorktree ? `
                   <button class="fv-action-btn fv-open-worktree" data-wt-path="${escapeHtml(sessionInfo!.worktreePath!)}" title="Open worktree folder in VS Code">↗ Open in VS Code</button>
                   <button class="fv-action-btn fv-review-wt" data-session-id="${escapeHtml(task.id)}" title="Review changes vs main branch">◎ Review Diff</button>
+                  <button class="fv-action-btn fv-align-wt" data-session-id="${escapeHtml(task.id)}" title="Launch AI to align worktree from main">◆ Align from main</button>
                   ${sessionInfo?.state === 'completed' || task.status === 'done' ? `
                     <hr class="fv-actions__separator" />
                     <div class="fv-merge-panel" data-session-id="${escapeHtml(task.id)}">
@@ -1477,5 +1489,11 @@ window.addEventListener('message', (event: MessageEvent) => {
 // Render the initial loading state immediately
 render();
 
-// Signal the host that the WebView is ready
+// Signal the host that the WebView is ready.
+// Retry periodically in case the first message was lost (e.g. during panel
+// deserialization where the host handler may not be wired yet).
 vscode.postMessage({ type: 'ready' });
+const readyRetry = setInterval(() => {
+  if (loaded) { clearInterval(readyRetry); return; }
+  vscode.postMessage({ type: 'ready' });
+}, 2000);

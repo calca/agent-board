@@ -469,7 +469,12 @@ html, body, #root {
 }
 
 .task-card__merged {
-  font-size: 0.75em;
+  display: none;
+}
+
+.task-card__session--merged {
+  background: var(--vscode-terminal-ansiGreen, #16825d);
+  color: var(--vscode-button-foreground, #fff);
 }
 
 .task-card__session {

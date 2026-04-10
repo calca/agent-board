@@ -272,6 +272,35 @@ export function activate(context: vscode.ExtensionContext): void {
 
   // ── Kanban / Provider / Copilot commands ─────────────────────────────
 
+  /**
+   * Send all initial data (tasks, squad status, agents, MCP, repo info) to the panel.
+   * Wraps sendTasksToPanel with a 5-second timeout so a hanging provider can't
+   * block the board from loading.
+   */
+  async function sendInitialDataToPanel(panel: KanbanPanel): Promise<void> {
+    const TIMEOUT_MS = 5_000;
+    try {
+      await Promise.race([
+        sendTasksToPanel(panel, providerRegistry, genAiRegistry, squadManager, sessionStateManager),
+        new Promise<never>((_, reject) => setTimeout(() => reject(new Error('sendTasksToPanel timed out')), TIMEOUT_MS)),
+      ]);
+    } catch (err) {
+      logger.error('Initial data send failed or timed out:', err instanceof Error ? err.message : String(err));
+      // Send empty data so the webview exits the loading spinner
+      panel.updateTasks([], EDITABLE_PROVIDER_IDS);
+    }
+    panel.updateSquadStatus(squadManager.getStatus());
+    panel.updateAgents(agentOptions());
+    panel.updateMcpStatus(ProjectConfig.getProjectConfig()?.mcp?.enabled ?? false);
+    panel.postMessage({
+      type: 'repoStatus',
+      isGit: await isGitRepository(),
+      isGitHub: await isGitHubRepository(),
+      workspaceRoot: vscode.workspace.workspaceFolders?.[0]?.uri.fsPath,
+      workspaceName: vscode.workspace.name ?? vscode.workspace.workspaceFolders?.[0]?.name ?? '',
+    });
+  }
+
   const openKanban = vscode.commands.registerCommand('agentBoard.openKanban', async () => {
     logger.info('openKanban command invoked');
     if (!vscode.workspace.workspaceFolders || vscode.workspace.workspaceFolders.length === 0) {
@@ -292,18 +321,7 @@ export function activate(context: vscode.ExtensionContext): void {
     panel.onMessage(async (msg) => {
       switch (msg.type) {
         case 'ready':
-          // Send initial tasks, squad status, available agents, and MCP status
-          await sendTasksToPanel(panel, providerRegistry, genAiRegistry, squadManager, sessionStateManager);
-          panel.updateSquadStatus(squadManager.getStatus());
-          panel.updateAgents(agentOptions());
-          panel.updateMcpStatus(ProjectConfig.getProjectConfig()?.mcp?.enabled ?? false);
-          panel.postMessage({
-            type: 'repoStatus',
-            isGit: await isGitRepository(),
-            isGitHub: await isGitHubRepository(),
-            workspaceRoot: vscode.workspace.workspaceFolders?.[0]?.uri.fsPath,
-            workspaceName: vscode.workspace.name ?? vscode.workspace.workspaceFolders?.[0]?.name ?? '',
-          });
+          await sendInitialDataToPanel(panel);
           break;
         case 'refreshRequest':
           await refreshTasksCommand(providerRegistry);
@@ -660,6 +678,53 @@ export function activate(context: vscode.ExtensionContext): void {
           }
           break;
         }
+        case 'alignWorktree': {
+          const session = sessionStateManager.getSession(msg.sessionId);
+          const wtPath = session?.worktreePath;
+          const repoRoot = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
+          if (!wtPath || !repoRoot) {
+            vscode.window.showErrorMessage('Align: worktree non trovato.');
+            break;
+          }
+
+          // Pick the provider used for this task, or the first available non-chat provider
+          const alignProviderId = session.providerId;
+          const alignProvider = alignProviderId
+            ? genAiRegistry?.get(alignProviderId) ?? genAiRegistry?.getAll().find(p => p.id !== 'chat')
+            : genAiRegistry?.getAll().find(p => p.id !== 'chat');
+          if (!alignProvider) {
+            vscode.window.showErrorMessage('Align from main: nessun provider disponibile.');
+            break;
+          }
+
+          try {
+            const branch = (await execPromise('git rev-parse --abbrev-ref HEAD', { cwd: wtPath })).trim();
+            // Check if main has diverged from the worktree branch
+            const behindCount = (await execPromise(`git rev-list --count ${branch}..main`, { cwd: repoRoot })).trim();
+            const mainDiff = (await execPromise('git diff main --stat', { cwd: wtPath })).trim();
+
+            const alignPrompt =
+              `## Align Worktree from main\n\n` +
+              `You are working in the worktree at **${wtPath}** on branch **${branch}**.\n` +
+              `The branch is **${behindCount}** commit(s) behind main.\n\n` +
+              `### Current diff vs main\n\`\`\`\n${mainDiff}\n\`\`\`\n\n` +
+              `### Instructions\n` +
+              `1. From the worktree directory (${wtPath}), rebase or merge from main to align the branch:\n` +
+              `   - Run: cd ${wtPath} && git fetch origin main && git rebase main\n` +
+              `2. If there are merge conflicts, resolve them intelligently by understanding both sides\n` +
+              `3. After resolving conflicts, ensure the code compiles and tests pass\n` +
+              `4. Commit the resolution if needed\n` +
+              `5. Report what changed and whether the alignment was successful\n`;
+
+            await copilotLauncher.launch(msg.sessionId, alignProvider.id, undefined, alignPrompt);
+            await sendTasksToPanel(panel, providerRegistry, genAiRegistry, squadManager, sessionStateManager);
+          } catch (err) {
+            const errMsg = err instanceof Error ? err.message : String(err);
+            logger.error('Align from main failed:', errMsg);
+            vscode.window.showErrorMessage(`Align from main fallito: ${errMsg}`);
+          }
+          break;
+        }
         case 'agentMerge': {
           const session = sessionStateManager.getSession(msg.sessionId);
           const wtPath = session?.worktreePath;
@@ -747,6 +812,10 @@ export function activate(context: vscode.ExtensionContext): void {
         }
       }
     });
+
+    // Proactively send initial data right away — don't rely solely on the
+    // webview 'ready' message which can be lost during panel deserialization.
+    void sendInitialDataToPanel(panel);
 
     // Auto-refresh board when squad session state changes (background completion/failure)
     const squadSub = squadManager.onDidChangeStatus(async () => {
