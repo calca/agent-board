@@ -141,6 +141,12 @@ html, body, #root {
   letter-spacing: 0.04em;
 }
 
+.mcp-toggle--toolbar {
+  height: 26px;
+  padding-top: 0;
+  padding-bottom: 0;
+}
+
 .toolbar__row {
   display: flex;
   align-items: center;
@@ -1841,8 +1847,21 @@ html, body, #root {
 }
 .fv-detail-row {
   display: flex;
-  align-items: baseline;
+  align-items: center;
   gap: 8px;
+}
+.fv-detail-row--status {
+  border-radius: 4px;
+  padding: 4px 8px;
+  margin: -4px -8px 0;
+}
+.fv-status-dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  vertical-align: middle;
 }
 .fv-detail-label {
   font-size: 0.78em;

@@ -163,6 +163,10 @@ function render(): void {
 
       <div class="toolbar__row toolbar__row--main">
         <div class="toolbar__group" data-label="Squad">
+          <button class="mcp-toggle mcp-toggle--toolbar${squadStatus.autoSquadEnabled ? ' mcp-toggle--on' : ''}" id="btn-toggle-auto" ${!repoIsGit ? 'disabled' : ''} title="Toggle Auto‑Squad">
+            <span class="mcp-toggle__dot"></span>
+            <span class="mcp-toggle__label">Auto</span>
+          </button>
           <select class="toolbar__select" id="squad-provider-select" title="Provider">
             ${(() => {
               const squadProviders = genAiProviders.filter(p => !p.disabled && p.id !== 'chat');
@@ -178,10 +182,6 @@ function render(): void {
             })()}
           </select>
           <button class="toolbar__btn toolbar__btn--primary" id="btn-start-squad" ${!repoIsGit || squadStatus.activeCount >= squadStatus.maxSessions ? 'disabled' : ''} title="Start Squad">▶ Start</button>
-          <button class="mcp-toggle${squadStatus.autoSquadEnabled ? ' mcp-toggle--on' : ''}" id="btn-toggle-auto" ${!repoIsGit ? 'disabled' : ''} title="Toggle Auto‑Squad">
-            <span class="mcp-toggle__dot"></span>
-            <span class="mcp-toggle__label">Auto</span>
-          </button>
           ${squadStatus.activeCount > 0 ? `<span class="toolbar__badge toolbar__badge--live">${squadStatus.activeCount}/${squadStatus.maxSessions}</span>` : ''}
         </div>
 
@@ -375,7 +375,7 @@ function render(): void {
   document.getElementById('fv-btn-stop')?.addEventListener('click', () => {
     if (fullViewTaskId) { vscode.postMessage({ type: 'cancelSession', taskId: fullViewTaskId }); }
   });
-  // ── Full view edit button → open overlay ────────────────────────────
+  // ── Full view edit button → open inline form ────────────────────────
   document.getElementById('fv-edit-btn')?.addEventListener('click', () => {
     if (!fullViewTaskId) { return; }
     const task = currentTasks.find(t => t.id === fullViewTaskId);
@@ -385,6 +385,10 @@ function render(): void {
       showTaskForm = false;
       render();
     }
+  });
+  document.getElementById('fv-edit-cancel')?.addEventListener('click', () => {
+    editingTask = null;
+    render();
   });
   // ── Full view inline edit form ──────────────────────────────────────
   document.getElementById('fv-edit-form')?.addEventListener('submit', (e: Event) => {
@@ -397,6 +401,7 @@ function render(): void {
     const labels = (document.getElementById('fv-edit-labels') as HTMLInputElement)?.value.trim() ?? '';
     const assignee = (document.getElementById('fv-edit-assignee') as HTMLInputElement)?.value.trim() ?? '';
     vscode.postMessage({ type: 'editTask', taskId: fullViewTaskId, data: { title, body, status, labels, assignee } });
+    editingTask = null;
   });
   // Immediate status change from any full-view status select
   document.getElementById('fv-status-select')?.addEventListener('change', (e: Event) => {
@@ -517,7 +522,9 @@ function render(): void {
     const title = (form.querySelector('#tf-title') as HTMLInputElement).value.trim();
     if (!title) { return; }
     const body = (form.querySelector('#tf-body') as HTMLTextAreaElement).value.trim();
-    const status = (form.querySelector('#tf-status') as HTMLSelectElement).value;
+    const status = editingTask
+      ? (form.querySelector('#tf-status') as HTMLSelectElement)?.value ?? currentColumns[0]?.id ?? 'todo'
+      : currentColumns[0]?.id ?? 'todo';
     const labels = (form.querySelector('#tf-labels') as HTMLInputElement).value.trim();
     const assignee = (form.querySelector('#tf-assignee') as HTMLInputElement).value.trim();
 
@@ -678,7 +685,7 @@ function renderCard(task: KanbanTask): string {
         </div>
         <div class="task-card__footer-right">
           ${visibleLabels.slice(0, 2).map(l => `<span class="task-card__label">${escapeHtml(l)}</span>`).join('')}
-          <button class="task-card__edit-btn card-btn-edit" data-task-id="${escapeHtml(task.id)}" title="Edit">✎</button>
+          ${task.status !== currentColumns[currentColumns.length - 1]?.id ? `<button class="task-card__edit-btn card-btn-edit" data-task-id="${escapeHtml(task.id)}" title="Edit">✎</button>` : ''}
         </div>
       </div>
     </div>
@@ -744,9 +751,7 @@ function renderTaskForm(): string {
           <div class="task-form__row">
             <div class="task-form__field">
               <label class="task-form__label" for="tf-status">Status</label>
-              <select class="task-form__select" id="tf-status">
-                ${cols.map(c => `<option value="${escapeHtml(c.id)}">${escapeHtml(c.label)}</option>`).join('')}
-              </select>
+              <input class="task-form__input" id="tf-status" type="text" value="${escapeHtml(cols[0]?.label ?? '')}" disabled />
             </div>
             <div class="task-form__field">
               <label class="task-form__label" for="tf-labels">Labels</label>
@@ -1007,6 +1012,7 @@ function renderFullView(): string {
   const activeProviderId = isRunning ? sessionInfo?.providerId : undefined;
   const isMerged = mergedSessions.has(task.id);
   const hasWorktree = !!sessionInfo?.worktreePath;
+  const isLastCol = task.status === currentColumns[currentColumns.length - 1]?.id;
 
   // ── State badge colour helper ──
   const stateClass = sessionInfo ? `task-card__session task-card__session--${sessionInfo.state}` : '';
@@ -1040,11 +1046,13 @@ function renderFullView(): string {
         <div class="fv-col">
           <div class="fv-panel fv-panel--fill">
             <div class="fv-panel__header fv-panel__header--static">
-              <span class="fv-panel__header-text">☰ Task Details</span>
-              ${isEditable && !isRunning ? `<button class="fv-panel__header-btn" id="fv-edit-btn" title="Edit task">✎ Edit</button>` : ''}
+              <span class="fv-panel__header-text">☰ Issue Details</span>
+              ${isEditable && !isRunning && !isLastCol ? (editingTask?.id === task.id
+                ? `<button class="fv-panel__header-btn" id="fv-edit-cancel" title="Cancel edit">✕ Cancel</button>`
+                : `<button class="fv-panel__header-btn" id="fv-edit-btn" title="Edit task">✎ Edit</button>`) : ''}
             </div>
             <div class="fv-panel__body fv-panel__body--scroll">
-              ${renderFvReadOnlyDetails(task, statusCol)}
+              ${editingTask?.id === task.id ? renderFvEditableDetails(task, statusCol) : renderFvReadOnlyDetails(task, statusCol)}
             </div>
           </div>
         </div>
@@ -1161,11 +1169,14 @@ function renderFullView(): string {
 // ── Full-view sub-renderers ────────────────────────────────────────────
 
 function renderFvReadOnlyDetails(task: KanbanTask, statusCol: Column | undefined): string {
+  const statusColor = statusCol?.color ?? '';
+  const statusDot = statusColor ? `<span class="fv-status-dot" style="background:${statusColor}"></span>` : '';
+  const statusBorder = statusColor ? ` style="border-left: 3px solid ${statusColor}; padding-left: 10px;"` : '';
   return `
     <div class="fv-detail-grid">
-      <div class="fv-detail-row">
-        <span class="fv-detail-label">Status</span>
-        <select class="task-form__select fv-status-select" id="fv-status-select">
+      <div class="fv-detail-row fv-detail-row--status"${statusBorder}>
+        <span class="fv-detail-label">${statusDot} Status</span>
+        <select class="task-form__select fv-status-select" id="fv-status-select"${statusColor ? ` style="color:${statusColor}; font-weight:600;"` : ''}>
           ${currentColumns.map(c => `<option value="${escapeHtml(c.id)}"${c.id === task.status ? ' selected' : ''}>${escapeHtml(c.label)}</option>`).join('')}
         </select>
       </div>
