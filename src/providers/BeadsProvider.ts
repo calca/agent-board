@@ -31,6 +31,7 @@ export class BeadsProvider implements ITaskProvider {
   private tasks: KanbanTask[] = [];
   private timer: ReturnType<typeof setInterval> | undefined;
   private executable = 'beads';
+  private onlyAssignedToMe = false;
   private pollIntervalMs = 30_000;
 
   constructor() {
@@ -74,6 +75,7 @@ export class BeadsProvider implements ITaskProvider {
   getConfigFields(): ProviderConfigField[] {
     return [
       { key: 'executable', label: 'Beads executable', type: 'string', placeholder: 'beads', hint: 'Path or command name' },
+      { key: 'onlyAssignedToMe', label: 'Only items assigned to me', type: 'boolean' },
     ];
   }
 
@@ -105,6 +107,7 @@ export class BeadsProvider implements ITaskProvider {
       'pollInterval',
       30_000,
     );
+    this.onlyAssignedToMe = projectCfg?.beadsProvider?.onlyAssignedToMe === true;
   }
 
   private startPolling(): void {
@@ -123,7 +126,9 @@ export class BeadsProvider implements ITaskProvider {
 
   private async fetchTasks(): Promise<void> {
     try {
-      const { stdout } = await execShell(this.executable, ['list', '--format=json'], { timeout: 15_000 });
+      const args = ['list', '--format=json'];
+      if (this.onlyAssignedToMe) { args.push('--assignee', '@me'); }
+      const { stdout } = await execShell(this.executable, args, { timeout: 15_000 });
       try {
         const raw: BeadsIssue[] = JSON.parse(stdout);
         this.tasks = raw.map(issue => this.mapBeadsToTask(issue));

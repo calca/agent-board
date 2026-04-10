@@ -20,6 +20,11 @@
         "repo": {
           "type": "string",
           "description": "GitHub repository name."
+        },
+        "onlyAssignedToMe": {
+          "type": "boolean",
+          "default": false,
+          "description": "Only fetch issues assigned to the current user."
         }
       },
       "additionalProperties": false
@@ -52,6 +57,11 @@
         "executable": {
           "type": "string",
           "description": "Path to the Beads CLI executable."
+        },
+        "onlyAssignedToMe": {
+          "type": "boolean",
+          "default": false,
+          "description": "Only fetch items assigned to the current user."
         }
       },
       "additionalProperties": false
@@ -72,6 +82,11 @@
         "project": {
           "type": "string",
           "description": "Azure DevOps project name."
+        },
+        "onlyAssignedToMe": {
+          "type": "boolean",
+          "default": false,
+          "description": "Only fetch work items assigned to the current user."
         }
       },
       "additionalProperties": false

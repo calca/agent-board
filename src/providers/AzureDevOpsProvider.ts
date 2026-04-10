@@ -38,6 +38,7 @@ export class AzureDevOpsProvider implements ITaskProvider {
   private timer: ReturnType<typeof setInterval> | undefined;
   private organization = '';
   private project = '';
+  private onlyAssignedToMe = false;
   private pollIntervalMs = 30_000;
 
   constructor() {
@@ -95,6 +96,7 @@ export class AzureDevOpsProvider implements ITaskProvider {
     return [
       { key: 'organization', label: 'Organization', type: 'string', placeholder: 'https://dev.azure.com/my-org', required: true, hint: 'Organization URL or name' },
       { key: 'project', label: 'Project', type: 'string', placeholder: 'e.g. MyProject', required: true },
+      { key: 'onlyAssignedToMe', label: 'Only items assigned to me', type: 'boolean' },
     ];
   }
 
@@ -143,6 +145,7 @@ export class AzureDevOpsProvider implements ITaskProvider {
       'pollInterval',
       30_000,
     );
+    this.onlyAssignedToMe = projectCfg?.azureDevOps?.onlyAssignedToMe === true;
   }
 
   private startPolling(): void {
@@ -163,7 +166,11 @@ export class AzureDevOpsProvider implements ITaskProvider {
       return Promise.resolve();
     }
 
-    const wiql = `SELECT [System.Id], [System.Title], [System.Description], [System.State], [System.Tags], [System.AssignedTo], [System.CreatedDate] FROM WorkItems WHERE [System.TeamProject] = '${this.project.replace(/'/g, "''")}' AND [System.State] = 'Active' ORDER BY [System.CreatedDate] DESC`;
+    let wiql = `SELECT [System.Id], [System.Title], [System.Description], [System.State], [System.Tags], [System.AssignedTo], [System.CreatedDate] FROM WorkItems WHERE [System.TeamProject] = '${this.project.replace(/'/g, "''")}' AND [System.State] = 'Active'`;
+    if (this.onlyAssignedToMe) {
+      wiql += ` AND [System.AssignedTo] = @Me`;
+    }
+    wiql += ` ORDER BY [System.CreatedDate] DESC`;
     const args = [
       'boards', 'query',
       '--wiql', wiql,

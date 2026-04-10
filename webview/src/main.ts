@@ -539,8 +539,14 @@ function render(): void {
     const labels = (form.querySelector('#tf-labels') as HTMLInputElement).value.trim();
     const assignee = (form.querySelector('#tf-assignee') as HTMLInputElement).value.trim();
 
+    const remoteProviders = ['github', 'azure-devops', 'beads'];
     if (editingTask) {
-      vscode.postMessage({ type: 'editTask', taskId: editingTask.id, data: { title, body, status, labels, assignee } });
+      if (remoteProviders.includes(editingTask.providerId)) {
+        // Remote task: only send status change
+        vscode.postMessage({ type: 'editTask', taskId: editingTask.id, data: { title: editingTask.title, body: editingTask.body, status, labels: editingTask.labels.join(', '), assignee: editingTask.assignee ?? '' } });
+      } else {
+        vscode.postMessage({ type: 'editTask', taskId: editingTask.id, data: { title, body, status, labels, assignee } });
+      }
       editingTask = null;
     } else {
       vscode.postMessage({ type: 'saveTask', data: { title, body, status, labels, assignee } });
@@ -706,17 +712,22 @@ function renderCard(task: KanbanTask): string {
 
 function renderEditForm(task: KanbanTask): string {
   const cols = currentColumns;
+  const remoteProviders = ['github', 'azure-devops', 'beads'];
+  const isRemote = remoteProviders.includes(task.providerId);
+  const ro = isRemote ? ' readonly' : '';
+  const dis = isRemote ? ' disabled' : '';
+  const roClass = isRemote ? ' task-form__input--readonly' : '';
   return `
     <div class="task-form-overlay" id="task-form-overlay">
       <div class="task-form-panel">
         <button class="task-form-panel__close" id="task-form-close">✕</button>
-        <div class="task-form-panel__heading">Edit Task</div>
+        <div class="task-form-panel__heading">Edit Issue${isRemote ? ' <span style="opacity:0.5;font-size:0.8em">(remote — read-only fields)</span>' : ''}</div>
         <form id="task-form" class="task-form">
           <label class="task-form__label" for="tf-title">Title *</label>
-          <input class="task-form__input" id="tf-title" type="text" value="${escapeHtml(task.title)}" required />
+          <input class="task-form__input${roClass}" id="tf-title" type="text" value="${escapeHtml(task.title)}" required${ro} />
 
           <label class="task-form__label" for="tf-body">Description</label>
-          <textarea class="task-form__textarea" id="tf-body" rows="8">${escapeHtml(task.body)}</textarea>
+          <textarea class="task-form__textarea${roClass}" id="tf-body" rows="8"${ro}>${escapeHtml(task.body)}</textarea>
 
           <div class="task-form__row">
             <div class="task-form__field">
@@ -727,18 +738,18 @@ function renderEditForm(task: KanbanTask): string {
             </div>
             <div class="task-form__field">
               <label class="task-form__label" for="tf-labels">Labels</label>
-              <input class="task-form__input" id="tf-labels" type="text" value="${escapeHtml(task.labels.join(', '))}" placeholder="bug, feature" />
+              <input class="task-form__input${roClass}" id="tf-labels" type="text" value="${escapeHtml(task.labels.join(', '))}" placeholder="bug, feature"${ro} />
             </div>
             <div class="task-form__field">
               <label class="task-form__label" for="tf-assignee">Assignee</label>
-              <input class="task-form__input" id="tf-assignee" type="text" value="${escapeHtml(task.assignee ?? '')}" placeholder="Username" />
+              <input class="task-form__input${roClass}" id="tf-assignee" type="text" value="${escapeHtml(task.assignee ?? '')}" placeholder="Username"${ro} />
             </div>
           </div>
 
           <div class="task-form__actions">
-            <button type="submit" class="task-form__btn task-form__btn--save">Save</button>
+            <button type="submit" class="task-form__btn task-form__btn--save">${isRemote ? 'Update Status' : 'Save'}</button>
             <button type="button" class="task-form__btn task-form__btn--cancel" id="task-form-cancel">Close</button>
-            ${editableProviderIds.includes(task.providerId) ? `<button type="button" class="task-form__btn task-form__btn--delete" id="task-form-delete" data-task-id="${escapeHtml(task.id)}">⊘ Delete</button>` : ''}
+            ${!isRemote && editableProviderIds.includes(task.providerId) ? `<button type="button" class="task-form__btn task-form__btn--delete" id="task-form-delete" data-task-id="${escapeHtml(task.id)}">⊘ Delete</button>` : ''}
           </div>
         </form>
       </div>

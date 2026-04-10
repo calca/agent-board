@@ -1043,6 +1043,13 @@ html, body, #root {
   min-height: 180px;
 }
 
+.task-form__input--readonly,
+.task-form__textarea.task-form__input--readonly {
+  opacity: 0.6;
+  cursor: not-allowed;
+  background: var(--vscode-editor-background);
+}
+
 .task-form__actions {
   display: flex;
   gap: 8px;

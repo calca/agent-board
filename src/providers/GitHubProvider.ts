@@ -46,6 +46,7 @@ export class GitHubProvider implements ITaskProvider {
   private token = '';
   private perPage = 100;
   private cacheTtlMs = 60_000;
+  private onlyAssignedToMe = false;
   /** `true` after we confirmed `gh` is available. */
   private ghCliAvailable: boolean | undefined;
 
@@ -151,6 +152,7 @@ export class GitHubProvider implements ITaskProvider {
     return [
       { key: 'owner', label: 'Owner', type: 'string', placeholder: 'e.g. my-org', hint: 'Auto-detected from gh CLI if empty' },
       { key: 'repo', label: 'Repository', type: 'string', placeholder: 'e.g. my-repo', hint: 'Auto-detected from gh CLI if empty' },
+      { key: 'onlyAssignedToMe', label: 'Only issues assigned to me', type: 'boolean' },
     ];
   }
 
@@ -239,6 +241,7 @@ export class GitHubProvider implements ITaskProvider {
     this.owner = ghCfg.owner;
     this.repo = ghCfg.repo;
     this.cacheTtlMs = 60_000;
+    this.onlyAssignedToMe = ProjectConfig.getProjectConfig()?.github?.onlyAssignedToMe === true;
   }
 
   /** Obtain a token via VS Code's built-in GitHub SSO (REST API fallback). */
@@ -277,14 +280,15 @@ export class GitHubProvider implements ITaskProvider {
 
     const repoSlug = `${this.owner}/${this.repo}`;
     const fields = 'number,title,body,state,labels,assignees,url,createdAt';
+    const assigneeArgs = this.onlyAssignedToMe ? ['--assignee', '@me'] : [];
 
     try {
       // Fetch open + closed issues
       const [openStdout, closedStdout] = await Promise.all([
         this.execGh(['issue', 'list', '--repo', repoSlug, '--state', 'open',
-          '--limit', '200', '--json', fields]),
+          '--limit', '200', '--json', fields, ...assigneeArgs]),
         this.execGh(['issue', 'list', '--repo', repoSlug, '--state', 'closed',
-          '--limit', '100', '--json', fields]),
+          '--limit', '100', '--json', fields, ...assigneeArgs]),
       ]);
 
       const openIssues = JSON.parse(openStdout) as GhCliIssue[];
@@ -315,7 +319,17 @@ export class GitHubProvider implements ITaskProvider {
     const maxPages = 5;
 
     while (page <= maxPages) {
-      const url = `https://api.github.com/repos/${this.owner}/${this.repo}/issues?state=all&per_page=${this.perPage}&page=${page}`;
+      let url = `https://api.github.com/repos/${this.owner}/${this.repo}/issues?state=all&per_page=${this.perPage}&page=${page}`;
+      if (this.onlyAssignedToMe && this.token) {
+        // GitHub REST API: filter by current authenticated user's login
+        try {
+          const userRes = await fetch('https://api.github.com/user', { headers: this.apiHeaders() });
+          if (userRes.ok) {
+            const user = await userRes.json() as { login: string };
+            url += `&assignee=${encodeURIComponent(user.login)}`;
+          }
+        } catch { /* ignore */ }
+      }
       const res = await fetch(url, { headers: this.apiHeaders() });
       if (!res.ok) {
         throw new Error(`GitHub API error: ${res.status} ${res.statusText}`);

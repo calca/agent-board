@@ -23,6 +23,8 @@ export interface ProjectConfigData {
     enabled?: boolean;
     owner?: string;
     repo?: string;
+    /** Only fetch issues assigned to the current user. */
+    onlyAssignedToMe?: boolean;
   };
   jsonProvider?: {
     enabled?: boolean;
@@ -31,6 +33,8 @@ export interface ProjectConfigData {
   beadsProvider?: {
     enabled?: boolean;
     executable?: string;
+    /** Only fetch items assigned to the current user. */
+    onlyAssignedToMe?: boolean;
   };
   azureDevOps?: {
     enabled?: boolean;
@@ -38,6 +42,8 @@ export interface ProjectConfigData {
     organization?: string;
     /** Project name inside the organisation. */
     project?: string;
+    /** Only fetch work items assigned to the current user. */
+    onlyAssignedToMe?: boolean;
   };
   /**
    * Git worktree settings.
