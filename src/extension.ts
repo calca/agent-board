@@ -289,11 +289,11 @@ export function activate(context: vscode.ExtensionContext): void {
 
   /**
    * Send all initial data (tasks, squad status, agents, MCP, repo info) to the panel.
-   * Wraps sendTasksToPanel with a 5-second timeout so a hanging provider can't
+   * Wraps sendTasksToPanel with a 15-second timeout so a hanging provider can't
    * block the board from loading.
    */
   async function sendInitialDataToPanel(panel: KanbanPanel): Promise<void> {
-    const TIMEOUT_MS = 5_000;
+    const TIMEOUT_MS = 15_000;
     try {
       await Promise.race([
         sendTasksToPanel(panel, providerRegistry, genAiRegistry, squadManager, sessionStateManager),

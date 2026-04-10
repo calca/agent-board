@@ -56,19 +56,30 @@ export class AzureDevOpsProvider implements ITaskProvider {
 
   async updateTask(task: KanbanTask): Promise<void> {
     const nativeId = task.id.replace(`${this.id}:`, '');
-    const state = this.reverseMapStatus(task.status);
-    const args = [
-      'boards', 'work-item', 'update',
-      '--id', nativeId,
-      '--state', state,
-      '--output', 'json',
-    ];
-    if (this.organization) { args.push('--org', this.organization); }
-    try {
-      await execShell('az', args, { timeout: 15_000 });
-      void this.refresh();
-    } catch (err) {
-      throw new Error(`Azure DevOps CLI error: ${err instanceof Error ? err.message : String(err)}`);
+    const azState = this.reverseMapStatus(task.status);
+
+    // Only push to Azure DevOps if the target state is a known Azure state
+    // (local column moves like todo→inprogress stay local-only).
+    if (azState) {
+      const args = [
+        'boards', 'work-item', 'update',
+        '--id', nativeId,
+        '--state', azState,
+        '--output', 'json',
+      ];
+      if (this.organization) { args.push('--org', this.organization); }
+      try {
+        await execShell('az', args, { timeout: 15_000 });
+      } catch (err) {
+        throw new Error(`Azure DevOps CLI error: ${err instanceof Error ? err.message : String(err)}`);
+      }
+    }
+
+    // Update local task status immediately (no re-fetch to avoid overwrite)
+    const idx = this.tasks.findIndex(t => t.id === task.id);
+    if (idx !== -1) {
+      this.tasks[idx] = { ...this.tasks[idx], status: task.status };
+      this._onDidChangeTasks.fire(this.tasks);
     }
   }
 
@@ -211,23 +222,36 @@ export class AzureDevOpsProvider implements ITaskProvider {
       return;
     }
 
-    // az boards work-item show accepts only --id (singular), fetch each item
+    // Fetch work item details in parallel (max 10 concurrent)
     const results: AzWorkItem[] = [];
-    for (const id of ids.slice(0, 200)) {
-      try {
-        const { stdout } = await execShell('az', [
-          'boards', 'work-item', 'show',
-          '--id', String(id),
-          '--org', this.organization,
-          '--output', 'json',
-        ], { timeout: 15_000 });
-        const item = JSON.parse(stdout) as AzWorkItem;
-        results.push(item);
-      } catch {
-        // skip items that fail individually
+    const batchIds = ids.slice(0, 200);
+    const CONCURRENCY = 10;
+    for (let i = 0; i < batchIds.length; i += CONCURRENCY) {
+      const chunk = batchIds.slice(i, i + CONCURRENCY);
+      const settled = await Promise.allSettled(
+        chunk.map(id =>
+          execShell('az', [
+            'boards', 'work-item', 'show',
+            '--id', String(id),
+            '--org', this.organization,
+            '--output', 'json',
+          ], { timeout: 15_000 }).then(({ stdout }) => JSON.parse(stdout) as AzWorkItem),
+        ),
+      );
+      for (const r of settled) {
+        if (r.status === 'fulfilled') { results.push(r.value); }
       }
     }
-    this.tasks = results.map(item => this.mapWorkItem(item));
+    const newTasks = results.map(item => this.mapWorkItem(item));
+    // Preserve local status overrides (e.g. user moved card to inprogress)
+    const oldStatusMap = new Map(this.tasks.map(t => [t.id, t.status]));
+    for (const t of newTasks) {
+      const oldStatus = oldStatusMap.get(t.id);
+      if (oldStatus && oldStatus !== t.status) {
+        t.status = oldStatus;
+      }
+    }
+    this.tasks = newTasks;
   }
 
   private mapWorkItem(item: AzWorkItem): KanbanTask {
@@ -269,12 +293,12 @@ export class AzureDevOpsProvider implements ITaskProvider {
     }
   }
 
-  private reverseMapStatus(column: ColumnId): string {
+  private reverseMapStatus(column: ColumnId): string | undefined {
     switch (column) {
-      case 'done': return 'Done';
-      case 'inprogress': return 'Active';
-      case 'review': return 'Review';
-      default: return 'New';
+      case 'done': return 'Closed';
+      case 'review': return 'Resolved';
+      // 'todo' and 'inprogress' stay local — Azure 'Active' maps to todo on fetch
+      default: return undefined;
     }
   }
 }
