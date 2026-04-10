@@ -58,7 +58,7 @@ function MarkdownEditorComponent({ initialValue, containerId, placeholder }: Edi
 
   return (
     <MDXEditor
-      key={containerId + initialValue.slice(0, 32)}
+      key={`${containerId}::${initialValue.slice(0, 32)}`}
       markdown={initialValue}
       onChange={handleChange}
       placeholder={placeholder}
