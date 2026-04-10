@@ -155,7 +155,7 @@ export class AzureDevOpsProvider implements ITaskProvider {
       return Promise.resolve();
     }
 
-    const wiql = `SELECT [System.Id] FROM WorkItems WHERE [System.TeamProject] = '${this.project.replace(/'/g, "''")}' AND [System.State] <> 'Removed' ORDER BY [System.CreatedDate] DESC`;
+    const wiql = `SELECT [System.Id] FROM WorkItems WHERE [System.TeamProject] = '${this.project.replace(/'/g, "''")}' AND [System.State] = 'Active' ORDER BY [System.CreatedDate] DESC`;
     const args = [
       'boards', 'query',
       '--wiql', wiql,
