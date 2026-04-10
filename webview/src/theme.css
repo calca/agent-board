@@ -2000,10 +2000,37 @@ html, body, #root {
   padding-top: 10px;
   border-top: 1px solid var(--vscode-panel-border);
   line-height: 1.55;
-  white-space: pre-wrap;
   word-break: break-word;
   font-size: 0.9em;
   opacity: 0.85;
+}
+.fv-description img {
+  max-width: 100%;
+  height: auto;
+}
+.fv-description a {
+  color: var(--vscode-textLink-foreground);
+}
+.fv-description pre,
+.fv-description code {
+  background: var(--vscode-textCodeBlock-background, rgba(0,0,0,0.15));
+  padding: 2px 4px;
+  border-radius: 3px;
+  font-size: 12px;
+}
+.fv-description pre {
+  padding: 8px;
+  overflow-x: auto;
+}
+.fv-description table {
+  border-collapse: collapse;
+  width: 100%;
+}
+.fv-description th,
+.fv-description td {
+  border: 1px solid var(--vscode-panel-border, #444);
+  padding: 4px 8px;
+  text-align: left;
 }
 .fv-edit-body-group {
   display: flex;

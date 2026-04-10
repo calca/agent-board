@@ -696,8 +696,10 @@ function renderCard(task: KanbanTask): string {
   const stateModifier = session ? ` task-card--state-${session.state}` : '';
   // Short ID display (e.g. "GH-12" or provider prefix)
   const shortId = task.id.includes(':') ? task.id.replace(':', '-').toUpperCase() : task.id;
-  // Body snippet — first ~80 chars
-  const bodySnippet = task.body ? task.body.slice(0, 80).replace(/\n/g, ' ') + (task.body.length > 80 ? '…' : '') : '';
+  // Body snippet — first ~80 chars; strip HTML tags for card preview
+  const isBodyHtml = task.body ? /<[a-z][\s\S]*>/i.test(task.body) : false;
+  const plainBody = isBodyHtml ? task.body.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim() : task.body;
+  const bodySnippet = plainBody ? plainBody.slice(0, 80).replace(/\n/g, ' ') + (plainBody.length > 80 ? '…' : '') : '';
   // Priority label (look for priority/high/medium/low in labels)
   const priorityMap: Record<string, { icon: string; cls: string }> = {
     critical: { icon: '⬆⬆', cls: 'critical' },
@@ -1329,7 +1331,7 @@ function renderFvReadOnlyDetails(task: KanbanTask, statusCol: Column | undefined
         </div>
       ` : ''}
     </div>
-    ${task.body ? `<div class="fv-description">${escapeHtml(task.body)}</div>` : ''}
+    ${task.body ? `<div class="fv-description">${/<[a-z][\s\S]*>/i.test(task.body) ? sanitizeHtml(task.body) : escapeHtml(task.body)}</div>` : ''}
   `;
 }
 
