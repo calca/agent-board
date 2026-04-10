@@ -564,11 +564,12 @@ function render(): void {
 
 function renderColumn(col: Column, tasks: KanbanTask[]): string {
   const bgStyle = col.color ? ` style="background: ${col.color}0D"` : '';
+  const countStyle = col.color ? ` style="background: ${col.color}1A; color: ${col.color}"` : '';
   return `
     <div class="kanban__column"${bgStyle}>
       <div class="kanban__column-header">
         <span>${escapeHtml(col.label)}</span>
-        <span class="kanban__column-count">${tasks.length}</span>
+        <span class="kanban__column-count"${countStyle}>${tasks.length}</span>
       </div>
       <div class="kanban__column-body" data-col-id="${col.id}">
         ${tasks.length === 0
@@ -709,7 +710,7 @@ function renderTaskForm(): string {
     <div class="task-form-overlay" id="task-form-overlay">
       <div class="task-form-panel">
         <button class="task-form-panel__close" id="task-form-close">✕</button>
-        <div class="task-form-panel__heading">New Task</div>
+        <div class="task-form-panel__heading">New Issue</div>
         <form id="task-form" class="task-form">
           <label class="task-form__label" for="tf-title">Title *</label>
           <input class="task-form__input" id="tf-title" type="text" placeholder="What needs to be done?" required autofocus />
