@@ -648,24 +648,28 @@ export function activate(context: vscode.ExtensionContext): void {
 
             // Move task to last column (done) after successful merge
             const [mergeProviderId] = msg.sessionId.split(':');
+            logger.info('mergeWorktree: providerId=%s, sessionId=%s', mergeProviderId, msg.sessionId);
             const mergeProvider = providerRegistry.get(mergeProviderId);
             if (mergeProvider) {
               const mergeTasks = await mergeProvider.getTasks();
               const mergeTask = mergeTasks.find(t => t.id === msg.sessionId);
+              logger.info('mergeWorktree: found task=%s, currentStatus=%s', !!mergeTask, mergeTask?.status);
               if (mergeTask) {
                 const columnOrder = ProjectConfig.getProjectConfig()?.kanban?.columns ?? [...COLUMN_IDS];
                 const lastCol = columnOrder[columnOrder.length - 1];
-                if (mergeTask.status !== lastCol) {
-                  await mergeProvider.updateTask({ ...mergeTask, status: lastCol });
-                }
+                logger.info('mergeWorktree: columnOrder=%s, lastCol=%s', JSON.stringify(columnOrder), lastCol);
+                await mergeProvider.updateTask({ ...mergeTask, status: lastCol });
+                logger.info('mergeWorktree: task updated to %s', lastCol);
               }
+            } else {
+              logger.warn('mergeWorktree: provider "%s" not found in registry', mergeProviderId);
             }
 
             // Persist merged flag on session so it survives reloads
             sessionStateManager.markMerged(msg.sessionId);
 
             // Refresh tasks to update the UI
-            vscode.commands.executeCommand('agentBoard.refreshTasks');
+            await sendTasksToPanel(panel, providerRegistry, genAiRegistry, squadManager, sessionStateManager);
           } catch (err) {
             const errMsg = err instanceof Error ? err.message : String(err);
             logger.error('mergeWorktree failed:', errMsg);
