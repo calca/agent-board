@@ -1019,7 +1019,6 @@ function renderFullView(): string {
           <button class="fv-topbar__back" id="fv-close" title="Back">←</button>
           <div class="fv-topbar__title-group">
             <span class="fv-topbar__title">${escapeHtml(task.title)}</span>
-            ${isMerged ? '<span class="fv-merged-badge fv-merged-badge--inline">✓ Merged</span>' : ''}
             <span class="fv-topbar__meta">
               ${sessionInfo ? `<span class="${stateClass}">${escapeHtml(sessionInfo.state)}</span>` : ''}
               <span class="fv-topbar__provider">${escapeHtml(task.providerId)}</span>
@@ -1028,6 +1027,7 @@ function renderFullView(): string {
           </div>
         </div>
         <div class="fv-topbar__actions">
+          ${isMerged ? '<span class="fv-merged-badge fv-merged-badge--inline">✓ Merged</span>' : ''}
         </div>
       </div>
 
@@ -1041,7 +1041,7 @@ function renderFullView(): string {
           <div class="fv-panel fv-panel--fill">
             <div class="fv-panel__header fv-panel__header--static">
               <span class="fv-panel__header-text">☰ Task Details</span>
-              ${isEditable && !isMerged && !isRunning ? `<button class="fv-panel__header-btn" id="fv-edit-btn" title="Edit task">✎ Edit</button>` : ''}
+              ${isEditable && !isRunning ? `<button class="fv-panel__header-btn" id="fv-edit-btn" title="Edit task">✎ Edit</button>` : ''}
             </div>
             <div class="fv-panel__body fv-panel__body--scroll">
               ${renderFvReadOnlyDetails(task, statusCol)}
