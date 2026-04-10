@@ -27,9 +27,15 @@ export class CopilotCliGenAiProvider implements IGenAiProvider {
     this.fleet  = config?.fleet  ?? false;
   }
 
+  private static _shellEnv(): NodeJS.ProcessEnv {
+    const PATH = process.env.PATH ?? '';
+    const extra = ['/usr/local/bin', '/opt/homebrew/bin'].filter(p => !PATH.includes(p)).join(':');
+    return { ...process.env, PATH: extra ? `${extra}:${PATH}` : PATH };
+  }
+
   async isAvailable(): Promise<boolean> {
     return new Promise(resolve => {
-      const proc = spawn('copilot', ['--version'], { stdio: 'pipe' });
+      const proc = spawn('copilot', ['--version'], { stdio: 'pipe', env: CopilotCliGenAiProvider._shellEnv() });
       proc.on("close", code => resolve(code === 0));
       proc.on("error", () => resolve(false));
     });
@@ -67,7 +73,7 @@ export class CopilotCliGenAiProvider implements IGenAiProvider {
       const proc = spawn('copilot', args, {
         cwd,
         stdio: ['pipe', 'pipe', 'pipe'],
-        env: { ...process.env, NO_COLOR: '1' },
+        env: { ...CopilotCliGenAiProvider._shellEnv(), NO_COLOR: '1' },
       });
       this._proc = proc;
       proc.stdout?.on("data", (chunk: Buffer) => { const t = chunk.toString("utf-8"); this._emit(t); this.logger.info("[copilot-cli] %s", t.trimEnd()); });

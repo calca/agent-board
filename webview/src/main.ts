@@ -1119,8 +1119,10 @@ function renderFullView(): string {
                   ` : `
                     <button class="fv-action-btn fv-open-worktree" data-wt-path="${escapeHtml(sessionInfo!.worktreePath!)}" title="Open worktree folder in VS Code"><svg class="fv-icon" width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M1.5 1h5l1 2H14.5a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1h-13a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1z"/></svg> Open in VS Code</button>
                     <button class="fv-action-btn fv-review-wt" data-session-id="${escapeHtml(task.id)}" title="Review changes vs main branch"><svg class="fv-icon" width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M2 3.5A1.5 1.5 0 0 1 3.5 2h5.586a1.5 1.5 0 0 1 1.06.44l3.415 3.414A1.5 1.5 0 0 1 14 6.914V12.5a1.5 1.5 0 0 1-1.5 1.5h-9A1.5 1.5 0 0 1 2 12.5v-9Zm1.5-.5a.5.5 0 0 0-.5.5v9a.5.5 0 0 0 .5.5h9a.5.5 0 0 0 .5-.5V7H9.5A1.5 1.5 0 0 1 8 5.5V3H3.5ZM9 3.207V5.5a.5.5 0 0 0 .5.5h2.293L9 3.207ZM6 8.5a.5.5 0 0 1 .5-.5h3a.5.5 0 0 1 0 1h-3a.5.5 0 0 1-.5-.5Zm.5 1.5a.5.5 0 0 0 0 1h2a.5.5 0 0 0 0-1h-2Z"/></svg> Review Diff</button>
+                    ${!isRunning ? `
                     <hr class="fv-actions__separator" />
                     <button class="fv-action-btn fv-align-wt" data-session-id="${escapeHtml(task.id)}" title="Align worktree from main with AI"><svg class="fv-icon" width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M8 1a.75.75 0 0 1 .75.75v2.5a.75.75 0 0 1-1.5 0v-2.5A.75.75 0 0 1 8 1ZM3.1 3.1a.75.75 0 0 1 1.06 0l1.77 1.77a.75.75 0 0 1-1.06 1.06L3.1 4.16a.75.75 0 0 1 0-1.06Zm9.8 0a.75.75 0 0 1 0 1.06l-1.77 1.77a.75.75 0 1 1-1.06-1.06l1.77-1.77a.75.75 0 0 1 1.06 0ZM8 6a2 2 0 1 0 0 4 2 2 0 0 0 0-4ZM1 8a.75.75 0 0 1 .75-.75h2.5a.75.75 0 0 1 0 1.5h-2.5A.75.75 0 0 1 1 8Zm10 0a.75.75 0 0 1 .75-.75h2.5a.75.75 0 0 1 0 1.5h-2.5A.75.75 0 0 1 11 8Zm-7.9 4.9a.75.75 0 0 1 1.06 0l1.77-1.77a.75.75 0 0 1 1.06 1.06l-1.77 1.77a.75.75 0 0 1-1.06 0l-1.06-1.06Zm7.03-1.77a.75.75 0 0 1 1.06-1.06l1.77 1.77a.75.75 0 0 1-1.06 1.06l-1.77-1.77ZM8 11a.75.75 0 0 1 .75.75v2.5a.75.75 0 0 1-1.5 0v-2.5A.75.75 0 0 1 8 11Z"/></svg> Align from main with AI</button>
+                    ` : ''}
                     ${sessionInfo?.state === 'completed' || task.status === 'done' ? `
                       <button class="fv-action-btn fv-agent-merge" data-session-id="${escapeHtml(task.id)}" title="Launch AI to review and merge"><svg class="fv-icon" width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M5 3.25a2.25 2.25 0 1 1 4.5 0A2.25 2.25 0 0 1 8 5.37V7h2.75A2.25 2.25 0 0 1 13 9.25v.38a2.25 2.25 0 1 1-1.5 0v-.38a.75.75 0 0 0-.75-.75h-5.5a.75.75 0 0 0-.75.75v.38a2.25 2.25 0 1 1-1.5 0v-.38A2.25 2.25 0 0 1 5.25 7H8V5.37A2.25 2.25 0 0 1 5 3.25Z"/></svg> Merge to main with AI</button>
                       <hr class="fv-actions__separator" />
@@ -1171,12 +1173,11 @@ function renderFullView(): string {
 function renderFvReadOnlyDetails(task: KanbanTask, statusCol: Column | undefined): string {
   const statusColor = statusCol?.color ?? '';
   const statusDot = statusColor ? `<span class="fv-status-dot" style="background:${statusColor}"></span>` : '';
-  const statusBorder = statusColor ? ` style="border-left: 3px solid ${statusColor}; padding-left: 10px;"` : '';
   return `
     <div class="fv-detail-grid">
-      <div class="fv-detail-row fv-detail-row--status"${statusBorder}>
+      <div class="fv-detail-row fv-detail-row--status">
         <span class="fv-detail-label">${statusDot} Status</span>
-        <select class="task-form__select fv-status-select" id="fv-status-select"${statusColor ? ` style="color:${statusColor}; font-weight:600;"` : ''}>
+        <select class="task-form__select fv-status-select" id="fv-status-select">
           ${currentColumns.map(c => `<option value="${escapeHtml(c.id)}"${c.id === task.status ? ' selected' : ''}>${escapeHtml(c.label)}</option>`).join('')}
         </select>
       </div>
