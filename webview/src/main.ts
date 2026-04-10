@@ -592,10 +592,11 @@ function render(): void {
 
 function renderColumn(col: Column, tasks: KanbanTask[]): string {
   const bgStyle = col.color ? ` style="background: ${col.color}0D"` : '';
-  const countStyle = col.color ? ` style="background: ${col.color}1A; color: ${col.color}"` : '';
+  const headerStyle = col.color ? ` style="background: ${col.color}1A"` : '';
+  const countStyle = col.color ? ` style="background: ${col.color}33; color: ${col.color}"` : '';
   return `
     <div class="kanban__column"${bgStyle}>
-      <div class="kanban__column-header">
+      <div class="kanban__column-header"${headerStyle}>
         <span>${escapeHtml(col.label)}</span>
         <span class="kanban__column-count"${countStyle}>${tasks.length}</span>
       </div>
@@ -1045,7 +1046,7 @@ function renderFullView(): string {
         <!-- Task Details -->
         <div class="fv-col">
           <div class="fv-panel fv-panel--fill"${statusCol?.color ? ` style="background:${statusCol.color}0D;"` : ''}>
-            <div class="fv-panel__header fv-panel__header--static">
+            <div class="fv-panel__header fv-panel__header--static"${statusCol?.color ? ` style="background:${statusCol.color}1A;"` : ''}>
               <span class="fv-panel__header-text">☰ Issue Details</span>
               ${isEditable && !isRunning && !isLastCol ? (editingTask?.id === task.id
                 ? `<button class="fv-panel__header-btn" id="fv-edit-cancel" title="Cancel edit">✕ Cancel</button>`
@@ -1059,8 +1060,8 @@ function renderFullView(): string {
 
         <!-- Session -->
         <div class="fv-col">
-          <div class="fv-panel fv-panel--fill">
-            <div class="fv-panel__header fv-panel__header--static">
+          <div class="fv-panel fv-panel--fill" style="background:#9b59b60D;">
+            <div class="fv-panel__header fv-panel__header--static" style="background:#9b59b61A;">
               <span class="fv-panel__header-text">⊙ Session</span>
             </div>
             <div class="fv-panel__body fv-panel__body--scroll">
@@ -1073,8 +1074,8 @@ function renderFullView(): string {
 
         <!-- Files -->
         <div class="fv-col">
-          <div class="fv-panel fv-panel--fill">
-            <div class="fv-panel__header fv-panel__header--static">
+          <div class="fv-panel fv-panel--fill" style="background:#3498db0D;">
+            <div class="fv-panel__header fv-panel__header--static" style="background:#3498db1A;">
               <span class="fv-panel__header-text">⊞ Files</span>
               ${files.length > 0 ? `<span class="fv-panel__badge">${files.length}</span>` : ''}
             </div>
@@ -1095,8 +1096,8 @@ function renderFullView(): string {
 
         <!-- Actions -->
         <div class="fv-col">
-          <div class="fv-panel fv-panel--fill">
-            <div class="fv-panel__header fv-panel__header--static">
+          <div class="fv-panel fv-panel--fill" style="background:#e67e220D;">
+            <div class="fv-panel__header fv-panel__header--static" style="background:#e67e221A;">
               <span class="fv-panel__header-text"><svg class="fv-icon" width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M4.5 3a.5.5 0 0 0 0 1h7a.5.5 0 0 0 0-1h-7ZM4 6.5a.5.5 0 0 1 .5-.5h7a.5.5 0 0 1 0 1h-7a.5.5 0 0 1-.5-.5Zm.5 2.5a.5.5 0 0 0 0 1h4a.5.5 0 0 0 0-1h-4Zm-1 3a.5.5 0 0 1 .5-.5h2a.5.5 0 0 1 0 1h-2a.5.5 0 0 1-.5-.5Z"/></svg> Actions</span>
             </div>
             <div class="fv-panel__body fv-panel__body--scroll">
@@ -1147,8 +1148,8 @@ function renderFullView(): string {
 
       <!-- ── ROW 2: Activity Log (1/3 height) ── -->
       <div class="fv-row fv-row--bottom${logExpanded ? ' fv-row--expanded' : ''}">
-        <div class="fv-panel fv-panel--fill">
-          <div class="fv-panel__header fv-panel__header--static fv-log-panel-header">
+        <div class="fv-panel fv-panel--fill" style="background:#8888880D;">
+          <div class="fv-panel__header fv-panel__header--static fv-log-panel-header" style="background:#8888881A;">
             <span class="fv-panel__header-text">≡ Activity Log</span>
             <span class="fv-panel__badge">${logs.length}</span>
             <button class="fv-panel__header-btn" id="fv-log-expand" title="${logExpanded ? 'Collapse' : 'Expand'}">${logExpanded ? '⊖' : '⊕'}</button>
