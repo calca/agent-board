@@ -4,7 +4,7 @@ import * as vscode from 'vscode';
 import { ProjectConfig } from '../config/ProjectConfig';
 import { COLUMN_IDS, ColumnId } from '../types/ColumnId';
 import { KanbanTask } from '../types/KanbanTask';
-import { ITaskProvider } from './ITaskProvider';
+import { ITaskProvider, ProviderConfigField, ProviderDiagnostic } from './ITaskProvider';
 
 /** Shape of a single task file on disk. */
 interface JsonTaskEntry {
@@ -104,6 +104,31 @@ export class JsonProvider implements ITaskProvider {
   dispose(): void {
     this.watcher?.dispose();
     this._onDidChangeTasks.dispose();
+  }
+
+  // ── Configuration & diagnostics ──────────────────────────────────────
+
+  getConfigFields(): ProviderConfigField[] {
+    return [
+      { key: 'path', label: 'Tasks directory', type: 'string', placeholder: '.agent-board/tasks', hint: 'Relative to workspace root' },
+    ];
+  }
+
+  async diagnose(): Promise<ProviderDiagnostic> {
+    if (!this.tasksDir) {
+      return { severity: 'error', message: 'No workspace folder open.' };
+    }
+    try {
+      fs.accessSync(this.tasksDir, fs.constants.W_OK);
+      return { severity: 'ok', message: 'Tasks directory is writable.' };
+    } catch {
+      return { severity: 'warning', message: `Tasks directory does not exist yet (${this.tasksDir}). It will be created on first task.` };
+    }
+  }
+
+  isEnabled(): boolean {
+    const cfg = ProjectConfig.getProjectConfig();
+    return cfg?.jsonProvider?.enabled !== false;
   }
 
   // ── private ──────────────────────────────────────────────────────────

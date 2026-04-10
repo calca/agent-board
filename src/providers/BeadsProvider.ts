@@ -1,6 +1,6 @@
 import * as vscode from 'vscode';
 import { execFile } from 'child_process';
-import { ITaskProvider } from './ITaskProvider';
+import { ITaskProvider, ProviderConfigField, ProviderDiagnostic } from './ITaskProvider';
 import { KanbanTask } from '../types/KanbanTask';
 import { ColumnId } from '../types/ColumnId';
 import { ProjectConfig } from '../config/ProjectConfig';
@@ -61,6 +61,31 @@ export class BeadsProvider implements ITaskProvider {
       clearInterval(this.timer);
     }
     this._onDidChangeTasks.dispose();
+  }
+
+  // ── Configuration & diagnostics ──────────────────────────────────────
+
+  getConfigFields(): ProviderConfigField[] {
+    return [
+      { key: 'executable', label: 'Beads executable', type: 'string', placeholder: 'beads', hint: 'Path or command name' },
+    ];
+  }
+
+  async diagnose(): Promise<ProviderDiagnostic> {
+    return new Promise((resolve) => {
+      execFile(this.executable, ['--version'], { timeout: 5_000 }, (err) => {
+        if (err) {
+          resolve({ severity: 'error', message: `Beads binary not found (${this.executable}). Install beads or set the correct path.` });
+        } else {
+          resolve({ severity: 'ok', message: `Beads CLI available (${this.executable}).` });
+        }
+      });
+    });
+  }
+
+  isEnabled(): boolean {
+    const cfg = ProjectConfig.getProjectConfig();
+    return cfg?.beadsProvider?.enabled === true;
   }
 
   // ── private ─────────────────────────────────────────────────────────

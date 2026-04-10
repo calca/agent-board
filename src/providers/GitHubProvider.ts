@@ -1,9 +1,10 @@
 import * as vscode from 'vscode';
+import { execFile } from 'child_process';
 import { ProjectConfig } from '../config/ProjectConfig';
 import { GitHubIssueManager } from '../github/GitHubIssueManager';
 import { ColumnId } from '../types/ColumnId';
 import { KanbanTask } from '../types/KanbanTask';
-import { ITaskProvider } from './ITaskProvider';
+import { ITaskProvider, ProviderConfigField, ProviderDiagnostic } from './ITaskProvider';
 
 export interface GitHubIssue {
   number: number;
@@ -18,14 +19,16 @@ export interface GitHubIssue {
 }
 
 /**
- * Task provider backed by GitHub Issues (REST API).
+ * Task provider backed by GitHub Issues.
  *
- * Auth uses the VSCode built-in GitHub SSO (`vscode.authentication`).
+ * Uses the **`gh` CLI** when available (preferred), falling back to the
+ * GitHub REST API via VS Code's built-in SSO token.
  *
  * Repository coordinates (`owner`/`repo`) are resolved in order:
  *   1. `.agent-board/config.json`
  *   2. VS Code settings (`agentBoard.github.owner` / `.repo`)
- *   3. For `owner` only: the GitHub SSO account login name
+ *   3. `gh repo view --json owner,name` (auto-detect from working directory)
+ *   4. For `owner` only: the GitHub SSO account login name
  */
 export class GitHubProvider implements ITaskProvider {
   readonly id = 'github';
@@ -43,6 +46,8 @@ export class GitHubProvider implements ITaskProvider {
   private token = '';
   private perPage = 100;
   private cacheTtlMs = 60_000;
+  /** `true` after we confirmed `gh` is available. */
+  private ghCliAvailable: boolean | undefined;
 
   constructor(
     private readonly context: vscode.ExtensionContext,
@@ -59,26 +64,36 @@ export class GitHubProvider implements ITaskProvider {
   }
 
   async updateTask(task: KanbanTask): Promise<void> {
-    await this.ensureToken();
-    if (!this.token) {
-      throw new Error('GitHub authentication required. Please sign in via the Accounts menu.');
-    }
-
     const nativeId = task.id.replace(`${this.id}:`, '');
     const issueNumber = parseInt(nativeId, 10);
     const state = task.status === 'done' ? 'closed' : 'open';
 
-    const res = await fetch(
-      `https://api.github.com/repos/${this.owner}/${this.repo}/issues/${nativeId}`,
-      {
-        method: 'PATCH',
-        headers: this.headers(),
-        body: JSON.stringify({ state }),
-      },
-    );
-
-    if (!res.ok) {
-      throw new Error(`GitHub API error: ${res.status} ${res.statusText}`);
+    if (await this.hasGhCli()) {
+      const repoSlug = `${this.owner}/${this.repo}`;
+      const args = ['issue', 'edit', nativeId, '--repo', repoSlug];
+      if (state === 'closed') {
+        // gh issue close
+        await this.execGh(['issue', 'close', nativeId, '--repo', repoSlug]);
+      } else {
+        // gh issue reopen
+        await this.execGh(['issue', 'reopen', nativeId, '--repo', repoSlug]);
+      }
+    } else {
+      await this.ensureToken();
+      if (!this.token) {
+        throw new Error('GitHub authentication required. Please sign in via the Accounts menu or install the gh CLI.');
+      }
+      const res = await fetch(
+        `https://api.github.com/repos/${this.owner}/${this.repo}/issues/${nativeId}`,
+        {
+          method: 'PATCH',
+          headers: this.apiHeaders(),
+          body: JSON.stringify({ state }),
+        },
+      );
+      if (!res.ok) {
+        throw new Error(`GitHub API error: ${res.status} ${res.statusText}`);
+      }
     }
 
     // Sync kanban column label
@@ -98,25 +113,29 @@ export class GitHubProvider implements ITaskProvider {
 
   /**
    * Post a markdown summary comment on an issue after agent completion.
-   *
-   * @param issueNumber GitHub issue number (without provider prefix).
-   * @param summary Markdown text to post as a comment.
    */
   async postAgentSummary(issueNumber: number, summary: string): Promise<void> {
-    await this.ensureToken();
-    if (!this.token || !this.owner || !this.repo) {
+    if (await this.hasGhCli()) {
+      if (!this.owner || !this.repo) { return; }
+      await this.execGh([
+        'issue', 'comment', String(issueNumber),
+        '--repo', `${this.owner}/${this.repo}`,
+        '--body', summary,
+      ]);
       return;
     }
+
+    await this.ensureToken();
+    if (!this.token || !this.owner || !this.repo) { return; }
 
     const res = await fetch(
       `https://api.github.com/repos/${this.owner}/${this.repo}/issues/${issueNumber}/comments`,
       {
         method: 'POST',
-        headers: this.headers(),
+        headers: this.apiHeaders(),
         body: JSON.stringify({ body: summary }),
       },
     );
-
     if (!res.ok) {
       throw new Error(`GitHub API error posting comment: ${res.status} ${res.statusText}`);
     }
@@ -126,7 +145,101 @@ export class GitHubProvider implements ITaskProvider {
     this._onDidChangeTasks.dispose();
   }
 
-  // ── private ─────────────────────────────────────────────────────────
+  // ── Configuration & diagnostics ──────────────────────────────────────
+
+  getConfigFields(): ProviderConfigField[] {
+    return [
+      { key: 'owner', label: 'Owner', type: 'string', placeholder: 'e.g. my-org', hint: 'Auto-detected from gh CLI if empty' },
+      { key: 'repo', label: 'Repository', type: 'string', placeholder: 'e.g. my-repo', hint: 'Auto-detected from gh CLI if empty' },
+    ];
+  }
+
+  async diagnose(): Promise<ProviderDiagnostic> {
+    // Check gh CLI first (preferred)
+    if (await this.hasGhCli()) {
+      // Verify auth status
+      const authOk = await new Promise<boolean>((resolve) => {
+        execFile('gh', ['auth', 'status'], { timeout: 5_000 }, (err) => resolve(!err));
+      });
+      if (!authOk) {
+        return { severity: 'error', message: 'gh CLI found but not authenticated. Run: gh auth login' };
+      }
+
+      // Auto-detect repo if not configured
+      if (!this.owner || !this.repo) {
+        const detected = await this.detectRepoFromGh();
+        if (!detected) {
+          return { severity: 'warning', message: 'gh CLI authenticated, but owner/repo not configured and not inside a GitHub repo.' };
+        }
+      }
+
+      return { severity: 'ok', message: `gh CLI → ${this.owner}/${this.repo}` };
+    }
+
+    // Fallback: VS Code SSO
+    try {
+      const session = await vscode.authentication.getSession('github', ['repo'], { createIfNone: false });
+      if (!session) {
+        return { severity: 'error', message: 'Neither gh CLI nor GitHub SSO available. Install gh (https://cli.github.com) or sign in via Accounts.' };
+      }
+    } catch {
+      return { severity: 'error', message: 'Neither gh CLI nor GitHub SSO available.' };
+    }
+
+    if (!this.owner || !this.repo) {
+      return { severity: 'error', message: 'Owner / Repository not configured. Install gh CLI for auto-detection.' };
+    }
+
+    return { severity: 'ok', message: `SSO → ${this.owner}/${this.repo}` };
+  }
+
+  isEnabled(): boolean {
+    const cfg = ProjectConfig.getProjectConfig();
+    return cfg?.github?.enabled === true;
+  }
+
+  // ── private — gh CLI helpers ────────────────────────────────────────
+
+  /** Check (and cache) whether `gh` is on PATH. */
+  private async hasGhCli(): Promise<boolean> {
+    if (this.ghCliAvailable !== undefined) { return this.ghCliAvailable; }
+    this.ghCliAvailable = await new Promise<boolean>((resolve) => {
+      execFile('gh', ['--version'], { timeout: 5_000 }, (err) => resolve(!err));
+    });
+    return this.ghCliAvailable;
+  }
+
+  /** Run a `gh` command and return stdout. Throws on non-zero exit. */
+  private execGh(args: string[]): Promise<string> {
+    return new Promise((resolve, reject) => {
+      const cwd = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
+      execFile('gh', args, { timeout: 30_000, cwd }, (err, stdout) => {
+        if (err) { reject(new Error(`gh ${args[0]} ${args[1] ?? ''}: ${err.message}`)); }
+        else { resolve(stdout); }
+      });
+    });
+  }
+
+  /**
+   * Auto-detect `owner/repo` from the current git remote via `gh repo view`.
+   * Returns `true` if successful.
+   */
+  private async detectRepoFromGh(): Promise<boolean> {
+    try {
+      const stdout = await this.execGh(['repo', 'view', '--json', 'owner,name']);
+      const parsed = JSON.parse(stdout) as { owner: { login: string }; name: string };
+      if (parsed.owner?.login && parsed.name) {
+        this.owner = parsed.owner.login;
+        this.repo = parsed.name;
+        return true;
+      }
+    } catch {
+      // not inside a gh repo or gh failed
+    }
+    return false;
+  }
+
+  // ── private — config & token ────────────────────────────────────────
 
   private readConfig(): void {
     const ghCfg = ProjectConfig.getGitHubConfig();
@@ -135,20 +248,12 @@ export class GitHubProvider implements ITaskProvider {
     this.cacheTtlMs = 60_000;
   }
 
-  /**
-   * Obtain a token via VSCode's built-in GitHub SSO.
-   */
+  /** Obtain a token via VS Code's built-in GitHub SSO (REST API fallback). */
   private async ensureToken(): Promise<void> {
-    if (this.token) {
-      return;
-    }
+    if (this.token) { return; }
     try {
-      const session = await vscode.authentication.getSession('github', ['repo'], {
-        createIfNone: false,
-      });
-      if (session) {
-        this.token = session.accessToken;
-      }
+      const session = await vscode.authentication.getSession('github', ['repo'], { createIfNone: false });
+      if (session) { this.token = session.accessToken; }
     } catch {
       // SSO not available
     }
@@ -158,36 +263,73 @@ export class GitHubProvider implements ITaskProvider {
     return this.cache.length > 0 && Date.now() - this.cacheTimestamp < this.cacheTtlMs;
   }
 
+  // ── private — fetching ──────────────────────────────────────────────
+
   private async fetchTasks(): Promise<KanbanTask[]> {
+    // Try gh CLI first
+    if (await this.hasGhCli()) {
+      return this.fetchTasksViaGh();
+    }
+    // Fallback to REST API
+    return this.fetchTasksViaApi();
+  }
+
+  /** Fetch issues using `gh issue list --json …`. */
+  private async fetchTasksViaGh(): Promise<KanbanTask[]> {
+    // Auto-detect repo from working directory if not configured
+    if (!this.owner || !this.repo) {
+      await this.detectRepoFromGh();
+    }
+    if (!this.owner || !this.repo) { return []; }
+
+    const repoSlug = `${this.owner}/${this.repo}`;
+    const fields = 'number,title,body,state,labels,assignees,url,createdAt';
+
+    try {
+      // Fetch open + closed issues
+      const [openStdout, closedStdout] = await Promise.all([
+        this.execGh(['issue', 'list', '--repo', repoSlug, '--state', 'open',
+          '--limit', '200', '--json', fields]),
+        this.execGh(['issue', 'list', '--repo', repoSlug, '--state', 'closed',
+          '--limit', '100', '--json', fields]),
+      ]);
+
+      const openIssues = JSON.parse(openStdout) as GhCliIssue[];
+      const closedIssues = JSON.parse(closedStdout) as GhCliIssue[];
+      const all = [...openIssues, ...closedIssues];
+
+      this.cache = all.map(issue => this.mapGhCliIssue(issue));
+      this.cacheTimestamp = Date.now();
+      return this.cache;
+    } catch {
+      // gh failed — clear cache so next call retries
+      return this.cache;
+    }
+  }
+
+  /** Fetch issues via REST API (SSO token). */
+  private async fetchTasksViaApi(): Promise<KanbanTask[]> {
     await this.ensureToken();
 
-    // If owner is still empty after config resolution, try the SSO login name
     if (!this.owner && this.token) {
       await this.fillOwnerFromSso();
     }
 
-    if (!this.token || !this.owner || !this.repo) {
-      return [];
-    }
+    if (!this.token || !this.owner || !this.repo) { return []; }
 
     const issues: GitHubIssue[] = [];
     let page = 1;
-    const maxPages = 5; // up to 500 issues
+    const maxPages = 5;
 
     while (page <= maxPages) {
       const url = `https://api.github.com/repos/${this.owner}/${this.repo}/issues?state=all&per_page=${this.perPage}&page=${page}`;
-      const res = await fetch(url, { headers: this.headers() });
-
+      const res = await fetch(url, { headers: this.apiHeaders() });
       if (!res.ok) {
         throw new Error(`GitHub API error: ${res.status} ${res.statusText}`);
       }
-
       const batch = (await res.json()) as GitHubIssue[];
       issues.push(...batch);
-
-      if (batch.length < this.perPage) {
-        break;
-      }
+      if (batch.length < this.perPage) { break; }
       page++;
     }
 
@@ -196,9 +338,34 @@ export class GitHubProvider implements ITaskProvider {
     return this.cache;
   }
 
+  // ── private — mapping ───────────────────────────────────────────────
+
+  /** Map a `gh` CLI JSON issue to a `KanbanTask`. */
+  private mapGhCliIssue(issue: GhCliIssue): KanbanTask {
+    const labels = (issue.labels ?? []).map(l =>
+      typeof l === 'string' ? l : l.name,
+    );
+    const assignee = issue.assignees?.[0]?.login;
+    if (assignee && this.issueManager) {
+      void this.issueManager.getAvatarUrl(assignee);
+    }
+    return {
+      id: `${this.id}:${issue.number}`,
+      title: issue.title,
+      body: issue.body ?? '',
+      status: this.mapStatus(issue.state, labels.map(l => ({ name: l }))),
+      labels,
+      assignee,
+      url: issue.url,
+      providerId: this.id,
+      createdAt: issue.createdAt ? new Date(issue.createdAt) : undefined,
+      meta: issue as unknown as Record<string, unknown>,
+    };
+  }
+
+  /** Map a REST API issue to a `KanbanTask`. */
   private mapIssue(issue: GitHubIssue): KanbanTask {
     const assigneeLogin = issue.assignee?.login;
-    // Queue avatar fetch (fire-and-forget, cached)
     if (assigneeLogin && this.issueManager) {
       void this.issueManager.getAvatarUrl(assigneeLogin);
     }
@@ -220,16 +387,14 @@ export class GitHubProvider implements ITaskProvider {
   }
 
   private mapStatus(state: string, labels: Array<{ name: string }>): ColumnId {
-    if (state === 'closed') {
+    if (state === 'closed' || state === 'CLOSED') {
       return 'done';
     }
     const labelNames = labels.map(l => l.name.toLowerCase());
-    // Authoritative kanban labels take priority
     if (labelNames.includes('kanban:done'))        { return 'done'; }
     if (labelNames.includes('kanban:review'))      { return 'review'; }
     if (labelNames.includes('kanban:in-progress')) { return 'inprogress'; }
     if (labelNames.includes('kanban:todo'))        { return 'todo'; }
-    // Legacy label heuristics
     if (labelNames.includes('in progress') || labelNames.includes('wip')) {
       return 'inprogress';
     }
@@ -239,27 +404,36 @@ export class GitHubProvider implements ITaskProvider {
     return 'todo';
   }
 
-  /**
-   * Derive `owner` from the GitHub SSO session account name.
-   */
+  /** Derive `owner` from the GitHub SSO session account name. */
   private async fillOwnerFromSso(): Promise<void> {
     try {
-      const session = await vscode.authentication.getSession('github', ['repo'], {
-        createIfNone: false,
-      });
+      const session = await vscode.authentication.getSession('github', ['repo'], { createIfNone: false });
       if (session?.account?.label) {
         this.owner = session.account.label;
       }
     } catch {
-      // SSO not available — leave owner empty
+      // SSO not available
     }
   }
 
-  private headers(): Record<string, string> {
+  private apiHeaders(): Record<string, string> {
     return {
       'Accept': 'application/vnd.github+json',
       'Authorization': `Bearer ${this.token}`,
       'X-GitHub-Api-Version': '2022-11-28',
     };
   }
+}
+
+// ── gh CLI JSON shape ─────────────────────────────────────────────────────
+
+interface GhCliIssue {
+  number: number;
+  title: string;
+  body: string | null;
+  state: string; // "OPEN" | "CLOSED"
+  labels: Array<string | { name: string }>;
+  assignees?: Array<{ login: string }>;
+  url: string;
+  createdAt?: string;
 }

@@ -20,14 +20,24 @@ export interface GenAiProviderConfigEntry {
  */
 export interface ProjectConfigData {
   github?: {
+    enabled?: boolean;
     owner?: string;
     repo?: string;
   };
   jsonProvider?: {
+    enabled?: boolean;
     path?: string;
   };
   beadsProvider?: {
+    enabled?: boolean;
     executable?: string;
+  };
+  azureDevOps?: {
+    enabled?: boolean;
+    /** Azure DevOps organisation URL or name. */
+    organization?: string;
+    /** Project name inside the organisation. */
+    project?: string;
   };
   /**
    * Git worktree settings.

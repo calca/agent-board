@@ -17,6 +17,9 @@ function makeProvider(id: string, displayName: string): ITaskProvider {
     dispose(): void { disposed = true; },
     get isDisposed() { return disposed; },
     onDidChangeTasks: (() => ({ dispose() { /* noop */ } })) as unknown as import('vscode').Event<KanbanTask[]>,
+    getConfigFields() { return []; },
+    async diagnose() { return { severity: 'ok' as const, message: 'stub' }; },
+    isEnabled() { return true; },
   } as ITaskProvider & { isDisposed: boolean };
 }
 

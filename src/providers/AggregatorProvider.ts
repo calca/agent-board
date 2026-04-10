@@ -1,5 +1,5 @@
 import * as vscode from 'vscode';
-import { ITaskProvider } from './ITaskProvider';
+import { ITaskProvider, ProviderConfigField, ProviderDiagnostic } from './ITaskProvider';
 import { KanbanTask } from '../types/KanbanTask';
 
 /**
@@ -69,6 +69,20 @@ export class AggregatorProvider implements ITaskProvider {
       sub.dispose();
     }
     this._onDidChangeTasks.dispose();
+  }
+
+  // ── Configuration & diagnostics ──────────────────────────────────────
+
+  getConfigFields(): ProviderConfigField[] {
+    return []; // Aggregator has no own config
+  }
+
+  async diagnose(): Promise<ProviderDiagnostic> {
+    return { severity: 'ok', message: 'Aggregator delegates to child providers.' };
+  }
+
+  isEnabled(): boolean {
+    return true; // Always enabled
   }
 
   // ── private ─────────────────────────────────────────────────────────

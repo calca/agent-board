@@ -1,6 +1,29 @@
 import * as vscode from 'vscode';
 import { KanbanTask } from '../types/KanbanTask';
 
+// ── Provider configuration types ──────────────────────────────────────────
+
+/** Describes a single configuration field a provider requires. */
+export interface ProviderConfigField {
+  /** Config key inside the provider's section (e.g. `'owner'` for `github.owner`). */
+  key: string;
+  label: string;
+  type: 'string' | 'boolean' | 'number';
+  placeholder?: string;
+  hint?: string;
+  required?: boolean;
+}
+
+export type ProviderDiagnosticSeverity = 'ok' | 'warning' | 'error';
+
+/** Result of a provider self-diagnosis (are all prerequisites met?). */
+export interface ProviderDiagnostic {
+  severity: ProviderDiagnosticSeverity;
+  message: string;
+}
+
+// ── Provider contract ─────────────────────────────────────────────────────
+
 /**
  * Contract that every task data source must implement.
  * Providers are registered in `ProviderRegistry` and consumed by the
@@ -18,4 +41,21 @@ export interface ITaskProvider {
   dispose(): void;
 
   readonly onDidChangeTasks: vscode.Event<KanbanTask[]>;
+
+  // ── Configuration & diagnostics ──────────────────────────────────────
+
+  /** Configuration fields the provider exposes for the Settings UI. */
+  getConfigFields(): ProviderConfigField[];
+
+  /**
+   * Run a self-check and report whether the provider is correctly
+   * configured (e.g. binary found, auth available, required fields set).
+   */
+  diagnose(): Promise<ProviderDiagnostic>;
+
+  /**
+   * Whether this provider is enabled for the current project.
+   * Reads the `enabled` flag from the provider's config section.
+   */
+  isEnabled(): boolean;
 }

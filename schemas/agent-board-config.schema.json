@@ -8,6 +8,11 @@
       "type": "object",
       "description": "GitHub integration settings for this project.",
       "properties": {
+        "enabled": {
+          "type": "boolean",
+          "default": false,
+          "description": "Whether the GitHub provider is enabled for this project."
+        },
         "owner": {
           "type": "string",
           "description": "GitHub repository owner (user or organization)."
@@ -23,6 +28,11 @@
       "type": "object",
       "description": "JSON task provider settings.",
       "properties": {
+        "enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Whether the JSON provider is enabled for this project."
+        },
         "path": {
           "type": "string",
           "description": "Workspace-relative or absolute path to the JSON tasks file. Default: .agent-board/tasks"
@@ -34,9 +44,34 @@
       "type": "object",
       "description": "Beads CLI provider settings.",
       "properties": {
+        "enabled": {
+          "type": "boolean",
+          "default": false,
+          "description": "Whether the Beads provider is enabled for this project."
+        },
         "executable": {
           "type": "string",
           "description": "Path to the Beads CLI executable."
+        }
+      },
+      "additionalProperties": false
+    },
+    "azureDevOps": {
+      "type": "object",
+      "description": "Azure DevOps work items provider settings. Requires Azure CLI with azure-devops extension.",
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "default": false,
+          "description": "Whether the Azure DevOps provider is enabled for this project. Disabled by default."
+        },
+        "organization": {
+          "type": "string",
+          "description": "Azure DevOps organization URL or name (e.g. https://dev.azure.com/my-org)."
+        },
+        "project": {
+          "type": "string",
+          "description": "Azure DevOps project name."
         }
       },
       "additionalProperties": false

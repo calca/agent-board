@@ -2,7 +2,7 @@ import * as vscode from 'vscode';
 import { TaskStore } from '../taskStore';
 import { Task } from '../types';
 import { KanbanTask } from '../types/KanbanTask';
-import { ITaskProvider } from './ITaskProvider';
+import { ITaskProvider, ProviderConfigField, ProviderDiagnostic } from './ITaskProvider';
 
 /**
  * Exposes the internal `TaskStore` (workspace-state tasks) as a `ITaskProvider`
@@ -40,6 +40,20 @@ export class TaskStoreProvider implements ITaskProvider {
 
   dispose(): void {
     this._onDidChangeTasks.dispose();
+  }
+
+  // ── Configuration & diagnostics ──────────────────────────────────────
+
+  getConfigFields(): ProviderConfigField[] {
+    return []; // No user-facing config
+  }
+
+  async diagnose(): Promise<ProviderDiagnostic> {
+    return { severity: 'ok', message: 'Local task store is always available.' };
+  }
+
+  isEnabled(): boolean {
+    return true; // Built-in, always enabled
   }
 
   // ── private ─────────────────────────────────────────────────────────

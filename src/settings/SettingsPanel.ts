@@ -1,5 +1,18 @@
 import * as vscode from 'vscode';
 import { ProjectConfig, ProjectConfigData } from '../config/ProjectConfig';
+import { ProviderRegistry } from '../providers/ProviderRegistry';
+import { ProviderDiagnosticSeverity } from '../providers/ITaskProvider';
+
+/** Serialisable provider info sent to the webview. */
+interface ProviderInfo {
+  id: string;
+  displayName: string;
+  icon: string;
+  enabled: boolean;
+  configSection: string; // key in ProjectConfigData, e.g. 'github'
+  fields: Array<{ key: string; label: string; type: string; placeholder?: string; hint?: string; required?: boolean }>;
+  diagnostic: { severity: ProviderDiagnosticSeverity; message: string };
+}
 
 /**
  * WebView panel for editing `.agent-board/config.json` project settings.
@@ -10,17 +23,23 @@ export class SettingsPanel {
   private static instance: SettingsPanel | undefined;
   private readonly panel: vscode.WebviewPanel;
   private disposables: vscode.Disposable[] = [];
+  private registry: ProviderRegistry | undefined;
 
-  private constructor(panel: vscode.WebviewPanel) {
+  private constructor(panel: vscode.WebviewPanel, registry?: ProviderRegistry) {
     this.panel = panel;
+    this.registry = registry;
     this.panel.webview.html = this.getHtml();
 
     this.panel.onDidDispose(() => this.dispose(), null, this.disposables);
     this.panel.webview.onDidReceiveMessage((msg) => this.handleMessage(msg), null, this.disposables);
+
+    // Send provider diagnostics after the webview is ready
+    void this.sendProviderDiagnostics();
   }
 
-  static createOrShow(): SettingsPanel {
+  static createOrShow(registry?: ProviderRegistry): SettingsPanel {
     if (SettingsPanel.instance) {
+      SettingsPanel.instance.registry = registry;
       SettingsPanel.instance.panel.reveal();
       return SettingsPanel.instance;
     }
@@ -30,7 +49,7 @@ export class SettingsPanel {
       vscode.ViewColumn.One,
       { enableScripts: true, retainContextWhenHidden: false },
     );
-    SettingsPanel.instance = new SettingsPanel(panel);
+    SettingsPanel.instance = new SettingsPanel(panel, registry);
     return SettingsPanel.instance;
   }
 
@@ -46,10 +65,15 @@ export class SettingsPanel {
         if (msg.config) {
           ProjectConfig.updateConfig(msg.config);
           vscode.window.showInformationMessage('Agent Board settings saved.');
+          void this.sendProviderDiagnostics();
         }
         break;
       case 'requestConfig':
         this.sendConfig();
+        void this.sendProviderDiagnostics();
+        break;
+      case 'refreshDiagnostics':
+        void this.sendProviderDiagnostics();
         break;
     }
   }
@@ -57,6 +81,36 @@ export class SettingsPanel {
   private sendConfig(): void {
     const config = ProjectConfig.getProjectConfig() ?? {};
     this.panel.webview.postMessage({ type: 'configData', config });
+  }
+
+  /** Map provider id → config section key in ProjectConfigData. */
+  private static readonly PROVIDER_CONFIG_SECTION: Record<string, string> = {
+    'github': 'github',
+    'json': 'jsonProvider',
+    'beads': 'beadsProvider',
+    'azure-devops': 'azureDevOps',
+  };
+
+  private async sendProviderDiagnostics(): Promise<void> {
+    if (!this.registry) { return; }
+    const providers = this.registry.getAll();
+    const infos: ProviderInfo[] = [];
+
+    for (const p of providers) {
+      if (p.id === 'aggregator' || p.id === 'taskstore') { continue; }
+      const diag = await p.diagnose();
+      infos.push({
+        id: p.id,
+        displayName: p.displayName,
+        icon: p.icon,
+        enabled: p.isEnabled(),
+        configSection: SettingsPanel.PROVIDER_CONFIG_SECTION[p.id] ?? p.id,
+        fields: p.getConfigFields(),
+        diagnostic: diag,
+      });
+    }
+
+    this.panel.webview.postMessage({ type: 'providerDiagnostics', providers: infos });
   }
 
   private getHtml(): string {
@@ -109,6 +163,39 @@ export class SettingsPanel {
   .btn--secondary { background: var(--vscode-button-secondaryBackground); color: var(--vscode-button-secondaryForeground); }
   .btn--secondary:hover { background: var(--vscode-button-secondaryHoverBackground); }
   .cols-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 0 24px; }
+  /* ── Provider cards ──────────────────── */
+  .provider-card {
+    border: 1px solid var(--vscode-panel-border);
+    border-radius: 6px; padding: 14px 16px; margin-bottom: 14px;
+  }
+  .provider-card.disabled { opacity: 0.55; }
+  .provider-header { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+  .provider-header h3 { margin: 0; font-size: 0.95em; flex: 1; }
+  .diag { font-size: 0.78em; padding: 4px 10px; border-radius: 4px; margin-top: 6px; }
+  .diag--ok { background: rgba(40,167,69,0.15); color: #28a745; }
+  .diag--warning { background: rgba(255,193,7,0.18); color: #e6a700; }
+  .diag--error { background: rgba(220,53,69,0.15); color: #dc3545; }
+  .available-list { display: flex; flex-direction: column; gap: 8px; }
+  .available-item {
+    display: flex; align-items: center; gap: 12px;
+    border: 1px dashed var(--vscode-panel-border); border-radius: 6px;
+    padding: 10px 14px; opacity: 0.7; transition: opacity 0.15s;
+  }
+  .available-item:hover { opacity: 1; }
+  .available-item h4 { margin: 0; font-size: 0.9em; flex: 1; }
+  .available-item .diag { margin-top: 0; margin-left: auto; }
+  .btn--add {
+    cursor: pointer; border: none; border-radius: 4px;
+    padding: 5px 14px; font-size: 0.8em; font-weight: 600;
+    background: var(--vscode-button-background); color: var(--vscode-button-foreground);
+  }
+  .btn--add:hover { background: var(--vscode-button-hoverBackground); }
+  .btn--remove {
+    cursor: pointer; border: none; border-radius: 4px;
+    padding: 4px 10px; font-size: 0.75em; font-weight: 600;
+    background: rgba(220,53,69,0.15); color: #dc3545;
+  }
+  .btn--remove:hover { background: rgba(220,53,69,0.3); }
 </style>
 </head>
 <body>
@@ -119,172 +206,240 @@ export class SettingsPanel {
 <script>
 const vscode = acquireVsCodeApi();
 let config = ${configJson};
+let providerInfos = [];
 
 function render() {
   const root = document.getElementById('root');
-  root.innerHTML = \`
-    <div class="section">
-      <div class="section__title">GitHub</div>
-      <div class="cols-2">
-        <div class="field">
-          <label for="gh-owner">Owner</label>
-          <input type="text" id="gh-owner" value="\${esc(config.github?.owner)}" placeholder="e.g. my-org" />
-        </div>
-        <div class="field">
-          <label for="gh-repo">Repository</label>
-          <input type="text" id="gh-repo" value="\${esc(config.github?.repo)}" placeholder="e.g. my-repo" />
-        </div>
-      </div>
-    </div>
-
-    <div class="section">
-      <div class="section__title">JSON Provider</div>
-      <div class="field">
-        <label for="json-path">Tasks file path</label>
-        <input type="text" id="json-path" value="\${esc(config.jsonProvider?.path)}" placeholder=".agent-board/tasks.json" />
-        <span class="hint">Relative to workspace root</span>
-      </div>
-    </div>
-
-    <div class="section">
-      <div class="section__title">Kanban Board</div>
-      <div class="field">
-        <label for="kanban-cols">Columns (comma-separated)</label>
-        <input type="text" id="kanban-cols" value="\${esc((config.kanban?.columns ?? []).join(', '))}" placeholder="todo, inprogress, review, done" />
-      </div>
-    </div>
-
-    <div class="section">
-      <div class="section__title">Worktree</div>
-      <div class="cols-2">
-        <div class="field field--row">
-          <input type="checkbox" id="wt-enabled" \${config.worktree?.enabled !== false ? 'checked' : ''} />
-          <label for="wt-enabled">Enable worktrees</label>
-        </div>
-        <div class="field field--row">
-          <input type="checkbox" id="wt-confirm" \${config.worktree?.confirmCleanup ? 'checked' : ''} />
-          <label for="wt-confirm">Confirm cleanup</label>
-        </div>
-      </div>
-    </div>
-
-    <div class="section">
-      <div class="section__title">Squad</div>
-      <div class="cols-2">
-        <div class="field">
-          <label for="sq-max">Max sessions</label>
-          <input type="number" id="sq-max" value="\${config.squad?.maxSessions ?? 10}" min="1" max="50" />
-        </div>
-        <div class="field">
-          <label for="sq-timeout">Session timeout (ms)</label>
-          <input type="number" id="sq-timeout" value="\${config.squad?.sessionTimeout ?? 300000}" min="0" step="1000" />
-          <span class="hint">0 = no timeout</span>
-        </div>
-        <div class="field">
-          <label for="sq-source">Source column</label>
-          <input type="text" id="sq-source" value="\${esc(config.squad?.sourceColumn)}" placeholder="todo" />
-        </div>
-        <div class="field">
-          <label for="sq-active">Active column</label>
-          <input type="text" id="sq-active" value="\${esc(config.squad?.activeColumn)}" placeholder="inprogress" />
-        </div>
-        <div class="field">
-          <label for="sq-done">Done column</label>
-          <input type="text" id="sq-done" value="\${esc(config.squad?.doneColumn)}" placeholder="review" />
-        </div>
-        <div class="field">
-          <label for="sq-cooldown">Cooldown (ms)</label>
-          <input type="number" id="sq-cooldown" value="\${config.squad?.cooldownMs ?? 0}" min="0" step="500" />
-        </div>
-        <div class="field">
-          <label for="sq-retries">Max retries</label>
-          <input type="number" id="sq-retries" value="\${config.squad?.maxRetries ?? 0}" min="0" />
-        </div>
-        <div class="field">
-          <label for="sq-interval">Auto-squad interval (ms)</label>
-          <input type="number" id="sq-interval" value="\${config.squad?.autoSquadInterval ?? 15000}" min="1000" step="1000" />
-        </div>
-        <div class="field">
-          <label for="sq-priority">Priority labels (comma-separated)</label>
-          <input type="text" id="sq-priority" value="\${esc((config.squad?.priorityLabels ?? []).join(', '))}" placeholder="critical, high, medium" />
-        </div>
-        <div class="field">
-          <label for="sq-exclude">Exclude labels (comma-separated)</label>
-          <input type="text" id="sq-exclude" value="\${esc((config.squad?.excludeLabels ?? []).join(', '))}" placeholder="blocked, manual" />
-        </div>
-        <div class="field">
-          <label for="sq-assignee">Assignee filter</label>
-          <input type="text" id="sq-assignee" value="\${esc(config.squad?.assigneeFilter)}" placeholder="empty = all" />
-          <span class="hint">* = any assigned, unassigned = none, or exact username</span>
-        </div>
-      </div>
-    </div>
-
-    <div class="section">
-      <div class="section__title">MCP Server</div>
-      <div class="cols-2">
-        <div class="field field--row">
-          <input type="checkbox" id="mcp-enabled" \${config.mcp?.enabled ? 'checked' : ''} />
-          <label for="mcp-enabled">Enable MCP server</label>
-        </div>
-        <div class="field">
-          <label for="mcp-path">Tasks path</label>
-          <input type="text" id="mcp-path" value="\${esc(config.mcp?.tasksPath)}" placeholder="(defaults to JSON provider path)" />
-        </div>
-      </div>
-    </div>
-
-    <div class="section">
-      <div class="section__title">Notifications</div>
-      <div class="cols-2">
-        <div class="field field--row">
-          <input type="checkbox" id="notif-active" \${config.notifications?.taskActive !== false ? 'checked' : ''} />
-          <label for="notif-active">Task moved to active</label>
-        </div>
-        <div class="field field--row">
-          <input type="checkbox" id="notif-done" \${config.notifications?.taskDone !== false ? 'checked' : ''} />
-          <label for="notif-done">Task moved to done</label>
-        </div>
-      </div>
-    </div>
-
-    <div class="section">
-      <div class="section__title">Misc</div>
-      <div class="cols-2">
-        <div class="field field--row">
-          <input type="checkbox" id="post-summary" \${config.postAgentSummaryToIssue ? 'checked' : ''} />
-          <label for="post-summary">Post agent summary to GitHub issue</label>
-        </div>
-        <div class="field">
-          <label for="poll-interval">Poll interval (ms)</label>
-          <input type="number" id="poll-interval" value="\${config.pollInterval ?? ''}" min="0" step="1000" placeholder="default" />
-        </div>
-        <div class="field">
-          <label for="log-level">Log level</label>
-          <select id="log-level">
-            <option value="" \${!config.logLevel ? 'selected' : ''}>Default</option>
-            <option value="debug" \${config.logLevel === 'debug' ? 'selected' : ''}>Debug</option>
-            <option value="info" \${config.logLevel === 'info' ? 'selected' : ''}>Info</option>
-            <option value="warn" \${config.logLevel === 'warn' ? 'selected' : ''}>Warn</option>
-            <option value="error" \${config.logLevel === 'error' ? 'selected' : ''}>Error</option>
-          </select>
-        </div>
-      </div>
-    </div>
-
-    <div class="actions">
-      <button class="btn btn--primary" id="btn-save">Save</button>
-      <button class="btn btn--secondary" id="btn-reset">Reset to file</button>
-    </div>
-  \`;
+  root.innerHTML =
+    renderProviders() +
+    renderKanban() +
+    renderWorktree() +
+    renderSquad() +
+    renderMcp() +
+    renderNotifications() +
+    renderMisc() +
+    renderActions();
 
   document.getElementById('btn-save')?.addEventListener('click', save);
   document.getElementById('btn-reset')?.addEventListener('click', () => {
     vscode.postMessage({ type: 'requestConfig' });
   });
+  document.getElementById('btn-refresh-diag')?.addEventListener('click', () => {
+    vscode.postMessage({ type: 'refreshDiagnostics' });
+  });
+
+  // Wire "Add" buttons
+  document.querySelectorAll('.btn--add').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const section = btn.getAttribute('data-section');
+      if (section) {
+        config[section] = config[section] || {};
+        config[section].enabled = true;
+        // Update in-memory provider info
+        const pi = providerInfos.find(p => p.configSection === section);
+        if (pi) { pi.enabled = true; }
+        // Save immediately so the provider activates
+        vscode.postMessage({ type: 'save', config: buildSavePayload() });
+        render();
+      }
+    });
+  });
+
+  // Wire "Remove" buttons
+  document.querySelectorAll('.btn--remove').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const section = btn.getAttribute('data-section');
+      if (section && config[section]) {
+        config[section].enabled = false;
+        const pi = providerInfos.find(p => p.configSection === section);
+        if (pi) { pi.enabled = false; }
+        vscode.postMessage({ type: 'save', config: buildSavePayload() });
+        render();
+      }
+    });
+  });
 }
 
+/* ── Provider cards ──────────────────────────────────────────── */
+
+function renderProviders() {
+  const active = providerInfos.filter(p => p.enabled);
+  const available = providerInfos.filter(p => !p.enabled);
+
+  let html = '<div class="section"><div class="section__title">Task Providers</div>';
+
+  if (providerInfos.length === 0) {
+    html += '<p style="opacity:0.5;font-size:0.85em">Loading provider information…</p>';
+    html += '</div>';
+    return html;
+  }
+
+  // ── Active providers ──────────────────────
+  if (active.length === 0) {
+    html += '<p style="opacity:0.5;font-size:0.85em;margin-bottom:14px">No providers enabled. Add one below.</p>';
+  }
+
+  for (const p of active) {
+    html += renderProviderCard(p);
+  }
+
+  // ── Available providers (+ Add) ───────────
+  if (available.length > 0) {
+    html += '<div style="margin-top:18px;margin-bottom:10px;font-weight:600;font-size:0.88em;opacity:0.6">+ Add Provider</div>';
+    html += '<div class="available-list">';
+    for (const p of available) {
+      html += '<div class="available-item" data-provider="' + p.id + '">';
+      html += '<h4>' + escHtml(p.displayName) + '</h4>';
+      // Show diagnostic inline
+      if (p.diagnostic) {
+        const sev = p.diagnostic.severity;
+        const icon = sev === 'ok' ? '✓' : sev === 'warning' ? '⚠' : '✗';
+        html += '<span class="diag diag--' + sev + '" style="font-size:0.72em">' + icon + ' ' + escHtml(p.diagnostic.message) + '</span>';
+      }
+      html += '<button class="btn--add" data-section="' + p.configSection + '">Enable</button>';
+      html += '</div>';
+    }
+    html += '</div>';
+  }
+
+  html += '<button class="btn btn--secondary" id="btn-refresh-diag" style="margin-top:12px">Re-check providers</button>';
+  html += '</div>';
+  return html;
+}
+
+function renderProviderCard(p) {
+  const section = p.configSection;
+  const sectionCfg = config[section] ?? {};
+
+  let html = '<div class="provider-card" data-provider="' + p.id + '">';
+  html += '<div class="provider-header">';
+  html += '<h3>' + escHtml(p.displayName) + '</h3>';
+  html += '<button class="btn--remove" data-section="' + section + '">Remove</button>';
+  html += '</div>';
+
+  // Dynamic config fields
+  if (p.fields && p.fields.length > 0) {
+    html += '<div class="cols-2">';
+    for (const f of p.fields) {
+      const fieldId = 'prov-' + p.id + '-' + f.key;
+      const val = sectionCfg[f.key] ?? '';
+      if (f.type === 'boolean') {
+        html += '<div class="field field--row">';
+        html += '<input type="checkbox" id="' + fieldId + '" ' + (val ? 'checked' : '') + ' />';
+        html += '<label for="' + fieldId + '">' + escHtml(f.label) + '</label>';
+        html += '</div>';
+      } else if (f.type === 'number') {
+        html += '<div class="field">';
+        html += '<label for="' + fieldId + '">' + escHtml(f.label) + (f.required ? ' *' : '') + '</label>';
+        html += '<input type="number" id="' + fieldId + '" value="' + esc(val) + '" placeholder="' + esc(f.placeholder) + '" />';
+        if (f.hint) { html += '<span class="hint">' + escHtml(f.hint) + '</span>'; }
+        html += '</div>';
+      } else {
+        html += '<div class="field">';
+        html += '<label for="' + fieldId + '">' + escHtml(f.label) + (f.required ? ' *' : '') + '</label>';
+        html += '<input type="text" id="' + fieldId + '" value="' + esc(val) + '" placeholder="' + esc(f.placeholder) + '" />';
+        if (f.hint) { html += '<span class="hint">' + escHtml(f.hint) + '</span>'; }
+        html += '</div>';
+      }
+    }
+    html += '</div>';
+  }
+
+  // Diagnostic badge
+  if (p.diagnostic) {
+    const sev = p.diagnostic.severity;
+    html += '<div class="diag diag--' + sev + '">';
+    html += (sev === 'ok' ? '✓' : sev === 'warning' ? '⚠' : '✗') + ' ' + escHtml(p.diagnostic.message);
+    html += '</div>';
+  }
+
+  html += '</div>';
+  return html;
+}
+
+/* ── Other sections (unchanged) ──────────────────────────────── */
+
+function renderKanban() {
+  return '<div class="section">' +
+    '<div class="section__title">Kanban Board</div>' +
+    '<div class="field">' +
+    '<label for="kanban-cols">Columns (comma-separated)</label>' +
+    '<input type="text" id="kanban-cols" value="' + esc((config.kanban?.columns ?? []).join(', ')) + '" placeholder="todo, inprogress, review, done" />' +
+    '</div></div>';
+}
+
+function renderWorktree() {
+  return '<div class="section"><div class="section__title">Worktree</div><div class="cols-2">' +
+    '<div class="field field--row"><input type="checkbox" id="wt-enabled" ' + (config.worktree?.enabled !== false ? 'checked' : '') + ' /><label for="wt-enabled">Enable worktrees</label></div>' +
+    '<div class="field field--row"><input type="checkbox" id="wt-confirm" ' + (config.worktree?.confirmCleanup ? 'checked' : '') + ' /><label for="wt-confirm">Confirm cleanup</label></div>' +
+    '</div></div>';
+}
+
+function renderSquad() {
+  const sq = config.squad ?? {};
+  return '<div class="section"><div class="section__title">Squad</div><div class="cols-2">' +
+    field('sq-max', 'Max sessions', 'number', sq.maxSessions ?? 10) +
+    field('sq-timeout', 'Session timeout (ms)', 'number', sq.sessionTimeout ?? 300000, '0 = no timeout') +
+    field('sq-source', 'Source column', 'text', sq.sourceColumn, null, 'todo') +
+    field('sq-active', 'Active column', 'text', sq.activeColumn, null, 'inprogress') +
+    field('sq-done', 'Done column', 'text', sq.doneColumn, null, 'review') +
+    field('sq-cooldown', 'Cooldown (ms)', 'number', sq.cooldownMs ?? 0) +
+    field('sq-retries', 'Max retries', 'number', sq.maxRetries ?? 0) +
+    field('sq-interval', 'Auto-squad interval (ms)', 'number', sq.autoSquadInterval ?? 15000) +
+    field('sq-priority', 'Priority labels (csv)', 'text', (sq.priorityLabels ?? []).join(', '), null, 'critical, high') +
+    field('sq-exclude', 'Exclude labels (csv)', 'text', (sq.excludeLabels ?? []).join(', '), null, 'blocked, manual') +
+    field('sq-assignee', 'Assignee filter', 'text', sq.assigneeFilter, '* = any, unassigned = none', 'empty = all') +
+    '</div></div>';
+}
+
+function renderMcp() {
+  return '<div class="section"><div class="section__title">MCP Server</div><div class="cols-2">' +
+    '<div class="field field--row"><input type="checkbox" id="mcp-enabled" ' + (config.mcp?.enabled ? 'checked' : '') + ' /><label for="mcp-enabled">Enable MCP server</label></div>' +
+    field('mcp-path', 'Tasks path', 'text', config.mcp?.tasksPath, null, '(defaults to JSON provider path)') +
+    '</div></div>';
+}
+
+function renderNotifications() {
+  return '<div class="section"><div class="section__title">Notifications</div><div class="cols-2">' +
+    '<div class="field field--row"><input type="checkbox" id="notif-active" ' + (config.notifications?.taskActive !== false ? 'checked' : '') + ' /><label for="notif-active">Task moved to active</label></div>' +
+    '<div class="field field--row"><input type="checkbox" id="notif-done" ' + (config.notifications?.taskDone !== false ? 'checked' : '') + ' /><label for="notif-done">Task moved to done</label></div>' +
+    '</div></div>';
+}
+
+function renderMisc() {
+  const ll = config.logLevel ?? '';
+  return '<div class="section"><div class="section__title">Misc</div><div class="cols-2">' +
+    '<div class="field field--row"><input type="checkbox" id="post-summary" ' + (config.postAgentSummaryToIssue ? 'checked' : '') + ' /><label for="post-summary">Post agent summary to GitHub issue</label></div>' +
+    field('poll-interval', 'Poll interval (ms)', 'number', config.pollInterval ?? '', null, 'default') +
+    '<div class="field"><label for="log-level">Log level</label><select id="log-level">' +
+    '<option value=""' + (!ll ? ' selected' : '') + '>Default</option>' +
+    '<option value="debug"' + (ll === 'debug' ? ' selected' : '') + '>Debug</option>' +
+    '<option value="info"' + (ll === 'info' ? ' selected' : '') + '>Info</option>' +
+    '<option value="warn"' + (ll === 'warn' ? ' selected' : '') + '>Warn</option>' +
+    '<option value="error"' + (ll === 'error' ? ' selected' : '') + '>Error</option>' +
+    '</select></div>' +
+    '</div></div>';
+}
+
+function renderActions() {
+  return '<div class="actions">' +
+    '<button class="btn btn--primary" id="btn-save">Save</button>' +
+    '<button class="btn btn--secondary" id="btn-reset">Reset to file</button>' +
+    '</div>';
+}
+
+function field(id, label, type, value, hint, placeholder) {
+  let h = '<div class="field"><label for="' + id + '">' + escHtml(label) + '</label>';
+  h += '<input type="' + type + '" id="' + id + '" value="' + esc(value) + '"' + (placeholder ? ' placeholder="' + esc(placeholder) + '"' : '') + ' />';
+  if (hint) { h += '<span class="hint">' + escHtml(hint) + '</span>'; }
+  h += '</div>';
+  return h;
+}
+
+/* ── helpers ─────────────────────────────────────────────────── */
+
 function esc(val) { return val ?? ''; }
+function escHtml(val) { return String(val ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 
 function csvToArray(val) {
   return val ? val.split(',').map(s => s.trim()).filter(Boolean) : undefined;
@@ -295,15 +450,10 @@ function numOrUndef(val) {
   return isNaN(n) || val === '' ? undefined : n;
 }
 
-function save() {
+/* ── Save ────────────────────────────────────────────────────── */
+
+function buildSavePayload() {
   const updated = {
-    github: {
-      owner: document.getElementById('gh-owner').value || undefined,
-      repo: document.getElementById('gh-repo').value || undefined,
-    },
-    jsonProvider: {
-      path: document.getElementById('json-path').value || undefined,
-    },
     kanban: {
       columns: csvToArray(document.getElementById('kanban-cols').value),
     },
@@ -336,12 +486,39 @@ function save() {
     pollInterval: numOrUndef(document.getElementById('poll-interval').value),
     logLevel: document.getElementById('log-level').value || undefined,
   };
-  vscode.postMessage({ type: 'save', config: updated });
+
+  // Collect provider-specific config from dynamic fields
+  // enabled flag: use the in-memory provider info (reflects isEnabled())
+  for (const p of providerInfos) {
+    const section = p.configSection;
+    const sectionData = { enabled: p.enabled };
+    // Only read field values for active (enabled) providers that have visible inputs
+    for (const f of (p.fields || [])) {
+      const el = document.getElementById('prov-' + p.id + '-' + f.key);
+      if (!el) continue;
+      if (f.type === 'boolean') { sectionData[f.key] = el.checked; }
+      else if (f.type === 'number') { sectionData[f.key] = numOrUndef(el.value); }
+      else { sectionData[f.key] = el.value || undefined; }
+    }
+    updated[section] = sectionData;
+  }
+
+  return updated;
 }
+
+function save() {
+  vscode.postMessage({ type: 'save', config: buildSavePayload() });
+}
+
+/* ── Message handling ──────────────────────────────────────── */
 
 window.addEventListener('message', (e) => {
   if (e.data?.type === 'configData') {
     config = e.data.config;
+    render();
+  }
+  if (e.data?.type === 'providerDiagnostics') {
+    providerInfos = e.data.providers;
     render();
   }
 });

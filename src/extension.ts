@@ -23,6 +23,8 @@ import { GitHubIssueManager } from './github/GitHubIssueManager';
 import { PullRequestManager } from './github/PullRequestManager';
 import { KanbanPanel } from './kanban/KanbanPanel';
 import { OverviewTreeProvider } from './overviewTreeProvider';
+import { AzureDevOpsProvider } from './providers/AzureDevOpsProvider';
+import { BeadsProvider } from './providers/BeadsProvider';
 import { GitHubProvider } from './providers/GitHubProvider';
 import { ITaskProvider } from './providers/ITaskProvider';
 import { JsonProvider } from './providers/JsonProvider';
@@ -54,9 +56,16 @@ export function activate(context: vscode.ExtensionContext): void {
     vscode.workspace.registerTextDocumentContentProvider(GIT_REF_SCHEME, new GitRefContentProvider()),
   );
 
-  // Register the GitHub provider (uses VSCode SSO + .agent-board/config.json)
+  // Register ALL task providers — disabled ones are filtered at query time
+  // so the Settings panel can always show and enable/disable them.
   const githubProvider = new GitHubProvider(context, ghIssueManager);
   providerRegistry.register(githubProvider);
+
+  const beadsProvider = new BeadsProvider();
+  providerRegistry.register(beadsProvider);
+
+  const azureDevOpsProvider = new AzureDevOpsProvider();
+  providerRegistry.register(azureDevOpsProvider);
 
   // ── GenAI provider infrastructure ─────────────────────────────────────
 
@@ -940,7 +949,7 @@ export function activate(context: vscode.ExtensionContext): void {
   });
 
   const openSettings = vscode.commands.registerCommand('agentBoard.openSettings', () => {
-    SettingsPanel.createOrShow();
+    SettingsPanel.createOrShow(providerRegistry);
   });
 
   const runAgent = vscode.commands.registerCommand('agentBoard.runAgent', async (item?: AgentTreeItem) => {
@@ -1075,13 +1084,13 @@ function simulateAgentRun(agentId: string, agentManager: AgentManager, refresh: 
 }
 
 /** Provider IDs whose tasks support full inline editing. */
-const EDITABLE_PROVIDER_IDS = ['json', 'github'];
+const EDITABLE_PROVIDER_IDS = ['json', 'github', 'azure-devops'];
 
 /**
  * Gather tasks from all providers and push them to the Kanban panel.
  */
 async function sendTasksToPanel(panel: KanbanPanel, registry: ProviderRegistry, genAiRegistry?: import('./copilot/GenAiProviderRegistry').GenAiProviderRegistry, squadMgr?: SquadManager, sessionStateMgr?: SessionStateManager): Promise<void> {
-  const providers = registry.getAll();
+  const providers = registry.getAll().filter(p => p.isEnabled());
   const allTasks = (
     await Promise.allSettled(providers.map(p => p.getTasks()))
   )
