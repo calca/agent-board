@@ -310,10 +310,10 @@ export class GitHubProvider implements ITaskProvider {
         const oldStatus = oldStatusMap.get(t.id);
         if (oldStatus && oldStatus !== t.status) { t.status = oldStatus; }
       }
-      // Keep locally-tracked tasks that disappeared from remote until manual cleanup
+      // Keep locally-tracked tasks beyond 'todo' that disappeared from remote
       const newIds = new Set(newCache.map(t => t.id));
       for (const old of this.cache) {
-        if (!newIds.has(old.id)) { newCache.push(old); }
+        if (!newIds.has(old.id) && old.status !== 'todo') { newCache.push(old); }
       }
       this.cache = newCache;
       this.cacheTimestamp = Date.now();
@@ -368,10 +368,10 @@ export class GitHubProvider implements ITaskProvider {
       const oldStatus = oldStatusMap.get(t.id);
       if (oldStatus && oldStatus !== t.status) { t.status = oldStatus; }
     }
-    // Keep locally-tracked tasks that disappeared from remote until manual cleanup
+    // Keep locally-tracked tasks beyond 'todo' that disappeared from remote
     const newIds2 = new Set(newCache.map(t => t.id));
     for (const old of this.cache) {
-      if (!newIds2.has(old.id)) { newCache.push(old); }
+      if (!newIds2.has(old.id) && old.status !== 'todo') { newCache.push(old); }
     }
     this.cache = newCache;
     this.cacheTimestamp = Date.now();

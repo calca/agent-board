@@ -254,10 +254,10 @@ export class AzureDevOpsProvider implements ITaskProvider {
       }
     }
     // Keep locally-tracked tasks that disappeared from the remote query
-    // (e.g. moved to review/done locally) until manual cleanup
+    // but only if they've progressed beyond 'todo' (user started working on them)
     const newIds = new Set(newTasks.map(t => t.id));
     for (const old of this.tasks) {
-      if (!newIds.has(old.id)) {
+      if (!newIds.has(old.id) && old.status !== 'todo') {
         newTasks.push(old);
       }
     }

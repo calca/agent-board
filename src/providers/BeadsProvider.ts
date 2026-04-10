@@ -148,10 +148,10 @@ export class BeadsProvider implements ITaskProvider {
           const oldStatus = oldStatusMap.get(t.id);
           if (oldStatus && oldStatus !== t.status) { t.status = oldStatus; }
         }
-        // Keep locally-tracked tasks that disappeared from remote until manual cleanup
+        // Keep locally-tracked tasks beyond 'todo' that disappeared from remote
         const newIds = new Set(newTasks.map(t => t.id));
         for (const old of this.tasks) {
-          if (!newIds.has(old.id)) { newTasks.push(old); }
+          if (!newIds.has(old.id) && old.status !== 'todo') { newTasks.push(old); }
         }
         this.tasks = newTasks;
       } catch {
