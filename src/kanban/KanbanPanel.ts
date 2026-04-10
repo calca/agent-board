@@ -71,9 +71,11 @@ export class KanbanPanel {
   /** Serializer for restoring the panel after reload. */
   static getSerializer(extensionUri: vscode.Uri): vscode.WebviewPanelSerializer {
     return {
-      deserializeWebviewPanel(panel: vscode.WebviewPanel): Thenable<void> {
+      async deserializeWebviewPanel(panel: vscode.WebviewPanel): Promise<void> {
         KanbanPanel.instance = new KanbanPanel(panel, extensionUri);
-        return Promise.resolve();
+        // Re-wire all handlers by executing the openKanban command.
+        // The command checks for an existing instance and just reveals + wires it.
+        await vscode.commands.executeCommand('agentBoard.openKanban');
       },
     };
   }

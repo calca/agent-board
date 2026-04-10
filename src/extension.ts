@@ -287,52 +287,8 @@ export function activate(context: vscode.ExtensionContext): void {
     }
     const panel = KanbanPanel.createOrShow(context.extensionUri);
 
-    // Auto-refresh board when squad session state changes (background completion/failure)
-    const squadSub = squadManager.onDidChangeStatus(async () => {
-      panel.updateSquadStatus(squadManager.getStatus());
-      await sendTasksToPanel(panel, providerRegistry, genAiRegistry, squadManager, sessionStateManager);
-    });
-    panel.onDispose(() => squadSub.dispose());
-
-    // Auto-refresh board when session state changes (worktree creation, running, done, error)
-    const sessionSub = sessionStateManager.onDidChangeState(async () => {
-      await sendTasksToPanel(panel, providerRegistry, genAiRegistry, squadManager, sessionStateManager);
-    });
-    panel.onDispose(() => sessionSub.dispose());
-
-    // Forward stream output from any session → webview
-    const streamSub = copilotLauncher.getStreamRegistry().onDidAppendAny(({ sessionId, text, ts }) => {
-      panel.appendStreamOutput(sessionId, text, ts);
-    });
-    panel.onDispose(() => streamSub.dispose());
-
-    // Forward tool-call status events → webview
-    const toolCallSub = copilotLauncher.onDidToolCall(({ sessionId, status }) => {
-      panel.notifyToolCall(sessionId, status);
-    });
-    panel.onDispose(() => toolCallSub.dispose());
-
-    // Forward DiffWatcher file-change events → webview (live, via onDidChangeDiff)
-    const diffSub = copilotLauncher.onDidChangeDiff(({ sessionId, files }) => {
-      panel.updateFileChanges(sessionId, files);
-    });
-    panel.onDispose(() => diffSub.dispose());
-
-    // GitHub 30-second polling: detect remote changes, refresh board
-    const isGH = await isGitHubRepository();
-    if (isGH) {
-      void ghIssueManager.ensureKanbanLabels();
-      ghIssueManager.startPolling(30_000);
-      const ghPollSub = ghIssueManager.onDidDetectRemoteChange(async () => {
-        await sendTasksToPanel(panel, providerRegistry, genAiRegistry, squadManager, sessionStateManager);
-      });
-      panel.onDispose(() => {
-        ghIssueManager.stopPolling();
-        ghPollSub.dispose();
-      });
-    }
-
-    // Wire WebView messages
+    // Wire WebView messages FIRST — before any async work — to avoid
+    // losing the 'ready' message the webview sends on script load.
     panel.onMessage(async (msg) => {
       switch (msg.type) {
         case 'ready':
@@ -791,6 +747,51 @@ export function activate(context: vscode.ExtensionContext): void {
         }
       }
     });
+
+    // Auto-refresh board when squad session state changes (background completion/failure)
+    const squadSub = squadManager.onDidChangeStatus(async () => {
+      panel.updateSquadStatus(squadManager.getStatus());
+      await sendTasksToPanel(panel, providerRegistry, genAiRegistry, squadManager, sessionStateManager);
+    });
+    panel.onDispose(() => squadSub.dispose());
+
+    // Auto-refresh board when session state changes (worktree creation, running, done, error)
+    const sessionSub = sessionStateManager.onDidChangeState(async () => {
+      await sendTasksToPanel(panel, providerRegistry, genAiRegistry, squadManager, sessionStateManager);
+    });
+    panel.onDispose(() => sessionSub.dispose());
+
+    // Forward stream output from any session → webview
+    const streamSub = copilotLauncher.getStreamRegistry().onDidAppendAny(({ sessionId, text, ts }) => {
+      panel.appendStreamOutput(sessionId, text, ts);
+    });
+    panel.onDispose(() => streamSub.dispose());
+
+    // Forward tool-call status events → webview
+    const toolCallSub = copilotLauncher.onDidToolCall(({ sessionId, status }) => {
+      panel.notifyToolCall(sessionId, status);
+    });
+    panel.onDispose(() => toolCallSub.dispose());
+
+    // Forward DiffWatcher file-change events → webview (live, via onDidChangeDiff)
+    const diffSub = copilotLauncher.onDidChangeDiff(({ sessionId, files }) => {
+      panel.updateFileChanges(sessionId, files);
+    });
+    panel.onDispose(() => diffSub.dispose());
+
+    // GitHub 30-second polling: detect remote changes, refresh board
+    const isGH = await isGitHubRepository();
+    if (isGH) {
+      void ghIssueManager.ensureKanbanLabels();
+      ghIssueManager.startPolling(30_000);
+      const ghPollSub = ghIssueManager.onDidDetectRemoteChange(async () => {
+        await sendTasksToPanel(panel, providerRegistry, genAiRegistry, squadManager, sessionStateManager);
+      });
+      panel.onDispose(() => {
+        ghIssueManager.stopPolling();
+        ghPollSub.dispose();
+      });
+    }
   });
 
   const selectProvider = vscode.commands.registerCommand('agentBoard.selectProvider', async () => {

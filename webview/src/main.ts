@@ -113,12 +113,24 @@ let logExpanded = false;
 /** Sessions whose worktree has been merged successfully — enables "Delete Workspace". */
 const mergedSessions = new Set<string>();
 let showNotificationCenter = false;
+let loaded = false;
 
 // ── Render ─────────────────────────────────────────────────────────────
 
 function render(): void {
   const root = document.getElementById('root');
   if (!root) { return; }
+
+  // Show loader until first data arrives from the host
+  if (!loaded) {
+    root.innerHTML = `
+      <div class="loader">
+        <div class="loader__spinner"></div>
+        <div class="loader__text">Loading board…</div>
+      </div>
+    `;
+    return;
+  }
 
   // Skip full re-render when a form overlay is open to avoid losing user input
   if ((showTaskForm || editingTask) && document.getElementById('task-form-overlay')) {
@@ -1281,6 +1293,7 @@ window.addEventListener('message', (event: MessageEvent) => {
         }
       }
       currentTasks = newTasks;
+      loaded = true;
       // Sync mergedSessions from persisted metadata
       mergedSessions.clear();
       for (const t of currentTasks) {
@@ -1460,6 +1473,9 @@ window.addEventListener('message', (event: MessageEvent) => {
       break;
   }
 });
+
+// Render the initial loading state immediately
+render();
 
 // Signal the host that the WebView is ready
 vscode.postMessage({ type: 'ready' });
