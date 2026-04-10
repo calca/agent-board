@@ -30,6 +30,13 @@ export interface ProjectConfigData {
     enabled?: boolean;
     path?: string;
   };
+  markdownProvider?: {
+    enabled?: boolean;
+    /** Workspace-relative or absolute path to the inbox directory containing .md task files. */
+    inboxPath?: string;
+    /** Workspace-relative or absolute path to the directory where done .md files are moved. */
+    donePath?: string;
+  };
   beadsProvider?: {
     enabled?: boolean;
     executable?: string;
