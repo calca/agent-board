@@ -230,7 +230,9 @@ export class AzureDevOpsProvider implements ITaskProvider {
     return {
       id: `${this.id}:${item.id}`,
       title: fields['System.Title'] ?? `#${item.id}`,
-      body: fields['System.Description'] ?? '',
+      body: fields['System.Description']
+        ?? (fields['Microsoft.VSTS.TCM.ReproSteps'] as string | undefined)
+        ?? '',
       status: this.mapStatus(fields['System.State']),
       labels: tags ? tags.split(';').map(t => t.trim()).filter(Boolean) : [],
       assignee: assignee?.displayName ?? assignee?.uniqueName,
