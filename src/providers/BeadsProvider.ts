@@ -136,9 +136,10 @@ export class BeadsProvider implements ITaskProvider {
       try {
         const raw: BeadsIssue[] = JSON.parse(stdout);
         const newTasks = raw.map(issue => this.mapBeadsToTask(issue));
-        // Preserve local status overrides (e.g. user moved card locally)
+        // Preserve local status overrides — but respect remote terminal states (done)
         const oldStatusMap = new Map(this.tasks.map(t => [t.id, t.status]));
         for (const t of newTasks) {
+          if (t.status === 'done') { continue; } // remote terminal state wins
           const oldStatus = oldStatusMap.get(t.id);
           if (oldStatus && oldStatus !== t.status) { t.status = oldStatus; }
         }

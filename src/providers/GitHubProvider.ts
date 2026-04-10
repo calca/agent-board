@@ -298,9 +298,10 @@ export class GitHubProvider implements ITaskProvider {
       const all = [...openIssues, ...closedIssues];
 
       const newCache = all.map(issue => this.mapGhCliIssue(issue));
-      // Preserve local status overrides (e.g. user moved card locally)
+      // Preserve local status overrides — but respect remote terminal states (done)
       const oldStatusMap = new Map(this.cache.map(t => [t.id, t.status]));
       for (const t of newCache) {
+        if (t.status === 'done') { continue; } // remote terminal state wins
         const oldStatus = oldStatusMap.get(t.id);
         if (oldStatus && oldStatus !== t.status) { t.status = oldStatus; }
       }
@@ -349,10 +350,11 @@ export class GitHubProvider implements ITaskProvider {
       page++;
     }
 
-    // Preserve local status overrides
+    // Preserve local status overrides — but respect remote terminal states (done)
     const oldStatusMap = new Map(this.cache.map(t => [t.id, t.status]));
     const newCache = issues.map(issue => this.mapIssue(issue));
     for (const t of newCache) {
+      if (t.status === 'done') { continue; } // remote terminal state wins
       const oldStatus = oldStatusMap.get(t.id);
       if (oldStatus && oldStatus !== t.status) { t.status = oldStatus; }
     }
