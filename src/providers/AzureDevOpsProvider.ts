@@ -204,22 +204,23 @@ export class AzureDevOpsProvider implements ITaskProvider {
       return;
     }
 
-    const batch = ids.slice(0, 200).join(',');
-    const args = [
-      'boards', 'work-item', 'show',
-      '--ids', batch,
-      '--org', this.organization,
-      '--output', 'json',
-    ];
-    try {
-      const { stdout } = await execShell('az', args, { timeout: 30_000 });
-      const items: AzWorkItem[] = JSON.parse(stdout);
-      const itemsArray = Array.isArray(items) ? items : [items];
-      this.tasks = itemsArray.map(item => this.mapWorkItem(item));
-    } catch (err) {
-      const detail = err instanceof Error ? err.message : String(err);
-      vscode.window.showWarningMessage(`Azure DevOps: failed to fetch work items — ${detail}`);
+    // az boards work-item show accepts only --id (singular), fetch each item
+    const results: AzWorkItem[] = [];
+    for (const id of ids.slice(0, 200)) {
+      try {
+        const { stdout } = await execShell('az', [
+          'boards', 'work-item', 'show',
+          '--id', String(id),
+          '--org', this.organization,
+          '--output', 'json',
+        ], { timeout: 15_000 });
+        const item = JSON.parse(stdout) as AzWorkItem;
+        results.push(item);
+      } catch {
+        // skip items that fail individually
+      }
     }
+    this.tasks = results.map(item => this.mapWorkItem(item));
   }
 
   private mapWorkItem(item: AzWorkItem): KanbanTask {
@@ -233,7 +234,7 @@ export class AzureDevOpsProvider implements ITaskProvider {
       status: this.mapStatus(fields['System.State']),
       labels: tags ? tags.split(';').map(t => t.trim()).filter(Boolean) : [],
       assignee: assignee?.displayName ?? assignee?.uniqueName,
-      url: item.url,
+      url: `${this.organization.replace(/\/+$/, '')}/${encodeURIComponent(this.project)}/_workitems/edit/${item.id}`,
       providerId: this.id,
       createdAt: fields['System.CreatedDate'] ? new Date(fields['System.CreatedDate'] as string) : undefined,
       meta: fields as unknown as Record<string, unknown>,
@@ -247,12 +248,13 @@ export class AzureDevOpsProvider implements ITaskProvider {
       case 'completed':
       case 'resolved':
         return 'done';
-      case 'active':
       case 'in progress':
       case 'committed':
         return 'inprogress';
       case 'review':
         return 'review';
+      case 'active':
+      case 'new':
       default:
         return 'todo';
     }
