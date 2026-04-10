@@ -1044,7 +1044,7 @@ function renderFullView(): string {
 
         <!-- Task Details -->
         <div class="fv-col">
-          <div class="fv-panel fv-panel--fill">
+          <div class="fv-panel fv-panel--fill"${statusCol?.color ? ` style="background:${statusCol.color}0D;"` : ''}>
             <div class="fv-panel__header fv-panel__header--static">
               <span class="fv-panel__header-text">☰ Issue Details</span>
               ${isEditable && !isRunning && !isLastCol ? (editingTask?.id === task.id
@@ -1172,7 +1172,7 @@ function renderFullView(): string {
 
 function renderFvReadOnlyDetails(task: KanbanTask, statusCol: Column | undefined): string {
   const statusColor = statusCol?.color ?? '';
-  const statusDot = statusColor ? `<span class="fv-status-dot" style="background:${statusColor}"></span>` : '';
+  const statusDot = statusColor ? `<span class="fv-status-dot" style="background:${statusColor}1A"></span>` : '';
   return `
     <div class="fv-detail-grid">
       <div class="fv-detail-row fv-detail-row--status">

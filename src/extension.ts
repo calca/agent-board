@@ -18,6 +18,7 @@ import { LmApiGenAiProvider } from './copilot/providers/LmApiGenAiProvider';
 import { SessionStateManager } from './copilot/SessionStateManager';
 import { SquadManager } from './copilot/SquadManager';
 import { removeWorktree } from './copilot/WorktreeManager';
+import { GIT_REF_SCHEME, GitRefContentProvider, gitRefUri } from './diff/DiffWatcher';
 import { GitHubIssueManager } from './github/GitHubIssueManager';
 import { PullRequestManager } from './github/PullRequestManager';
 import { KanbanPanel } from './kanban/KanbanPanel';
@@ -47,6 +48,11 @@ export function activate(context: vscode.ExtensionContext): void {
   const ghIssueManager = new GitHubIssueManager();
   const prManager = new PullRequestManager();
   context.subscriptions.push(ghIssueManager);
+
+  // Register custom git-ref content provider for diff views
+  context.subscriptions.push(
+    vscode.workspace.registerTextDocumentContentProvider(GIT_REF_SCHEME, new GitRefContentProvider()),
+  );
 
   // Register the GitHub provider (uses VSCode SSO + .agent-board/config.json)
   const githubProvider = new GitHubProvider(context, ghIssueManager);
@@ -492,12 +498,8 @@ export function activate(context: vscode.ExtensionContext): void {
             const session = sessionStateManager.getSession(msg.sessionId);
             const wtPath = session?.worktreePath;
             if (wtPath) {
-              const absPath = path.join(wtPath, msg.filePath);
-              const headUri = vscode.Uri.file(absPath).with({
-                scheme: 'git',
-                query: JSON.stringify({ path: absPath, ref: 'main' }),
-              });
-              const workingUri = vscode.Uri.file(absPath);
+              const headUri = gitRefUri(wtPath, msg.filePath, 'main');
+              const workingUri = vscode.Uri.file(path.join(wtPath, msg.filePath));
               await vscode.commands.executeCommand('vscode.diff', headUri, workingUri, `${msg.filePath} (main ↔ Working)`);
             }
           }
@@ -578,12 +580,9 @@ export function activate(context: vscode.ExtensionContext): void {
             });
             const resources = files.map(f => {
               const absPath = path.join(repoRoot, f.filePath);
-              const mainUri = vscode.Uri.file(absPath).with({
-                scheme: 'git',
-                query: JSON.stringify({ path: absPath, ref: 'main' }),
-              });
+              const mainUri = gitRefUri(repoRoot, f.filePath, 'main');
               const branchUri = f.statusChar === 'D'
-                ? vscode.Uri.file(absPath).with({ scheme: 'git', query: JSON.stringify({ path: absPath, ref: '' }) })
+                ? gitRefUri(repoRoot, f.filePath, '')
                 : vscode.Uri.file(path.join(wtPath, f.filePath));
               // vscode.changes expects [labelUri, leftUri?, rightUri?]
               return [vscode.Uri.file(absPath), mainUri, branchUri] as [vscode.Uri, vscode.Uri, vscode.Uri];

@@ -1,4 +1,4 @@
-import { exec } from 'child_process';
+import { exec, execSync } from 'child_process';
 import * as path from 'path';
 import * as vscode from 'vscode';
 import { Logger } from '../utils/logger';
@@ -6,6 +6,34 @@ import { Logger } from '../utils/logger';
 export interface FileChange {
   path: string;
   status: 'added' | 'modified' | 'deleted';
+}
+
+// ── Git-ref content provider ───────────────────────────────────────────
+export const GIT_REF_SCHEME = 'agent-board-git';
+
+/**
+ * A simple TextDocumentContentProvider that resolves `git show <ref>:<path>`
+ * without relying on VS Code's built-in Git extension.
+ *
+ * URI format: `agent-board-git:<filePath>?<JSON { repoPath, ref, filePath }>`
+ */
+export class GitRefContentProvider implements vscode.TextDocumentContentProvider {
+  provideTextDocumentContent(uri: vscode.Uri): string {
+    const { repoPath, ref, filePath } = JSON.parse(uri.query) as { repoPath: string; ref: string; filePath: string };
+    if (!ref) { return ''; }
+    try {
+      return execSync(`git show ${ref}:${filePath}`, { cwd: repoPath, encoding: 'utf-8', timeout: 10_000 });
+    } catch {
+      return '';
+    }
+  }
+}
+
+/** Build an `agent-board-git:` URI for a file at a specific git ref. */
+export function gitRefUri(repoPath: string, filePath: string, ref: string): vscode.Uri {
+  return vscode.Uri.parse(`${GIT_REF_SCHEME}:${filePath}`).with({
+    query: JSON.stringify({ repoPath, ref, filePath }),
+  });
 }
 
 /**
@@ -64,10 +92,7 @@ export class DiffWatcher implements vscode.Disposable {
   /** Open the VS Code diff editor for a single file (baseRef vs working tree). */
   async openDiff(filePath: string): Promise<void> {
     const absPath = path.join(this.rootPath, filePath);
-    const headUri = vscode.Uri.file(absPath).with({
-      scheme: 'git',
-      query: JSON.stringify({ path: absPath, ref: this.baseRef }),
-    });
+    const headUri = gitRefUri(this.rootPath, filePath, this.baseRef);
     const workingUri = vscode.Uri.file(absPath);
     await vscode.commands.executeCommand('vscode.diff', headUri, workingUri, `${filePath} (${this.baseRef} ↔ Working)`);
   }
@@ -86,23 +111,14 @@ export class DiffWatcher implements vscode.Disposable {
       .filter(f => f.status !== 'deleted')
       .map(f => {
         const absPath = path.join(this.rootPath, f.path);
-        const headUri = vscode.Uri.file(absPath).with({
-          scheme: 'git',
-          query: JSON.stringify({ path: absPath, ref: this.baseRef }),
-        });
+        const headUri = gitRefUri(this.rootPath, f.path, this.baseRef);
         return [vscode.Uri.file(absPath), headUri, vscode.Uri.file(absPath)] as [vscode.Uri, vscode.Uri, vscode.Uri];
       });
     // Deleted files: baseRef → empty
     for (const f of files.filter(d => d.status === 'deleted')) {
       const absPath = path.join(this.rootPath, f.path);
-      const headUri = vscode.Uri.file(absPath).with({
-        scheme: 'git',
-        query: JSON.stringify({ path: absPath, ref: this.baseRef }),
-      });
-      const emptyUri = vscode.Uri.file(absPath).with({
-        scheme: 'git',
-        query: JSON.stringify({ path: absPath, ref: '' }),
-      });
+      const headUri = gitRefUri(this.rootPath, f.path, this.baseRef);
+      const emptyUri = gitRefUri(this.rootPath, f.path, '');
       resources.push([vscode.Uri.file(absPath), headUri, emptyUri]);
     }
     try {
