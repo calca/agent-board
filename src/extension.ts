@@ -320,6 +320,7 @@ export function activate(context: vscode.ExtensionContext): void {
       type: 'repoStatus',
       isGit: await isGitRepository(),
       isGitHub: await isGitHubRepository(),
+      isAzureDevOps: await isAzureDevOpsRepository(),
       workspaceRoot: vscode.workspace.workspaceFolders?.[0]?.uri.fsPath,
       workspaceName: vscode.workspace.name ?? vscode.workspace.workspaceFolders?.[0]?.name ?? '',
     });
@@ -921,6 +922,95 @@ export function activate(context: vscode.ExtensionContext): void {
           }
           break;
         }
+        case 'createPullRequest': {
+          const session = sessionStateManager.getSession(msg.sessionId);
+          const wtPath = session?.worktreePath;
+          const repoRoot = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
+          if (!wtPath || !repoRoot) {
+            vscode.window.showErrorMessage('Create PR: worktree not found.');
+            break;
+          }
+
+          try {
+            const branch = (await execPromise('git rev-parse --abbrev-ref HEAD', { cwd: wtPath })).trim();
+            const isGH = await isGitHubRepository();
+            const isADO = await isAzureDevOpsRepository();
+
+            if (isGH) {
+              // ── GitHub: use PullRequestManager API ───────────────────
+              const [prProviderId] = msg.sessionId.split(':');
+              const prProvider = providerRegistry.get(prProviderId);
+              let taskTitle = branch;
+              let taskBody = '';
+              if (prProvider) {
+                const prTasks = await prProvider.getTasks();
+                const prTask = prTasks.find(t => t.id === msg.sessionId);
+                if (prTask) {
+                  taskTitle = prTask.title;
+                  const dw = copilotLauncher.getDiffWatcher(msg.sessionId);
+                  const changedFiles = dw?.getChanges() ?? [];
+                  taskBody = changedFiles.length > 0
+                    ? `### Files changed\n\n${changedFiles.map(f => `- \`${f.path}\``).join('\n')}`
+                    : '';
+                }
+              }
+              const pr = await prManager.createPR({
+                title: taskTitle,
+                body: taskBody,
+                headBranch: branch,
+              });
+              if (pr) {
+                // Persist PR info on the task
+                const [updProviderId] = msg.sessionId.split(':');
+                const updProvider = providerRegistry.get(updProviderId);
+                if (updProvider) {
+                  const updTasks = await updProvider.getTasks();
+                  const updTask = updTasks.find(t => t.id === msg.sessionId);
+                  if (updTask?.copilotSession) {
+                    await updProvider.updateTask({
+                      ...updTask,
+                      copilotSession: {
+                        ...updTask.copilotSession,
+                        prUrl: pr.url,
+                        prNumber: pr.number,
+                        prState: pr.state,
+                      },
+                    });
+                  }
+                }
+                panel.postMessage({ type: 'createPullRequestResult', sessionId: msg.sessionId, success: true, prUrl: pr.url });
+                await sendTasksToPanel(panel, providerRegistry, genAiRegistry, squadManager, sessionStateManager);
+              }
+            } else if (isADO) {
+              // ── Azure DevOps: open browser to PR creation page ───────
+              const remoteUrl = await getRemoteUrl();
+              if (!remoteUrl) {
+                vscode.window.showErrorMessage('Create PR: could not determine Azure DevOps remote URL.');
+                break;
+              }
+              // Detect the default branch (fallback to 'main')
+              let defaultBranch = 'main';
+              try {
+                const symbolicRef = (await execPromise('git symbolic-ref refs/remotes/origin/HEAD', { cwd: repoRoot })).trim();
+                const match = symbolicRef.match(/refs\/remotes\/origin\/(.+)$/);
+                if (match) { defaultBranch = match[1]; }
+              } catch { /* use 'main' fallback */ }
+              // Normalise URL: remove .git suffix and trailing slash
+              const baseUrl = remoteUrl.replace(/\.git$/, '').replace(/\/$/, '');
+              const prUrl = `${baseUrl}/pullrequestcreate?sourceRef=${encodeURIComponent(branch)}&targetRef=${encodeURIComponent(`refs/heads/${defaultBranch}`)}`;
+              await vscode.env.openExternal(vscode.Uri.parse(prUrl));
+              panel.postMessage({ type: 'createPullRequestResult', sessionId: msg.sessionId, success: true, prUrl });
+            } else {
+              vscode.window.showWarningMessage('Create PR: no GitHub or Azure DevOps remote configured.');
+            }
+          } catch (err) {
+            const errMsg = err instanceof Error ? err.message : String(err);
+            logger.error('createPullRequest failed:', errMsg);
+            panel.postMessage({ type: 'createPullRequestResult', sessionId: msg.sessionId, success: false, message: errMsg });
+            vscode.window.showErrorMessage(`Create PR failed: ${errMsg}`);
+          }
+          break;
+        }
       }
     });
 
@@ -1274,6 +1364,7 @@ async function pickAgent(agents: AgentInfo[]): Promise<string | undefined> {
 /** Cache for workspace git/github detection (computed once per session). */
 let _isGitRepo: boolean | undefined;
 let _isGitHubRepo: boolean | undefined;
+let _isAzureDevOpsRepo: boolean | undefined;
 
 function shellCheck(cmd: string, cwd: string): Promise<boolean> {
   return new Promise(resolve => {
@@ -1299,6 +1390,27 @@ async function isGitHubRepository(): Promise<boolean> {
   const root = vscode.workspace.workspaceFolders![0].uri.fsPath;
   _isGitHubRepo = await shellCheck('git remote -v | grep -i github.com', root);
   return _isGitHubRepo;
+}
+
+async function isAzureDevOpsRepository(): Promise<boolean> {
+  if (_isAzureDevOpsRepo !== undefined) { return _isAzureDevOpsRepo; }
+  const isGit = await isGitRepository();
+  if (!isGit) { _isAzureDevOpsRepo = false; return false; }
+  const root = vscode.workspace.workspaceFolders![0].uri.fsPath;
+  _isAzureDevOpsRepo = await shellCheck('git remote -v | grep -iE "dev\\.azure\\.com|visualstudio\\.com"', root);
+  return _isAzureDevOpsRepo;
+}
+
+/** Return the raw fetch URL of the first git remote, or undefined. */
+async function getRemoteUrl(): Promise<string | undefined> {
+  const root = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
+  if (!root) { return undefined; }
+  try {
+    const output = await execPromise('git remote get-url origin', { cwd: root });
+    return output.trim() || undefined;
+  } catch {
+    return undefined;
+  }
 }
 
 /**

@@ -26,6 +26,34 @@ suite('Message Protocol Types', () => {
     assert.strictEqual(msg.providerId, 'github');
   });
 
+  test('HostToWebView repoStatus includes isAzureDevOps', () => {
+    const msg = {
+      type: 'repoStatus' as const,
+      isGit: true,
+      isGitHub: false,
+      isAzureDevOps: true,
+      workspaceRoot: '/workspace',
+      workspaceName: 'my-project',
+    };
+    assert.strictEqual(msg.type, 'repoStatus');
+    assert.strictEqual(msg.isGit, true);
+    assert.strictEqual(msg.isGitHub, false);
+    assert.strictEqual(msg.isAzureDevOps, true);
+  });
+
+  test('HostToWebView createPullRequestResult shape is correct', () => {
+    const msg = {
+      type: 'createPullRequestResult' as const,
+      sessionId: 'json:42',
+      success: true,
+      prUrl: 'https://github.com/owner/repo/pull/1',
+    };
+    assert.strictEqual(msg.type, 'createPullRequestResult');
+    assert.strictEqual(msg.sessionId, 'json:42');
+    assert.strictEqual(msg.success, true);
+    assert.strictEqual(msg.prUrl, 'https://github.com/owner/repo/pull/1');
+  });
+
   test('WebViewToHost taskMoved shape is correct', () => {
     const msg = {
       type: 'taskMoved' as const,
@@ -50,5 +78,14 @@ suite('Message Protocol Types', () => {
   test('WebViewToHost ready message has correct type', () => {
     const msg = { type: 'ready' as const };
     assert.strictEqual(msg.type, 'ready');
+  });
+
+  test('WebViewToHost createPullRequest shape is correct', () => {
+    const msg = {
+      type: 'createPullRequest' as const,
+      sessionId: 'json:42',
+    };
+    assert.strictEqual(msg.type, 'createPullRequest');
+    assert.strictEqual(msg.sessionId, 'json:42');
   });
 });
