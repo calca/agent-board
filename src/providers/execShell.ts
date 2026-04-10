@@ -1,4 +1,4 @@
-import { exec, ExecOptions } from 'child_process';
+import { ExecFileOptions, execFile } from 'child_process';
 
 /** User login shell (falls back to /bin/zsh → /bin/bash). */
 const userShell: string = process.env.SHELL || '/bin/zsh';
@@ -11,25 +11,27 @@ function shellEscape(arg: string): string {
 }
 
 /**
- * Build `<shell> -ilc '<cmd> <args…>'` so the login profile is loaded
- * and Homebrew / custom PATH entries are resolved correctly.
+ * Build the full command string (single level of escaping)
+ * to be passed as the argument of `<shell> -ilc '<cmd> <args…>'`.
  */
-function buildCommand(cmd: string, args: readonly string[]): string {
-  const escaped = [cmd, ...args].map(shellEscape).join(' ');
-  return `${userShell} -ilc ${shellEscape(escaped)}`;
+function buildShellCmd(cmd: string, args: readonly string[]): string {
+  return [cmd, ...args].map(shellEscape).join(' ');
 }
 
 /**
- * Thin wrapper around `exec` that always runs through the user's **login**
- * shell so that Homebrew / custom PATH entries are resolved correctly.
+ * Thin wrapper around `execFile` that always runs through the user's **login**
+ * shell (`-ilc`) so that Homebrew / custom PATH entries are resolved correctly.
+ *
+ * Uses `execFile(shell, ['-ilc', cmd])` — no intermediate `/bin/sh`, so
+ * shell arguments are only escaped once.
  */
 export function execShell(
   cmd: string,
   args: readonly string[],
-  opts: ExecOptions,
+  opts: ExecFileOptions,
 ): Promise<{ stdout: string; stderr: string }> {
   return new Promise((resolve, reject) => {
-    exec(buildCommand(cmd, args), opts, (err, stdout, stderr) => {
+    execFile(userShell, ['-ilc', buildShellCmd(cmd, args)], opts, (err, stdout, stderr) => {
       if (err) { reject(err); } else { resolve({ stdout: String(stdout), stderr: String(stderr) }); }
     });
   });
@@ -41,9 +43,9 @@ export function execShell(
 export function execShellOk(
   cmd: string,
   args: readonly string[],
-  opts: ExecOptions = {},
+  opts: ExecFileOptions = {},
 ): Promise<boolean> {
   return new Promise((resolve) => {
-    exec(buildCommand(cmd, args), opts, (err) => resolve(!err));
+    execFile(userShell, ['-ilc', buildShellCmd(cmd, args)], opts, (err) => resolve(!err));
   });
 }

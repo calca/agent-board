@@ -35,10 +35,11 @@ export class BeadsProvider implements ITaskProvider {
 
   constructor() {
     this.readConfig();
-    this.startPolling();
+    if (this.isEnabled()) { this.startPolling(); }
   }
 
   async getTasks(): Promise<KanbanTask[]> {
+    if (!this.isEnabled()) { return []; }
     if (this.tasks.length === 0) {
       await this.fetchTasks();
     }
@@ -52,14 +53,19 @@ export class BeadsProvider implements ITaskProvider {
 
   async refresh(): Promise<void> {
     this.readConfig();
+    if (!this.isEnabled()) {
+      if (this.timer) { clearInterval(this.timer); this.timer = undefined; }
+      this.tasks = [];
+      this._onDidChangeTasks.fire(this.tasks);
+      return;
+    }
+    if (!this.timer) { this.startPolling(); }
     await this.fetchTasks();
     this._onDidChangeTasks.fire(this.tasks);
   }
 
   dispose(): void {
-    if (this.timer) {
-      clearInterval(this.timer);
-    }
+    if (this.timer) { clearInterval(this.timer); }
     this._onDidChangeTasks.dispose();
   }
 

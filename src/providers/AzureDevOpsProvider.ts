@@ -42,10 +42,11 @@ export class AzureDevOpsProvider implements ITaskProvider {
 
   constructor() {
     this.readConfig();
-    this.startPolling();
+    if (this.isEnabled()) { this.startPolling(); }
   }
 
   async getTasks(): Promise<KanbanTask[]> {
+    if (!this.isEnabled()) { return []; }
     if (this.tasks.length === 0) {
       await this.fetchTasks();
     }
@@ -72,6 +73,13 @@ export class AzureDevOpsProvider implements ITaskProvider {
 
   async refresh(): Promise<void> {
     this.readConfig();
+    if (!this.isEnabled()) {
+      if (this.timer) { clearInterval(this.timer); this.timer = undefined; }
+      this.tasks = [];
+      this._onDidChangeTasks.fire(this.tasks);
+      return;
+    }
+    if (!this.timer) { this.startPolling(); }
     await this.fetchTasks();
     this._onDidChangeTasks.fire(this.tasks);
   }
@@ -155,7 +163,7 @@ export class AzureDevOpsProvider implements ITaskProvider {
       return Promise.resolve();
     }
 
-    const wiql = `SELECT [System.Id] FROM WorkItems WHERE [System.TeamProject] = '${this.project.replace(/'/g, "''")}' AND [System.State] = 'Active' ORDER BY [System.CreatedDate] DESC`;
+    const wiql = `SELECT [System.Id], [System.Title], [System.Description], [System.State], [System.Tags], [System.AssignedTo], [System.CreatedDate] FROM WorkItems WHERE [System.TeamProject] = '${this.project.replace(/'/g, "''")}' AND [System.State] = 'Active' ORDER BY [System.CreatedDate] DESC`;
     const args = [
       'boards', 'query',
       '--wiql', wiql,
@@ -164,12 +172,8 @@ export class AzureDevOpsProvider implements ITaskProvider {
     ];
     try {
       const { stdout } = await execShell('az', args, { timeout: 30_000 });
-      try {
-        const raw = JSON.parse(stdout) as AzWorkItem[];
-        this.tasks = raw.map(item => this.mapWorkItem(item));
-      } catch {
-        await this.fetchWorkItemDetails(stdout);
-      }
+      // az boards query returns only IDs; always fetch full details for description etc.
+      await this.fetchWorkItemDetails(stdout);
     } catch (err) {
       vscode.window.showWarningMessage(`Azure DevOps CLI error: ${err instanceof Error ? err.message : String(err)}`);
     }
@@ -182,8 +186,14 @@ export class AzureDevOpsProvider implements ITaskProvider {
     let ids: number[];
     try {
       const parsed = JSON.parse(queryOutput);
+      // az boards query may return { workItems: [{ id }] }, [{ id }], or [{ fields: { 'System.Id': N } }]
       const items = parsed.workItems ?? parsed;
-      ids = (items as Array<{ id: number }>).map(w => w.id);
+      ids = (items as Array<Record<string, unknown>>).map(w => {
+        if (typeof w.id === 'number') { return w.id; }
+        // Some formats nest the id in fields
+        const fields = w.fields as Record<string, unknown> | undefined;
+        return Number(fields?.['System.Id'] ?? w.id);
+      }).filter(n => !isNaN(n));
     } catch {
       this.tasks = [];
       return;
@@ -206,8 +216,9 @@ export class AzureDevOpsProvider implements ITaskProvider {
       const items: AzWorkItem[] = JSON.parse(stdout);
       const itemsArray = Array.isArray(items) ? items : [items];
       this.tasks = itemsArray.map(item => this.mapWorkItem(item));
-    } catch {
-      vscode.window.showWarningMessage('Azure DevOps: failed to fetch work items.');
+    } catch (err) {
+      const detail = err instanceof Error ? err.message : String(err);
+      vscode.window.showWarningMessage(`Azure DevOps: failed to fetch work items — ${detail}`);
     }
   }
 
