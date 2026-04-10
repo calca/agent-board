@@ -1968,6 +1968,10 @@ html, body, #root {
 .fv-action-btn--muted {
   opacity: 0.4;
 }
+.fv-icon {
+  flex-shrink: 0;
+  vertical-align: middle;
+}
 .fv-action-btn {
   display: flex;
   align-items: center;
