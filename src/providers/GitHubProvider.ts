@@ -107,6 +107,11 @@ export class GitHubProvider implements ITaskProvider {
     void syncRemote().catch(() => { /* non-fatal: local status already updated */ });
   }
 
+  async removeDoneTask(id: string): Promise<void> {
+    this.cache = this.cache.filter(t => t.id !== id);
+    this._onDidChangeTasks.fire(this.cache);
+  }
+
   async refresh(): Promise<void> {
     this.readConfig();
     this.cacheTimestamp = 0;

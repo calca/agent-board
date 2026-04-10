@@ -249,6 +249,14 @@ function render(): void {
     if (e.key === 'Escape') { showSearchInput = false; searchText = ''; render(); }
   });
 
+  // Done column actions
+  document.getElementById('btn-export-done')?.addEventListener('click', () => {
+    vscode.postMessage({ type: 'exportDoneMd' });
+  });
+  document.getElementById('btn-clean-done')?.addEventListener('click', () => {
+    vscode.postMessage({ type: 'cleanDone' });
+  });
+
   document.getElementById('squad-provider-select')?.addEventListener('change', (e: Event) => {
     selectedSquadProviderId = (e.target as HTMLSelectElement).value;
   });
@@ -618,11 +626,25 @@ function renderColumn(col: Column, tasks: KanbanTask[]): string {
   const bgStyle = col.color ? ` style="background: ${col.color}0D"` : '';
   const headerStyle = col.color ? ` style="background: ${col.color}1A"` : '';
   const countStyle = col.color ? ` style="background: ${col.color}33; color: ${col.color}"` : '';
+  const isDone = col.id === 'done';
+  const doneActions = isDone && tasks.length > 0
+    ? `<span class="kanban__column-actions">
+        <button class="kanban__col-btn" id="btn-export-done" title="Export to Markdown">
+          <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M2 3.5A1.5 1.5 0 0 1 3.5 2h5.586a1.5 1.5 0 0 1 1.06.44l3.415 3.414A1.5 1.5 0 0 1 14 6.914V12.5a1.5 1.5 0 0 1-1.5 1.5h-9A1.5 1.5 0 0 1 2 12.5v-9Zm1.5-.5a.5.5 0 0 0-.5.5v9a.5.5 0 0 0 .5.5h9a.5.5 0 0 0 .5-.5V7H9.5A1.5 1.5 0 0 1 8 5.5V3H3.5ZM9 3.207V5.5a.5.5 0 0 0 .5.5h2.293L9 3.207ZM6 8.5a.5.5 0 0 1 .5-.5h3a.5.5 0 0 1 0 1h-3a.5.5 0 0 1-.5-.5Zm.5 1.5a.5.5 0 0 0 0 1h2a.5.5 0 0 0 0-1h-2Z"/></svg>
+        </button>
+        <button class="kanban__col-btn kanban__col-btn--danger" id="btn-clean-done" title="Clean done tasks">
+          <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M5.5 1.5A.5.5 0 0 1 6 1h4a.5.5 0 0 1 .5.5V3h3a.5.5 0 0 1 0 1h-.538l-.853 10.66A1 1 0 0 1 11.114 15H4.886a1 1 0 0 1-.995-.94L3.038 4H2.5a.5.5 0 0 1 0-1h3V1.5ZM6.5 2v1h3V2h-3Zm-2.457 2 .826 10h6.262l.826-10H4.043Z"/></svg>
+        </button>
+      </span>`
+    : '';
   return `
     <div class="kanban__column"${bgStyle}>
       <div class="kanban__column-header"${headerStyle}>
         <span>${escapeHtml(col.label)}</span>
-        <span class="kanban__column-count"${countStyle}>${tasks.length}</span>
+        <span class="kanban__column-header-right">
+          ${doneActions}
+          <span class="kanban__column-count"${countStyle}>${tasks.length}</span>
+        </span>
       </div>
       <div class="kanban__column-body" data-col-id="${col.id}">
         ${tasks.length === 0

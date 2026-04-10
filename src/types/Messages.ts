@@ -102,4 +102,6 @@ export type WebViewToHost =
   | { type: 'alignWorktree'; sessionId: string }
   | { type: 'deleteWorktree'; sessionId: string }
   | { type: 'resetSession'; sessionId: string }
-  | { type: 'deleteTask'; taskId: string };
+  | { type: 'deleteTask'; taskId: string }
+  | { type: 'exportDoneMd' }
+  | { type: 'cleanDone' };

@@ -480,6 +480,62 @@ export function activate(context: vscode.ExtensionContext): void {
           await sendTasksToPanel(panel, providerRegistry, genAiRegistry, squadManager, sessionStateManager);
           break;
         }
+        case 'exportDoneMd': {
+          const allProviders = providerRegistry.getAll().filter(p => p.isEnabled());
+          const allTasks = (await Promise.allSettled(allProviders.map(p => p.getTasks())))
+            .filter((r): r is PromiseFulfilledResult<import('./types/KanbanTask').KanbanTask[]> => r.status === 'fulfilled')
+            .flatMap(r => r.value);
+          const doneTasks = allTasks.filter(t => t.status === 'done');
+          const today = new Date().toISOString().slice(0, 10);
+          const lines = [
+            `# Done Tasks Report`,
+            ``,
+            `**Date:** ${today}`,
+            `**Total:** ${doneTasks.length} task${doneTasks.length === 1 ? '' : 's'}`,
+            ``,
+            `| # | Title | Provider | Labels | Assignee |`,
+            `|---|-------|----------|--------|----------|`,
+            ...doneTasks.map((t, i) => {
+              const title = t.url ? `[${t.title}](${t.url})` : t.title;
+              return `| ${i + 1} | ${title} | ${t.providerId} | ${t.labels.join(', ')} | ${t.assignee ?? '—'} |`;
+            }),
+            ``,
+          ];
+          const md = lines.join('\n');
+          await vscode.env.clipboard.writeText(md);
+          vscode.window.showInformationMessage(`Copied ${doneTasks.length} done task(s) to clipboard as Markdown.`);
+          break;
+        }
+        case 'cleanDone': {
+          const allProviders2 = providerRegistry.getAll().filter(p => p.isEnabled());
+          const allTasks2 = (await Promise.allSettled(allProviders2.map(p => p.getTasks())))
+            .filter((r): r is PromiseFulfilledResult<import('./types/KanbanTask').KanbanTask[]> => r.status === 'fulfilled')
+            .flatMap(r => r.value);
+          const doneTasks2 = allTasks2.filter(t => t.status === 'done');
+          if (doneTasks2.length === 0) {
+            vscode.window.showInformationMessage('No done tasks to clean.');
+            break;
+          }
+          const confirm = await vscode.window.showWarningMessage(
+            `Remove ${doneTasks2.length} done task(s) from the board?`,
+            { modal: true },
+            'Clean',
+          );
+          if (confirm !== 'Clean') { break; }
+          for (const t of doneTasks2) {
+            const [pid] = t.id.split(':');
+            const prov = providerRegistry.get(pid);
+            if (prov && 'deleteTaskById' in prov && typeof (prov as Record<string, unknown>).deleteTaskById === 'function') {
+              await (prov as unknown as { deleteTaskById(id: string): Promise<boolean> }).deleteTaskById(t.id);
+            } else if (prov && 'removeDoneTask' in prov && typeof (prov as Record<string, unknown>).removeDoneTask === 'function') {
+              await (prov as unknown as { removeDoneTask(id: string): Promise<void> }).removeDoneTask(t.id);
+            }
+          }
+          refresh();
+          await sendTasksToPanel(panel, providerRegistry, genAiRegistry, squadManager, sessionStateManager);
+          vscode.window.showInformationMessage(`Cleaned ${doneTasks2.length} done task(s).`);
+          break;
+        }
         case 'launchProvider': {
           await squadManager.launchSingle(msg.taskId, msg.genAiProviderId, undefined);
           panel.updateSquadStatus(squadManager.getStatus());

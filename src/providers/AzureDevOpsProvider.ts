@@ -79,6 +79,11 @@ export class AzureDevOpsProvider implements ITaskProvider {
     }
   }
 
+  async removeDoneTask(id: string): Promise<void> {
+    this.tasks = this.tasks.filter(t => t.id !== id);
+    this._onDidChangeTasks.fire(this.tasks);
+  }
+
   async refresh(): Promise<void> {
     this.readConfig();
     if (!this.isEnabled()) {
