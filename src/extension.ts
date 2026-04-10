@@ -28,6 +28,7 @@ import { BeadsProvider } from './providers/BeadsProvider';
 import { GitHubProvider } from './providers/GitHubProvider';
 import { ITaskProvider } from './providers/ITaskProvider';
 import { JsonProvider } from './providers/JsonProvider';
+import { MarkdownProvider } from './providers/MarkdownProvider';
 import { ProviderPicker } from './providers/ProviderPicker';
 import { ProviderRegistry } from './providers/ProviderRegistry';
 import { SettingsPanel } from './settings/SettingsPanel';
@@ -160,6 +161,14 @@ export function activate(context: vscode.ExtensionContext): void {
   // JSON-backed task provider — always registered, persists to .agent-board/tasks.json
   const jsonProvider = new JsonProvider();
   providerRegistry.register(jsonProvider);
+
+  // Markdown-backed task provider — opt-in; reads .md files from a configurable inbox directory
+  const markdownProvider = new MarkdownProvider();
+  if (markdownProvider.isEnabled()) {
+    providerRegistry.register(markdownProvider);
+  } else {
+    context.subscriptions.push({ dispose: () => markdownProvider.dispose() });
+  }
 
   // Overview sidebar view
   const overviewProvider = new OverviewTreeProvider(providerRegistry, squadManager);
