@@ -3,7 +3,6 @@ import * as path from 'path';
 import * as vscode from 'vscode';
 import { ProjectConfig } from '../config/ProjectConfig';
 import { KanbanTask } from '../types/KanbanTask';
-import { formatError } from '../utils/errorUtils';
 import { ITaskProvider, ProviderConfigField, ProviderDiagnostic } from './ITaskProvider';
 
 /**
@@ -62,9 +61,8 @@ export class MarkdownProvider implements ITaskProvider {
           fs.renameSync(srcPath, path.join(this.doneDir, `${nativeId}.md`));
           // Remove from local cache — the file watcher will also detect the deletion
           this.tasks = this.tasks.filter(t => t.id !== task.id);
-        } catch (err) {
-          // Log but do not surface — the status update is still applied in memory
-          void err;
+        } catch {
+          // Best-effort move — status update is still applied in memory
         }
       }
     }
@@ -187,8 +185,7 @@ export class MarkdownProvider implements ITaskProvider {
           }
         })
         .filter((t): t is KanbanTask => t !== null);
-    } catch (err) {
-      void formatError(err);
+    } catch {
       this.tasks = [];
     }
   }

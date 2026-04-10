@@ -48,11 +48,11 @@ const vscodeMock = {
 
 // Inject vscode mock BEFORE importing the provider
 // eslint-disable-next-line @typescript-eslint/no-require-imports
-const Module = require('module') as NodeJS.Module & { _resolveFilename: (r: string, p: unknown) => string };
-const originalLoad = (Module as unknown as { _load: (r: string, p: unknown, m: boolean) => unknown })._load;
-(Module as unknown as { _load: (r: string, p: unknown, m: boolean) => unknown })._load = function (request: string, parent: unknown, isMain: boolean) {
+const NodeModule = require('module') as NodeJS.Module & { _resolveFilename: (r: string, p: unknown) => string };
+const originalLoad = (NodeModule as unknown as { _load: (r: string, p: unknown, m: boolean) => unknown })._load;
+(NodeModule as unknown as { _load: (r: string, p: unknown, m: boolean) => unknown })._load = function (request: string, parent: unknown, isMain: boolean) {
   if (request === 'vscode') { return vscodeMock; }
-  return originalLoad.call(Module, request, parent, isMain);
+  return originalLoad.call(NodeModule, request, parent, isMain);
 };
 
 // Also mock ProjectConfig to return a config from our test state
