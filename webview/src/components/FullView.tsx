@@ -3,13 +3,14 @@ import { useBoard } from '../context/BoardContext';
 import { postMessage } from '../hooks/useVsCodeApi';
 import type { Column, KanbanTask } from '../types';
 import { escapeHtml, relativeWorktreePath, sanitizeHtml } from '../utils';
+import { MarkdownViewer } from './MarkdownViewer';
 
 const statusIcons: Record<string, string> = { added: '＋', modified: '✎', deleted: '✕' };
 const logSourceIcons: Record<string, string> = { board: '☰', agent: '◆', tool: '⚙', system: 'ⓘ' };
 
 export function FullView() {
   const { state, dispatch, imp } = useBoard();
-  const { fullViewTaskId, tasks, columns, genAiProviders, logExpanded, repoIsGit, repoIsGitHub, repoIsAzureDevOps, workspaceRoot } = state;
+  const { fullViewTaskId, tasks, columns, editableProviderIds, genAiProviders, logExpanded, repoIsGit, repoIsGitHub, repoIsAzureDevOps, workspaceRoot } = state;
   const logScrollRef = useRef<HTMLDivElement>(null);
 
   const task = tasks.find(t => t.id === fullViewTaskId);
@@ -75,6 +76,9 @@ export function FullView() {
           <div className="fv-panel fv-panel--fill" style={statusCol?.color ? { background: `${statusCol.color}0D` } : undefined}>
             <div className="fv-panel__header fv-panel__header--static" style={statusCol?.color ? { background: `${statusCol.color}1A` } : undefined}>
               <span className="fv-panel__header-text">☰ Issue Details</span>
+              {!isRunning && editableProviderIds.includes(task.providerId) && (
+                <button className="fv-panel__header-btn" onClick={() => dispatch({ type: 'SET_EDITING_TASK', task })} title="Edit issue">✎ Edit</button>
+              )}
             </div>
             <div className="fv-panel__body fv-panel__body--scroll">
               <FvReadOnlyDetails task={task} statusCol={statusCol} columns={columns} />
@@ -185,7 +189,6 @@ export function FullView() {
 
 function FvReadOnlyDetails({ task, statusCol, columns }: { task: KanbanTask; statusCol: Column | undefined; columns: Column[] }) {
   const statusColor = statusCol?.color ?? '';
-  const isBodyHtml = task.body ? /<[a-z][\s\S]*>/i.test(task.body) : false;
 
   return (
     <>
@@ -223,10 +226,9 @@ function FvReadOnlyDetails({ task, statusCol, columns }: { task: KanbanTask; sta
         )}
       </div>
       {task.body && (
-        <div
-          className="fv-description"
-          dangerouslySetInnerHTML={{ __html: isBodyHtml ? sanitizeHtml(task.body) : escapeHtml(task.body) }}
-        />
+        <div className="fv-description">
+          <MarkdownViewer markdown={task.body} />
+        </div>
       )}
     </>
   );

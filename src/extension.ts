@@ -518,16 +518,7 @@ export function activate(context: vscode.ExtensionContext): void {
             .filter((r): r is PromiseFulfilledResult<import('./types/KanbanTask').KanbanTask[]> => r.status === 'fulfilled')
             .flatMap(r => r.value);
           const doneTasks2 = allTasks2.filter(t => t.status === 'done');
-          if (doneTasks2.length === 0) {
-            vscode.window.showInformationMessage('No done tasks to clean.');
-            break;
-          }
-          const confirm = await vscode.window.showWarningMessage(
-            `Remove ${doneTasks2.length} done task(s) from the board?`,
-            { modal: true },
-            'Clean',
-          );
-          if (confirm !== 'Clean') { break; }
+          if (doneTasks2.length === 0) { break; }
           for (const t of doneTasks2) {
             const [pid] = t.id.split(':');
             const prov = providerRegistry.get(pid);
@@ -539,7 +530,6 @@ export function activate(context: vscode.ExtensionContext): void {
           }
           refresh();
           await sendTasksToPanel(panel, providerRegistry, genAiRegistry, squadManager, sessionStateManager);
-          vscode.window.showInformationMessage(`Cleaned ${doneTasks2.length} done task(s).`);
           break;
         }
         case 'launchProvider': {

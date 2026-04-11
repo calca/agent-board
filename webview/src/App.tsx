@@ -1,3 +1,4 @@
+import { CleanConfirmDialog } from './components/CleanConfirmDialog';
 import { FullView } from './components/FullView';
 import { KanbanBoard } from './components/KanbanBoard';
 import { NotificationCenter } from './components/NotificationCenter';
@@ -26,6 +27,7 @@ export function App() {
       <NotificationCenter />
       <KanbanBoard />
       <TaskForm />
+      <CleanConfirmDialog />
       <SessionPanel />
       <FullView />
     </>

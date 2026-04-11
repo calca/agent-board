@@ -75,15 +75,17 @@ export function TaskForm() {
             ? <span className="task-form__readonly-value">{task!.title}</span>
             : <input className="task-form__input" id="tf-title" type="text" defaultValue={task?.title ?? ''} required autoFocus={!isEdit} placeholder={isEdit ? undefined : 'What needs to be done?'} />}
 
-          <label className="task-form__label">Description</label>
-          {isEdit && isRemote
-            ? <div className="task-form__readonly-body" dangerouslySetInnerHTML={{ __html: isBodyHtml ? sanitizeHtml(task!.body) : (task!.body || '') }} />
-            : <MarkdownEditor
-                ref={bodyRef}
-                editorKey={task?.id ?? 'new'}
-                markdown={task?.body ?? ''}
-                placeholder="Describe the task in detail — the agent will use this as instructions…"
-              />}
+          <div className="task-form__desc-group">
+            <label className="task-form__label">Description</label>
+            {isEdit && isRemote
+              ? <div className="task-form__readonly-body" dangerouslySetInnerHTML={{ __html: isBodyHtml ? sanitizeHtml(task!.body) : (task!.body || '') }} />
+              : <MarkdownEditor
+                  ref={bodyRef}
+                  editorKey={task?.id ?? 'new'}
+                  markdown={task?.body ?? ''}
+                  placeholder="Describe the task in detail — the agent will use this as instructions…"
+                />}
+          </div>
 
           <div className="task-form__row">
             <div className="task-form__field">

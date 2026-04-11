@@ -121,7 +121,11 @@ export function Toolbar() {
               }}
             />
           )}
-          <button className="toolbar__btn toolbar__btn--secondary" onClick={() => postMessage({ type: 'refreshRequest' })}>Sync</button>
+          <button
+            className={`toolbar__btn toolbar__btn--secondary${state.syncing ? ' toolbar__btn--syncing' : ''}`}
+            disabled={state.syncing}
+            onClick={() => { dispatch({ type: 'SET_SYNCING', syncing: true }); postMessage({ type: 'refreshRequest' }); }}
+          >{state.syncing ? '⟳ Syncing…' : 'Sync'}</button>
           <button className="toolbar__btn toolbar__btn--secondary" onClick={() => dispatch({ type: 'OPEN_TASK_FORM' })}>+ New Issue</button>
         </div>
       </div>

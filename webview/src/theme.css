@@ -249,6 +249,27 @@ html, body, #root {
   background: var(--vscode-button-secondaryHoverBackground, var(--vscode-toolbar-hoverBackground));
 }
 
+/* Sync button spinning animation */
+.toolbar__btn--syncing {
+  pointer-events: none;
+  opacity: 0.7;
+}
+.toolbar__btn--syncing::before {
+  content: '';
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  margin-right: 4px;
+  border: 2px solid currentColor;
+  border-top-color: transparent;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+  vertical-align: middle;
+}
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
 .toolbar__btn--small {
   background: var(--vscode-button-secondaryBackground, var(--vscode-button-background));
   color: var(--vscode-button-secondaryForeground, var(--vscode-button-foreground));
@@ -1029,8 +1050,12 @@ html, body, #root {
 .task-form-panel {
   width: 90vw;
   max-width: 720px;
+  height: 50vh;
+  min-height: 420px;
   max-height: 90vh;
-  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
   background: var(--vscode-editor-background);
   border: 1px solid var(--vscode-panel-border);
   border-radius: 8px;
@@ -1054,12 +1079,41 @@ html, body, #root {
   font-size: 1.4em;
   font-weight: 700;
   margin-bottom: 24px;
+  flex-shrink: 0;
 }
 
 .task-form {
   display: flex;
   flex-direction: column;
   gap: 6px;
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.task-form__desc-group {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.task-form__desc-group .md-editor-container {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+.task-form__desc-group .md-editor-container .mdxeditor {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+.task-form__desc-group .md-editor-container .mdxeditor-root-contenteditable {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
 }
 
 .task-form__label {
@@ -1220,6 +1274,122 @@ html, body, #root {
 .task-form__btn--delete:hover {
   background: var(--vscode-errorForeground, #f44);
   color: var(--vscode-editor-background, #fff);
+}
+
+/* ── Clean Confirm Dialog ──────────────────────────────────────────── */
+
+.clean-confirm-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 600;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.5);
+}
+
+.clean-confirm-panel {
+  width: 90vw;
+  max-width: 520px;
+  max-height: 80vh;
+  overflow-y: auto;
+  background: var(--vscode-editor-background);
+  border: 1px solid var(--vscode-panel-border);
+  border-radius: 8px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.35);
+  padding: 24px 28px;
+}
+
+.clean-confirm__heading {
+  font-size: 1.2em;
+  font-weight: 700;
+  margin-bottom: 12px;
+}
+
+.clean-confirm__text {
+  font-size: 0.92em;
+  line-height: 1.5;
+  margin: 0 0 16px;
+  opacity: 0.85;
+}
+
+.clean-confirm__section {
+  margin-bottom: 16px;
+  padding: 12px;
+  border-radius: 6px;
+  background: var(--vscode-input-background, rgba(128,128,128,0.06));
+  border: 1px solid var(--vscode-input-border, rgba(128,128,128,0.15));
+}
+
+.clean-confirm__section-title {
+  font-size: 0.85em;
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+.clean-confirm__section-title--delete {
+  color: var(--vscode-errorForeground, #f44);
+}
+.clean-confirm__section-title--hide {
+  color: var(--vscode-notificationsInfoIcon-foreground, #3794ff);
+}
+
+.clean-confirm__section-desc {
+  font-size: 0.82em;
+  opacity: 0.7;
+  margin: 0 0 8px;
+  line-height: 1.45;
+}
+
+.clean-confirm__list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.clean-confirm__item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 0.85em;
+  padding: 4px 0;
+  border-bottom: 1px solid var(--vscode-panel-border, rgba(128,128,128,0.1));
+}
+.clean-confirm__item:last-child {
+  border-bottom: none;
+}
+
+.clean-confirm__item-title {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.clean-confirm__item-provider {
+  font-size: 0.78em;
+  opacity: 0.5;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  flex-shrink: 0;
+}
+
+.clean-confirm__actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 16px;
+}
+
+.clean-confirm__btn--confirm {
+  background: var(--vscode-errorForeground, #e74c3c) !important;
+  color: #fff !important;
+  border: none !important;
+}
+.clean-confirm__btn--confirm:hover {
+  opacity: 0.85;
 }
 
 /* ── Actions Toolbar (edit mode) ───────────────────────────────────── */
@@ -1977,6 +2147,10 @@ html, body, #root {
   padding: 4px 8px;
   margin: -4px -8px 0;
 }
+.fv-detail-row--status .fv-status-select {
+  flex: 1 1 auto;
+  min-width: 0;
+}
 .fv-status-dot {
   display: inline-block;
   width: 8px;
@@ -2443,26 +2617,49 @@ html, body, #root {
   caret-color: var(--vscode-foreground);
 }
 
-/* Toolbar */
-.md-editor-container [class*="toolbar"] {
-  background: var(--vscode-editorGroupHeader-tabsBackground, var(--vscode-sideBar-background));
-  border-bottom: 1px solid var(--vscode-input-border, rgba(128, 128, 128, 0.3));
-}
-
+/* Toolbar — flat style */
+.md-editor-container [class*="toolbar"],
 .md-editor-container [class*="_toolbarRoot_"] {
-  background: var(--vscode-editorGroupHeader-tabsBackground, var(--vscode-sideBar-background));
-  border-bottom: 1px solid var(--vscode-input-border, rgba(128, 128, 128, 0.3));
+  background: transparent;
+  border-bottom: 1px solid var(--vscode-input-border, rgba(128, 128, 128, 0.2));
+  padding: 2px 4px;
+  gap: 0;
 }
 
 .md-editor-container button[class*="_toolbarToggleItem_"],
 .md-editor-container button[class*="_toolbarButton_"] {
   color: var(--vscode-foreground);
-  border-radius: 3px;
+  border-radius: 4px;
+  background: transparent;
+  border: none;
+  opacity: 0.65;
+  padding: 3px 6px;
+  min-width: 28px;
+  transition: opacity 0.1s, background 0.1s;
 }
 
 .md-editor-container button[class*="_toolbarToggleItem_"]:hover,
 .md-editor-container button[class*="_toolbarButton_"]:hover {
-  background: var(--vscode-toolbar-hoverBackground);
+  background: var(--vscode-toolbar-hoverBackground, rgba(128, 128, 128, 0.15));
+  opacity: 1;
+}
+
+.md-editor-container button[class*="_toolbarToggleItem_"][data-state="on"] {
+  opacity: 1;
+  background: var(--vscode-toolbar-activeBackground, rgba(128, 128, 128, 0.2));
+}
+
+.md-editor-container select[class*="_selectTrigger_"] {
+  background: transparent;
+  border: 1px solid var(--vscode-input-border, rgba(128, 128, 128, 0.25));
+  color: var(--vscode-foreground);
+  border-radius: 4px;
+  font-size: 0.82em;
+  padding: 2px 6px;
+  opacity: 0.7;
+}
+.md-editor-container select[class*="_selectTrigger_"]:hover {
+  opacity: 1;
 }
 
 /* Dark theme adjustments */
@@ -2477,4 +2674,19 @@ body.vscode-high-contrast .md-editor-container {
 }
 .md-editor-container--compact .mdxeditor-root-contenteditable {
   min-height: 60px;
+}
+
+/* Read-only markdown viewer */
+.md-viewer .mdxeditor {
+  background: transparent;
+  font-family: var(--vscode-font-family);
+  font-size: var(--vscode-font-size);
+  color: var(--vscode-foreground);
+}
+.md-viewer .mdxeditor-root-contenteditable {
+  color: var(--vscode-foreground);
+  padding: 0;
+}
+.md-viewer [class*="_contentEditable_"] {
+  padding: 0 !important;
 }
