@@ -76,7 +76,7 @@ export function FullView() {
           <div className="fv-panel fv-panel--fill" style={statusCol?.color ? { background: `${statusCol.color}0D` } : undefined}>
             <div className="fv-panel__header fv-panel__header--static" style={statusCol?.color ? { background: `${statusCol.color}1A` } : undefined}>
               <span className="fv-panel__header-text">☰ Issue Details</span>
-              {isEditable && !isRunning && !isLastCol && (
+              {isEditable && !isRunning && (
                 editingTask?.id === task.id
                   ? <button className="fv-panel__header-btn" onClick={() => dispatch({ type: 'SET_EDITING_TASK', task: null })} title="Cancel edit">✕ Cancel</button>
                   : <button className="fv-panel__header-btn" onClick={() => dispatch({ type: 'SET_EDITING_TASK', task })} title="Edit task">✎ Edit</button>

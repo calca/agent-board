@@ -66,8 +66,6 @@ export function TaskCard({ task }: { task: KanbanTask }) {
     ? <img className="task-card__avatar" src={avatarUrl} alt={task.assignee ?? ''} title={task.assignee ?? ''} />
     : initials ? <span className="task-card__assignee" title={task.assignee ?? ''}>{initials}</span> : null;
 
-  const isLastCol = task.status === columns[columns.length - 1]?.id;
-
   const handleDragStart = useCallback((e: React.DragEvent) => {
     e.dataTransfer.setData('text/plain', task.id);
     (e.currentTarget as HTMLElement).classList.add('task-card--dragging');
@@ -114,9 +112,7 @@ export function TaskCard({ task }: { task: KanbanTask }) {
           {visibleLabels.slice(0, 2).map(l => (
             <span key={l} className="task-card__label">{l}</span>
           ))}
-          {!isLastCol && (
-            <button className="task-card__edit-btn card-btn-edit" data-task-id={task.id} title="Edit" onClick={handleEdit}>✎</button>
-          )}
+          <button className="task-card__edit-btn card-btn-edit" data-task-id={task.id} title="Edit" onClick={handleEdit}>✎</button>
         </div>
       </div>
     </div>
