@@ -186,6 +186,7 @@ export class LocalApiServer {
         content="default-src 'none';
                  style-src 'self' 'unsafe-inline' https:;
                  script-src 'self';
+                 connect-src 'self';
                  font-src 'self' https:;
                  img-src 'self' https:;">
   ${hasCss ? '<link rel="stylesheet" href="/assets/webview.css">' : ''}

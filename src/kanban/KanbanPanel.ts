@@ -200,6 +200,7 @@ export class KanbanPanel {
         content="default-src 'none';
                  style-src ${webview.cspSource} 'unsafe-inline';
                  script-src 'nonce-${nonce}';
+                 connect-src http://localhost:* http://127.0.0.1:* https://*.loca.lt;
                  font-src ${webview.cspSource};
                  img-src ${webview.cspSource} https:;">
   <link rel="stylesheet" href="${styleUri}?v=${cacheBust}">
