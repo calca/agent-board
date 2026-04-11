@@ -1,4 +1,3 @@
-import React from 'react';
 import { useBoard } from '../context/BoardContext';
 import { getNotifications } from './Toolbar';
 

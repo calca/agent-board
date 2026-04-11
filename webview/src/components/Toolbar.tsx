@@ -1,7 +1,5 @@
-import React from 'react';
 import { useBoard } from '../context/BoardContext';
 import { postMessage } from '../hooks/useVsCodeApi';
-import { escapeHtml } from '../utils';
 
 export function Toolbar() {
   const { state, dispatch } = useBoard();

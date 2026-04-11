@@ -1,5 +1,5 @@
-import React, { createContext, useContext, useReducer, useCallback, useRef, type Dispatch } from 'react';
-import { Column, KanbanTask, AgentOption, GenAiProviderOption, SquadStatus, FileChangeInfo, TaskLogEntry, ChatMessage } from '../types';
+import React, { createContext, useCallback, useContext, useReducer, useRef, type Dispatch } from 'react';
+import { AgentOption, ChatMessage, Column, FileChangeInfo, GenAiProviderOption, KanbanTask, SquadStatus, TaskLogEntry } from '../types';
 
 // ── State ────────────────────────────────────────────────────────────────
 

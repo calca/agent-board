@@ -1,8 +1,8 @@
-import React, { useRef, useEffect, useCallback } from 'react';
+import React, { useCallback, useEffect, useRef } from 'react';
 import { useBoard } from '../context/BoardContext';
 import { postMessage } from '../hooks/useVsCodeApi';
-import { escapeHtml, sanitizeHtml, relativeWorktreePath } from '../utils';
-import type { KanbanTask, Column, TaskLogEntry, FileChangeInfo } from '../types';
+import type { Column, KanbanTask } from '../types';
+import { escapeHtml, relativeWorktreePath, sanitizeHtml } from '../utils';
 
 const statusIcons: Record<string, string> = { added: '＋', modified: '✎', deleted: '✕' };
 const logSourceIcons: Record<string, string> = { board: '☰', agent: '◆', tool: '⚙', system: 'ⓘ' };

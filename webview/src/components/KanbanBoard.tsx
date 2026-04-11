@@ -1,7 +1,6 @@
 import React from 'react';
 import { useBoard } from '../context/BoardContext';
 import { postMessage } from '../hooks/useVsCodeApi';
-import { escapeHtml } from '../utils';
 import type { Column, KanbanTask } from '../types';
 import { TaskCard } from './TaskCard';
 

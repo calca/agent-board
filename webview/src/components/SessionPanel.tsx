@@ -1,8 +1,8 @@
-import React, { useRef, useEffect, useCallback } from 'react';
+import React, { useCallback, useEffect, useRef } from 'react';
 import { useBoard } from '../context/BoardContext';
 import { postMessage } from '../hooks/useVsCodeApi';
-import { escapeHtml } from '../utils';
 import type { FileChangeInfo } from '../types';
+import { escapeHtml } from '../utils';
 
 const statusIcons: Record<string, string> = { added: '＋', modified: '✎', deleted: '✕' };
 

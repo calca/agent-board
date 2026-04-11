@@ -1,12 +1,11 @@
-import React from 'react';
-import { useBoard } from './context/BoardContext';
-import { useHostMessages } from './hooks/useHostMessages';
-import { Toolbar } from './components/Toolbar';
+import { FullView } from './components/FullView';
 import { KanbanBoard } from './components/KanbanBoard';
 import { NotificationCenter } from './components/NotificationCenter';
-import { TaskForm } from './components/TaskForm';
 import { SessionPanel } from './components/SessionPanel';
-import { FullView } from './components/FullView';
+import { TaskForm } from './components/TaskForm';
+import { Toolbar } from './components/Toolbar';
+import { useBoard } from './context/BoardContext';
+import { useHostMessages } from './hooks/useHostMessages';
 
 export function App() {
   useHostMessages();

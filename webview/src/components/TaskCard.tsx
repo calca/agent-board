@@ -1,7 +1,6 @@
 import React, { useCallback } from 'react';
 import { useBoard } from '../context/BoardContext';
 import { postMessage } from '../hooks/useVsCodeApi';
-import { escapeHtml } from '../utils';
 import type { KanbanTask } from '../types';
 
 const SESSION_LABELS: Record<string, string> = {

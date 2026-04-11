@@ -2,7 +2,6 @@ import React, { useCallback } from 'react';
 import { useBoard } from '../context/BoardContext';
 import { postMessage } from '../hooks/useVsCodeApi';
 import { sanitizeHtml } from '../utils';
-import type { KanbanTask } from '../types';
 
 export function TaskForm() {
   const { state, dispatch } = useBoard();

@@ -1,7 +1,7 @@
 import { useEffect } from 'react';
-import { useBoard, type BoardAction } from '../context/BoardContext';
+import { useBoard } from '../context/BoardContext';
+import type { Column, FileChangeInfo, KanbanTask, TaskLogEntry } from '../types';
 import { postMessage } from './useVsCodeApi';
-import type { KanbanTask, Column, FileChangeInfo, TaskLogEntry } from '../types';
 
 /**
  * Listens for messages from the extension host and dispatches
