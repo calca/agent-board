@@ -6,7 +6,7 @@ import { ProviderRegistry } from '../providers/ProviderRegistry';
  * Calls `refresh()` on all active providers with a progress notification.
  */
 export async function refreshTasksCommand(registry: ProviderRegistry): Promise<void> {
-  const providers = registry.getAll();
+  const providers = registry.getAll().filter(p => p.isEnabled());
 
   if (providers.length === 0) {
     vscode.window.showInformationMessage('No task providers registered.');

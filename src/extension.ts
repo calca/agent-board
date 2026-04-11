@@ -18,17 +18,13 @@ import { LmApiGenAiProvider } from './copilot/providers/LmApiGenAiProvider';
 import { SessionStateManager } from './copilot/SessionStateManager';
 import { SquadManager } from './copilot/SquadManager';
 import { removeWorktree } from './copilot/WorktreeManager';
-import { GIT_REF_SCHEME, GitRefContentProvider, gitRefUri } from './diff/DiffWatcher';
 import { GitHubIssueManager } from './github/GitHubIssueManager';
 import { PullRequestManager } from './github/PullRequestManager';
 import { KanbanPanel } from './kanban/KanbanPanel';
 import { OverviewTreeProvider } from './overviewTreeProvider';
-import { AzureDevOpsProvider } from './providers/AzureDevOpsProvider';
-import { BeadsProvider } from './providers/BeadsProvider';
 import { GitHubProvider } from './providers/GitHubProvider';
 import { ITaskProvider } from './providers/ITaskProvider';
 import { JsonProvider } from './providers/JsonProvider';
-import { MarkdownProvider } from './providers/MarkdownProvider';
 import { ProviderPicker } from './providers/ProviderPicker';
 import { ProviderRegistry } from './providers/ProviderRegistry';
 import { SettingsPanel } from './settings/SettingsPanel';
@@ -52,21 +48,9 @@ export function activate(context: vscode.ExtensionContext): void {
   const prManager = new PullRequestManager();
   context.subscriptions.push(ghIssueManager);
 
-  // Register custom git-ref content provider for diff views
-  context.subscriptions.push(
-    vscode.workspace.registerTextDocumentContentProvider(GIT_REF_SCHEME, new GitRefContentProvider()),
-  );
-
-  // Register ALL task providers — disabled ones are filtered at query time
-  // so the Settings panel can always show and enable/disable them.
+  // Register the GitHub provider (uses VSCode SSO + .agent-board/config.json)
   const githubProvider = new GitHubProvider(context, ghIssueManager);
   providerRegistry.register(githubProvider);
-
-  const beadsProvider = new BeadsProvider();
-  providerRegistry.register(beadsProvider);
-
-  const azureDevOpsProvider = new AzureDevOpsProvider();
-  providerRegistry.register(azureDevOpsProvider);
 
   // ── GenAI provider infrastructure ─────────────────────────────────────
 
@@ -162,10 +146,6 @@ export function activate(context: vscode.ExtensionContext): void {
   const jsonProvider = new JsonProvider();
   providerRegistry.register(jsonProvider);
 
-  // Markdown-backed task provider — opt-in; reads .md files from a configurable inbox directory
-  const markdownProvider = new MarkdownProvider();
-  providerRegistry.register(markdownProvider);
-
   // Overview sidebar view
   const overviewProvider = new OverviewTreeProvider(providerRegistry, squadManager);
 
@@ -199,7 +179,7 @@ export function activate(context: vscode.ExtensionContext): void {
 
   vscode.window.registerWebviewPanelSerializer(
     KanbanPanel.viewType,
-    KanbanPanel.getSerializer(context.extensionUri),
+    KanbanPanel.getSerializer(context.extensionUri, context.extensionMode),
   );
 
   // ── Commands ───────────────────────────────────────────────────────────
@@ -292,36 +272,6 @@ export function activate(context: vscode.ExtensionContext): void {
 
   // ── Kanban / Provider / Copilot commands ─────────────────────────────
 
-  /**
-   * Send all initial data (tasks, squad status, agents, MCP, repo info) to the panel.
-   * Wraps sendTasksToPanel with a 15-second timeout so a hanging provider can't
-   * block the board from loading.
-   */
-  async function sendInitialDataToPanel(panel: KanbanPanel): Promise<void> {
-    const TIMEOUT_MS = 15_000;
-    try {
-      await Promise.race([
-        sendTasksToPanel(panel, providerRegistry, genAiRegistry, squadManager, sessionStateManager),
-        new Promise<never>((_, reject) => setTimeout(() => reject(new Error('sendTasksToPanel timed out')), TIMEOUT_MS)),
-      ]);
-    } catch (err) {
-      logger.error('Initial data send failed or timed out:', err instanceof Error ? err.message : String(err));
-      // Send empty data so the webview exits the loading spinner
-      panel.updateTasks([], EDITABLE_PROVIDER_IDS);
-    }
-    panel.updateSquadStatus(squadManager.getStatus());
-    panel.updateAgents(agentOptions());
-    panel.updateMcpStatus(ProjectConfig.getProjectConfig()?.mcp?.enabled ?? false);
-    panel.postMessage({
-      type: 'repoStatus',
-      isGit: await isGitRepository(),
-      isGitHub: await isGitHubRepository(),
-      isAzureDevOps: await isAzureDevOpsRepository(),
-      workspaceRoot: vscode.workspace.workspaceFolders?.[0]?.uri.fsPath,
-      workspaceName: vscode.workspace.name ?? vscode.workspace.workspaceFolders?.[0]?.name ?? '',
-    });
-  }
-
   const openKanban = vscode.commands.registerCommand('agentBoard.openKanban', async () => {
     logger.info('openKanban command invoked');
     if (!vscode.workspace.workspaceFolders || vscode.workspace.workspaceFolders.length === 0) {
@@ -335,14 +285,25 @@ export function activate(context: vscode.ExtensionContext): void {
       });
       return;
     }
-    const panel = KanbanPanel.createOrShow(context.extensionUri);
+    const panel = KanbanPanel.createOrShow(context.extensionUri, context.extensionMode);
 
     // Wire WebView messages FIRST — before any async work — to avoid
     // losing the 'ready' message the webview sends on script load.
     panel.onMessage(async (msg) => {
       switch (msg.type) {
         case 'ready':
-          await sendInitialDataToPanel(panel);
+          // Send initial tasks, squad status, available agents, and MCP status
+          await sendTasksToPanel(panel, providerRegistry, genAiRegistry, squadManager, sessionStateManager);
+          panel.updateSquadStatus(squadManager.getStatus());
+          panel.updateAgents(agentOptions());
+          panel.updateMcpStatus(ProjectConfig.getProjectConfig()?.mcp?.enabled ?? false);
+          panel.postMessage({
+            type: 'repoStatus',
+            isGit: await isGitRepository(),
+            isGitHub: await isGitHubRepository(),
+            workspaceRoot: vscode.workspace.workspaceFolders?.[0]?.uri.fsPath,
+            workspaceName: vscode.workspace.name ?? vscode.workspace.workspaceFolders?.[0]?.name ?? '',
+          });
           break;
         case 'refreshRequest':
           await refreshTasksCommand(providerRegistry);
@@ -487,11 +448,13 @@ export function activate(context: vscode.ExtensionContext): void {
           break;
         }
         case 'exportDoneMd': {
+          const configuredCols = ProjectConfig.getProjectConfig()?.kanban?.columns ?? [...COLUMN_IDS];
+          const doneColId = configuredCols[configuredCols.length - 1] ?? 'done';
           const allProviders = providerRegistry.getAll().filter(p => p.isEnabled());
           const allTasks = (await Promise.allSettled(allProviders.map(p => p.getTasks())))
             .filter((r): r is PromiseFulfilledResult<import('./types/KanbanTask').KanbanTask[]> => r.status === 'fulfilled')
             .flatMap(r => r.value);
-          const doneTasks = allTasks.filter(t => t.status === 'done');
+          const doneTasks = allTasks.filter(t => t.status === doneColId);
           const today = new Date().toISOString().slice(0, 10);
           const lines = [
             `# Done Tasks Report`,
@@ -503,7 +466,7 @@ export function activate(context: vscode.ExtensionContext): void {
             `|---|-------|----------|--------|----------|`,
             ...doneTasks.map((t, i) => {
               const title = t.url ? `[${t.title}](${t.url})` : t.title;
-              return `| ${i + 1} | ${title} | ${t.providerId} | ${t.labels.join(', ')} | ${t.assignee ?? '—'} |`;
+              return `| ${i + 1} | ${title} | ${t.providerId} | ${t.labels.join(', ')} | ${t.assignee ?? '\u2014'} |`;
             }),
             ``,
           ];
@@ -513,11 +476,13 @@ export function activate(context: vscode.ExtensionContext): void {
           break;
         }
         case 'cleanDone': {
+          const configuredCols2 = ProjectConfig.getProjectConfig()?.kanban?.columns ?? [...COLUMN_IDS];
+          const doneColId2 = configuredCols2[configuredCols2.length - 1] ?? 'done';
           const allProviders2 = providerRegistry.getAll().filter(p => p.isEnabled());
           const allTasks2 = (await Promise.allSettled(allProviders2.map(p => p.getTasks())))
             .filter((r): r is PromiseFulfilledResult<import('./types/KanbanTask').KanbanTask[]> => r.status === 'fulfilled')
             .flatMap(r => r.value);
-          const doneTasks2 = allTasks2.filter(t => t.status === 'done');
+          const doneTasks2 = allTasks2.filter(t => t.status === doneColId2);
           if (doneTasks2.length === 0) { break; }
           for (const t of doneTasks2) {
             const [pid] = t.id.split(':');
@@ -545,36 +510,6 @@ export function activate(context: vscode.ExtensionContext): void {
           await sendTasksToPanel(panel, providerRegistry, genAiRegistry, squadManager, sessionStateManager);
           break;
         }
-        case 'resetSession': {
-          logger.info('resetSession: sessionId=%s', msg.sessionId);
-          // Cancel any running session
-          copilotLauncher.cancelSession(msg.sessionId);
-          squadManager.failSession(msg.sessionId);
-          // Remove session state entirely
-          sessionStateManager.removeSession(msg.sessionId);
-          logger.info('resetSession: session removed, verify=%s', !sessionStateManager.getSession(msg.sessionId));
-          // Move task back to first column
-          const [resetProviderId] = msg.sessionId.split(':');
-          const resetProvider = providerRegistry.get(resetProviderId);
-          if (resetProvider) {
-            const resetTasks = await resetProvider.getTasks();
-            const resetTask = resetTasks.find(t => t.id === msg.sessionId);
-            if (resetTask) {
-              const resetColumns = ProjectConfig.getProjectConfig()?.kanban?.columns ?? [...COLUMN_IDS];
-              const firstCol = resetColumns[0];
-              logger.info('resetSession: task found, status=%s -> %s', resetTask.status, firstCol);
-              await resetProvider.updateTask({ ...resetTask, status: firstCol });
-            } else {
-              logger.warn('resetSession: task not found in provider "%s"', resetProviderId);
-            }
-          } else {
-            logger.warn('resetSession: provider "%s" not found', resetProviderId);
-          }
-          panel.updateSquadStatus(squadManager.getStatus());
-          await sendTasksToPanel(panel, providerRegistry, genAiRegistry, squadManager, sessionStateManager);
-          logger.info('resetSession: done, tasks sent to panel');
-          break;
-        }
         case 'reopenSession': {
           // Focus the VS Code chat panel so the user can see the running session
           await vscode.commands.executeCommand('workbench.action.chat.open');
@@ -589,8 +524,12 @@ export function activate(context: vscode.ExtensionContext): void {
             const session = sessionStateManager.getSession(msg.sessionId);
             const wtPath = session?.worktreePath;
             if (wtPath) {
-              const headUri = gitRefUri(wtPath, msg.filePath, 'main');
-              const workingUri = vscode.Uri.file(path.join(wtPath, msg.filePath));
+              const absPath = path.join(wtPath, msg.filePath);
+              const headUri = vscode.Uri.file(absPath).with({
+                scheme: 'git',
+                query: JSON.stringify({ path: absPath, ref: 'main' }),
+              });
+              const workingUri = vscode.Uri.file(absPath);
               await vscode.commands.executeCommand('vscode.diff', headUri, workingUri, `${msg.filePath} (main ↔ Working)`);
             }
           }
@@ -671,9 +610,12 @@ export function activate(context: vscode.ExtensionContext): void {
             });
             const resources = files.map(f => {
               const absPath = path.join(repoRoot, f.filePath);
-              const mainUri = gitRefUri(repoRoot, f.filePath, 'main');
+              const mainUri = vscode.Uri.file(absPath).with({
+                scheme: 'git',
+                query: JSON.stringify({ path: absPath, ref: 'main' }),
+              });
               const branchUri = f.statusChar === 'D'
-                ? gitRefUri(repoRoot, f.filePath, '')
+                ? vscode.Uri.file(absPath).with({ scheme: 'git', query: JSON.stringify({ path: absPath, ref: '' }) })
                 : vscode.Uri.file(path.join(wtPath, f.filePath));
               // vscode.changes expects [labelUri, leftUri?, rightUri?]
               return [vscode.Uri.file(absPath), mainUri, branchUri] as [vscode.Uri, vscode.Uri, vscode.Uri];
@@ -737,30 +679,29 @@ export function activate(context: vscode.ExtensionContext): void {
             panel.postMessage({ type: 'mergeResult', sessionId: msg.sessionId, success: true, message: `Branch "${branch}" mergiato in main (${strategyLabels[strategy]}).` });
             vscode.window.showInformationMessage(`✅ Branch "${branch}" mergiato in main (${strategyLabels[strategy]}).`);
 
-            // Move task to last column (done) after successful merge
+            // Move task to next column after successful merge
             const [mergeProviderId] = msg.sessionId.split(':');
-            logger.info('mergeWorktree: providerId=%s, sessionId=%s', mergeProviderId, msg.sessionId);
             const mergeProvider = providerRegistry.get(mergeProviderId);
             if (mergeProvider) {
               const mergeTasks = await mergeProvider.getTasks();
               const mergeTask = mergeTasks.find(t => t.id === msg.sessionId);
-              logger.info('mergeWorktree: found task=%s, currentStatus=%s', !!mergeTask, mergeTask?.status);
               if (mergeTask) {
                 const columnOrder = ProjectConfig.getProjectConfig()?.kanban?.columns ?? [...COLUMN_IDS];
-                const lastCol = columnOrder[columnOrder.length - 1];
-                logger.info('mergeWorktree: columnOrder=%s, lastCol=%s', JSON.stringify(columnOrder), lastCol);
-                await mergeProvider.updateTask({ ...mergeTask, status: lastCol });
-                logger.info('mergeWorktree: task updated to %s', lastCol);
+                const currentIdx = columnOrder.indexOf(mergeTask.status);
+                const nextCol = currentIdx >= 0 && currentIdx < columnOrder.length - 1
+                  ? columnOrder[currentIdx + 1]
+                  : columnOrder[columnOrder.length - 1];
+                if (mergeTask.status !== nextCol) {
+                  await mergeProvider.updateTask({ ...mergeTask, status: nextCol });
+                }
               }
-            } else {
-              logger.warn('mergeWorktree: provider "%s" not found in registry', mergeProviderId);
             }
 
             // Persist merged flag on session so it survives reloads
             sessionStateManager.markMerged(msg.sessionId);
 
             // Refresh tasks to update the UI
-            await sendTasksToPanel(panel, providerRegistry, genAiRegistry, squadManager, sessionStateManager);
+            vscode.commands.executeCommand('agentBoard.refreshTasks');
           } catch (err) {
             const errMsg = err instanceof Error ? err.message : String(err);
             logger.error('mergeWorktree failed:', errMsg);
@@ -797,15 +738,14 @@ export function activate(context: vscode.ExtensionContext): void {
             const alignPrompt =
               `## Align Worktree from main\n\n` +
               `You are working in the worktree at **${wtPath}** on branch **${branch}**.\n` +
-              `The main repository root is at **${repoRoot}**.\n` +
               `The branch is **${behindCount}** commit(s) behind main.\n\n` +
               `### Current diff vs main\n\`\`\`\n${mainDiff}\n\`\`\`\n\n` +
               `### Instructions\n` +
-              `1. From the worktree directory, fetch and rebase on top of origin/main:\n` +
-              `   - Run: cd ${wtPath} && git fetch origin && git rebase origin/main\n` +
+              `1. From the worktree directory (${wtPath}), rebase or merge from main to align the branch:\n` +
+              `   - Run: cd ${wtPath} && git fetch origin main && git rebase main\n` +
               `2. If there are merge conflicts, resolve them intelligently by understanding both sides\n` +
-              `3. After resolving conflicts, run: git add . && git rebase --continue\n` +
-              `4. Ensure the code compiles and tests pass\n` +
+              `3. After resolving conflicts, ensure the code compiles and tests pass\n` +
+              `4. Commit the resolution if needed\n` +
               `5. Report what changed and whether the alignment was successful\n`;
 
             await copilotLauncher.launch(msg.sessionId, alignProvider.id, undefined, alignPrompt);
@@ -848,26 +788,20 @@ export function activate(context: vscode.ExtensionContext): void {
 
             const mergePrompt =
               `## Merge Task\n\n` +
-              `You are reviewing and merging branch **${branch}** into main.\n` +
+              `You are reviewing and merging branch "${branch}" into main.\n` +
               `Strategy: **${strategyLabels[strategy]}**.\n\n` +
-              `- Worktree: ${wtPath}\n` +
-              `- Main repo root: ${repoRoot}\n\n` +
               `### Changed files\n\`\`\`\n${diffSummary}\n\`\`\`\n\n` +
               `### Instructions\n` +
               `1. Review all changes in the worktree at ${wtPath}\n` +
               `2. Ensure code quality, check for bugs, security issues, and style\n` +
-              `3. If changes are acceptable, perform the merge **from the main repo root** using the "${strategyLabels[strategy]}" strategy:\n` +
+              `3. If changes are acceptable, perform the merge using the "${strategyLabels[strategy]}" strategy:\n` +
               (strategy === 'squash'
-                ? `   - Run: cd ${repoRoot} && git fetch origin && git checkout main && git merge --squash ${branch} && git commit -m "squash: ${branch}"\n`
+                ? `   - Run: git checkout main && git merge --squash ${branch} && git commit -m "squash: ${branch}"\n`
                 : strategy === 'rebase'
-                  ? `   - Run: cd ${repoRoot} && git fetch origin && git checkout main && git rebase ${branch}\n`
-                  : `   - Run: cd ${repoRoot} && git fetch origin && git checkout main && git merge ${branch} --no-edit\n`) +
-              `4. If the merge fails or produces conflicts, **abort immediately** to leave main clean:\n` +
-              (strategy === 'rebase'
-                ? `   - Run: cd ${repoRoot} && git rebase --abort\n`
-                : `   - Run: cd ${repoRoot} && git merge --abort\n`) +
-              `5. If changes need fixes, apply them in the worktree first (cd ${wtPath}), commit, then retry the merge from repo root\n` +
-              `6. Report what you found and whether the merge was successful\n`;
+                  ? `   - Run: git checkout main && git rebase ${branch}\n`
+                  : `   - Run: git checkout main && git merge ${branch} --no-edit\n`) +
+              `4. If changes need fixes, apply them first, then merge\n` +
+              `5. Report what you found and whether the merge was successful\n`;
 
             // Launch the provider directly with the merge prompt
             await copilotLauncher.launch(msg.sessionId, provider.id, undefined, mergePrompt);
@@ -908,101 +842,8 @@ export function activate(context: vscode.ExtensionContext): void {
           }
           break;
         }
-        case 'createPullRequest': {
-          const session = sessionStateManager.getSession(msg.sessionId);
-          const wtPath = session?.worktreePath;
-          const repoRoot = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
-          if (!wtPath || !repoRoot) {
-            vscode.window.showErrorMessage('Create PR: worktree not found.');
-            break;
-          }
-
-          try {
-            const branch = (await execPromise('git rev-parse --abbrev-ref HEAD', { cwd: wtPath })).trim();
-            const isGH = await isGitHubRepository();
-            const isADO = await isAzureDevOpsRepository();
-
-            if (isGH) {
-              // ── GitHub: use PullRequestManager API ───────────────────
-              const [prProviderId] = msg.sessionId.split(':');
-              const prProvider = providerRegistry.get(prProviderId);
-              let taskTitle = branch;
-              let taskBody = '';
-              if (prProvider) {
-                const prTasks = await prProvider.getTasks();
-                const prTask = prTasks.find(t => t.id === msg.sessionId);
-                if (prTask) {
-                  taskTitle = prTask.title;
-                  const dw = copilotLauncher.getDiffWatcher(msg.sessionId);
-                  const changedFiles = dw?.getChanges() ?? [];
-                  taskBody = changedFiles.length > 0
-                    ? `### Files changed\n\n${changedFiles.map(f => `- \`${f.path}\``).join('\n')}`
-                    : '';
-                }
-              }
-              const pr = await prManager.createPR({
-                title: taskTitle,
-                body: taskBody,
-                headBranch: branch,
-              });
-              if (pr) {
-                // Persist PR info on the task
-                const [updProviderId] = msg.sessionId.split(':');
-                const updProvider = providerRegistry.get(updProviderId);
-                if (updProvider) {
-                  const updTasks = await updProvider.getTasks();
-                  const updTask = updTasks.find(t => t.id === msg.sessionId);
-                  if (updTask?.copilotSession) {
-                    await updProvider.updateTask({
-                      ...updTask,
-                      copilotSession: {
-                        ...updTask.copilotSession,
-                        prUrl: pr.url,
-                        prNumber: pr.number,
-                        prState: pr.state,
-                      },
-                    });
-                  }
-                }
-                panel.postMessage({ type: 'createPullRequestResult', sessionId: msg.sessionId, success: true, prUrl: pr.url });
-                await sendTasksToPanel(panel, providerRegistry, genAiRegistry, squadManager, sessionStateManager);
-              }
-            } else if (isADO) {
-              // ── Azure DevOps: open browser to PR creation page ───────
-              const remoteUrl = await getRemoteUrl();
-              if (!remoteUrl) {
-                vscode.window.showErrorMessage('Create PR: could not determine Azure DevOps remote URL.');
-                break;
-              }
-              // Detect the default branch (fallback to 'main')
-              let defaultBranch = 'main';
-              try {
-                const symbolicRef = (await execPromise('git symbolic-ref refs/remotes/origin/HEAD', { cwd: repoRoot })).trim();
-                const match = symbolicRef.match(/refs\/remotes\/origin\/(.+)$/);
-                if (match) { defaultBranch = match[1]; }
-              } catch { /* use 'main' fallback */ }
-              // Normalise URL: remove .git suffix and trailing slash
-              const baseUrl = remoteUrl.replace(/\.git$/, '').replace(/\/$/, '');
-              const prUrl = `${baseUrl}/pullrequestcreate?sourceRef=${encodeURIComponent(branch)}&targetRef=${encodeURIComponent(`refs/heads/${defaultBranch}`)}`;
-              await vscode.env.openExternal(vscode.Uri.parse(prUrl));
-              panel.postMessage({ type: 'createPullRequestResult', sessionId: msg.sessionId, success: true, prUrl });
-            } else {
-              vscode.window.showWarningMessage('Create PR: no GitHub or Azure DevOps remote configured.');
-            }
-          } catch (err) {
-            const errMsg = err instanceof Error ? err.message : String(err);
-            logger.error('createPullRequest failed:', errMsg);
-            panel.postMessage({ type: 'createPullRequestResult', sessionId: msg.sessionId, success: false, message: errMsg });
-            vscode.window.showErrorMessage(`Create PR failed: ${errMsg}`);
-          }
-          break;
-        }
       }
     });
-
-    // Proactively send initial data right away — don't rely solely on the
-    // webview 'ready' message which can be lost during panel deserialization.
-    void sendInitialDataToPanel(panel);
 
     // Auto-refresh board when squad session state changes (background completion/failure)
     const squadSub = squadManager.onDidChangeStatus(async () => {
@@ -1097,7 +938,7 @@ export function activate(context: vscode.ExtensionContext): void {
   });
 
   const openSettings = vscode.commands.registerCommand('agentBoard.openSettings', () => {
-    SettingsPanel.createOrShow(providerRegistry);
+    SettingsPanel.createOrShow();
   });
 
   const runAgent = vscode.commands.registerCommand('agentBoard.runAgent', async (item?: AgentTreeItem) => {
@@ -1232,13 +1073,13 @@ function simulateAgentRun(agentId: string, agentManager: AgentManager, refresh: 
 }
 
 /** Provider IDs whose tasks support full inline editing. */
-const EDITABLE_PROVIDER_IDS = ['json', 'github', 'azure-devops'];
+const EDITABLE_PROVIDER_IDS = ['json', 'github'];
 
 /**
  * Gather tasks from all providers and push them to the Kanban panel.
  */
 async function sendTasksToPanel(panel: KanbanPanel, registry: ProviderRegistry, genAiRegistry?: import('./copilot/GenAiProviderRegistry').GenAiProviderRegistry, squadMgr?: SquadManager, sessionStateMgr?: SessionStateManager): Promise<void> {
-  const providers = registry.getAll().filter(p => p.isEnabled());
+  const providers = registry.getAll();
   const allTasks = (
     await Promise.allSettled(providers.map(p => p.getTasks()))
   )
@@ -1350,7 +1191,6 @@ async function pickAgent(agents: AgentInfo[]): Promise<string | undefined> {
 /** Cache for workspace git/github detection (computed once per session). */
 let _isGitRepo: boolean | undefined;
 let _isGitHubRepo: boolean | undefined;
-let _isAzureDevOpsRepo: boolean | undefined;
 
 function shellCheck(cmd: string, cwd: string): Promise<boolean> {
   return new Promise(resolve => {
@@ -1376,27 +1216,6 @@ async function isGitHubRepository(): Promise<boolean> {
   const root = vscode.workspace.workspaceFolders![0].uri.fsPath;
   _isGitHubRepo = await shellCheck('git remote -v | grep -i github.com', root);
   return _isGitHubRepo;
-}
-
-async function isAzureDevOpsRepository(): Promise<boolean> {
-  if (_isAzureDevOpsRepo !== undefined) { return _isAzureDevOpsRepo; }
-  const isGit = await isGitRepository();
-  if (!isGit) { _isAzureDevOpsRepo = false; return false; }
-  const root = vscode.workspace.workspaceFolders![0].uri.fsPath;
-  _isAzureDevOpsRepo = await shellCheck('git remote -v | grep -iE "dev\\.azure\\.com|visualstudio\\.com"', root);
-  return _isAzureDevOpsRepo;
-}
-
-/** Return the raw fetch URL of the first git remote, or undefined. */
-async function getRemoteUrl(): Promise<string | undefined> {
-  const root = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
-  if (!root) { return undefined; }
-  try {
-    const output = await execPromise('git remote get-url origin', { cwd: root });
-    return output.trim() || undefined;
-  } catch {
-    return undefined;
-  }
 }
 
 /**

@@ -138,6 +138,19 @@ export class AzureDevOpsProvider implements ITaskProvider {
     return cfg?.azureDevOps?.enabled === true; // opt-in, disabled by default
   }
 
+  getIssueRetrievalPrompt(task: KanbanTask): string | undefined {
+    const workItemId = task.id.replace(`${this.id}:`, '');
+    if (!this.organization || !this.project || !workItemId) { return undefined; }
+    return (
+      'Before starting, run the following command to retrieve the full work item details ' +
+      '(including all fields, description, acceptance criteria, and history). ' +
+      'Execute this command first and use the output as the complete specification for your work.\n\n' +
+      '```\n' +
+      `az boards work-item show --id ${workItemId} --org ${this.organization} -p "${this.project}" --output json\n` +
+      '```'
+    );
+  }
+
   // ── private ─────────────────────────────────────────────────────────
 
   private readConfig(): void {

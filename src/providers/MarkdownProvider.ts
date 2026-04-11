@@ -124,6 +124,18 @@ export class MarkdownProvider implements ITaskProvider {
     return cfg?.markdownProvider?.enabled === true;
   }
 
+  getIssueRetrievalPrompt(task: KanbanTask): string | undefined {
+    const nativeId = task.id.replace(`${this.id}:`, '');
+    const dir = task.status === 'done' ? this.doneDir : this.inboxDir;
+    if (!dir) { return undefined; }
+    const filePath = path.join(dir, `${nativeId}.md`);
+    return (
+      'Before starting, read the following file to get the full task details.\n' +
+      'This is the authoritative source of truth for this task — use its content as the complete specification.\n\n' +
+      `File path: \`${filePath}\``
+    );
+  }
+
   // ── private ──────────────────────────────────────────────────────────
 
   private readConfig(): void {

@@ -102,6 +102,18 @@ export class BeadsProvider implements ITaskProvider {
     return cfg?.beadsProvider?.enabled === true;
   }
 
+  getIssueRetrievalPrompt(task: KanbanTask): string | undefined {
+    const nativeId = task.id.replace(`${this.id}:`, '');
+    if (!nativeId) { return undefined; }
+    return (
+      'Before starting, run the following command to retrieve the full issue details. ' +
+      'Execute this command first and use the output as the complete specification for your work.\n\n' +
+      '```\n' +
+      `${this.executable} show ${nativeId} --format=json\n` +
+      '```'
+    );
+  }
+
   // ── private ─────────────────────────────────────────────────────────
 
   private readConfig(): void {

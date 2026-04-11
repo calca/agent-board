@@ -145,6 +145,13 @@ export class CopilotLauncher {
 
     let prompt = promptOverride ?? ContextBuilder.build(task);
 
+    // ── Issue retrieval prompt from the task provider ─────────────────
+    const taskProvider = this.registry.get(task.providerId);
+    const retrievalPrompt = taskProvider?.getIssueRetrievalPrompt?.(task);
+    if (retrievalPrompt) {
+      prompt = retrievalPrompt + '\n\n---\n\n' + prompt;
+    }
+
     // ── Compute log path for persistence ─────────────────────────────
     const logPath = this.computeLogPath(taskId);
 

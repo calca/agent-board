@@ -58,6 +58,7 @@ export class GitHubProvider implements ITaskProvider {
   }
 
   async getTasks(): Promise<KanbanTask[]> {
+    if (!this.isEnabled()) { return []; }
     if (this.isCacheValid()) {
       return this.cache;
     }
@@ -114,6 +115,12 @@ export class GitHubProvider implements ITaskProvider {
 
   async refresh(): Promise<void> {
     this.readConfig();
+    if (!this.isEnabled()) {
+      this.cache = [];
+      this.cacheTimestamp = 0;
+      this._onDidChangeTasks.fire(this.cache);
+      return;
+    }
     this.cacheTimestamp = 0;
     const tasks = await this.fetchTasks();
     this._onDidChangeTasks.fire(tasks);
@@ -204,6 +211,19 @@ export class GitHubProvider implements ITaskProvider {
   isEnabled(): boolean {
     const cfg = ProjectConfig.getProjectConfig();
     return cfg?.github?.enabled === true;
+  }
+
+  getIssueRetrievalPrompt(task: KanbanTask): string | undefined {
+    const issueNumber = task.id.replace(`${this.id}:`, '');
+    if (!this.owner || !this.repo || !issueNumber) { return undefined; }
+    return (
+      'Before starting, run the following command to retrieve the full issue details ' +
+      '(including all comments, labels, and metadata). ' +
+      'Execute this command first and use the output as the complete specification for your work.\n\n' +
+      '```\n' +
+      `gh issue view ${issueNumber} --repo ${this.owner}/${this.repo} --comments\n` +
+      '```'
+    );
   }
 
   // ── private — gh CLI helpers ────────────────────────────────────────

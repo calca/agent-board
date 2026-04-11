@@ -58,4 +58,17 @@ export interface ITaskProvider {
    * Reads the `enabled` flag from the provider's config section.
    */
   isEnabled(): boolean;
+
+  /**
+   * Return a prompt fragment that instructs the GenAI model to retrieve
+   * the full issue / work-item details before starting work.
+   *
+   * The prompt is prepended to the context sent to the model so it
+   * executes the retrieval command first.
+   *
+   * Providers whose tasks are already complete locally (e.g. JSON files)
+   * may omit this method — the launcher treats `undefined` as "no
+   * retrieval needed".
+   */
+  getIssueRetrievalPrompt?(task: KanbanTask): string | undefined;
 }

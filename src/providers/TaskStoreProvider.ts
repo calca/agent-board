@@ -29,6 +29,13 @@ export class TaskStoreProvider implements ITaskProvider {
     this._onDidChangeTasks.fire(await this.getTasks());
   }
 
+  async deleteTaskById(compositeId: string): Promise<boolean> {
+    const nativeId = compositeId.replace(/^taskstore:/, '');
+    const ok = this.store.deleteTask(nativeId);
+    if (ok) { this._onDidChangeTasks.fire(await this.getTasks()); }
+    return ok;
+  }
+
   async refresh(): Promise<void> {
     this._onDidChangeTasks.fire(await this.getTasks());
   }
