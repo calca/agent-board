@@ -44,7 +44,7 @@ export class MessageBridge {
       return false;
     }
     const typed = msg as Record<string, unknown>;
-    const validTypes = ['taskMoved', 'openCopilot', 'refreshRequest', 'ready', 'startSquad', 'toggleAutoSquad', 'launchProvider', 'reopenSession', 'openWorktree', 'reviewWorktree', 'mergeWorktree', 'agentMerge', 'deleteWorktree', 'createPullRequest'];
+    const validTypes = ['taskMoved', 'openCopilot', 'refreshRequest', 'ready', 'startSquad', 'toggleAutoSquad', 'launchProvider', 'reopenSession', 'openWorktree', 'reviewWorktree', 'mergeWorktree', 'agentMerge', 'deleteWorktree', 'createPullRequest', 'hideTask'];
     return typeof typed.type === 'string' && validTypes.includes(typed.type);
   }
 }

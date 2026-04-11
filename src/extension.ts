@@ -464,6 +464,20 @@ export function activate(context: vscode.ExtensionContext): void {
           await sendTasksToPanel(panel, providerRegistry, genAiRegistry, squadManager, sessionStateManager);
           break;
         }
+        case 'hideTask': {
+          const [hideProviderId] = msg.taskId.split(':');
+          const hideProvider = providerRegistry.get(hideProviderId);
+          if (hideProvider) {
+            if ('deleteTaskById' in hideProvider && typeof (hideProvider as Record<string, unknown>).deleteTaskById === 'function') {
+              await (hideProvider as unknown as { deleteTaskById(id: string): Promise<boolean> }).deleteTaskById(msg.taskId);
+            } else if ('removeDoneTask' in hideProvider && typeof (hideProvider as Record<string, unknown>).removeDoneTask === 'function') {
+              await (hideProvider as unknown as { removeDoneTask(id: string): Promise<void> }).removeDoneTask(msg.taskId);
+            }
+          }
+          refresh();
+          await sendTasksToPanel(panel, providerRegistry, genAiRegistry, squadManager, sessionStateManager);
+          break;
+        }
         case 'exportDoneMd': {
           const configuredCols = ProjectConfig.getProjectConfig()?.kanban?.columns ?? [...COLUMN_IDS];
           const doneColId = configuredCols[configuredCols.length - 1] ?? 'done';
