@@ -239,8 +239,8 @@ export function useHostMessages(): void {
       }
 
       const statusOrder = ['todo', 'inprogress', 'review', 'done'];
-      const statuses = [...new Set(tasks.map(t => t.status))];
-      const ordered = [...statusOrder.filter(s => statuses.includes(s)), ...statuses.filter(s => !statusOrder.includes(s))];
+      const extraStatuses = [...new Set(tasks.map(t => t.status))].filter(s => !statusOrder.includes(s));
+      const ordered = [...statusOrder, ...extraStatuses];
       const columns = ordered.map(id => ({ id, label: id }));
 
       dispatch({

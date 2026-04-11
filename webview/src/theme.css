@@ -1011,6 +1011,23 @@ html, body, #root {
   animation: mobileSpin 1s linear infinite;
 }
 
+.mobile-companion-btn__badge {
+  position: absolute;
+  top: -4px;
+  right: -6px;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
+  font-size: 0.65em;
+  font-weight: 700;
+  line-height: 16px;
+  text-align: center;
+  border-radius: 8px;
+  background: #2ea043;
+  color: #fff;
+  pointer-events: none;
+}
+
 @keyframes mobileSpin {
   to { transform: rotate(360deg); }
 }
@@ -3195,24 +3212,129 @@ body.vscode-high-contrast .md-editor-container {
 }
 .md-viewer [class*="_contentEditable_"] {
   padding: 0 !important;
+}
+
+/* ── Column selector (mobile only) ─────────────────────────────────── */
+
+.kanban-wrapper {
+  display: contents;  /* transparent on desktop */
+}
+
+.kanban-col-selector {
+  display: none;  /* hidden on desktop */
+}
 
 /* ── Mobile Responsive (max-width: 768px) ─────────────────────────────── */
 
 @media (max-width: 768px) {
-  /* ── Kanban layout: stack columns vertically ──────────────────────────── */
+  /* ── Wrapper becomes a real container on mobile ────────────────────── */
+  .kanban-wrapper {
+    display: flex;
+    flex-direction: column;
+    height: calc(100% - 50px);
+    overflow: hidden;
+  }
+
+  /* ── Column selector tabs ─────────────────────────────────────────── */
+  .kanban-col-selector {
+    display: flex;
+    gap: 4px;
+    padding: 8px 12px;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    border-bottom: 1px solid var(--vscode-panel-border);
+    background: var(--vscode-sideBar-background);
+    flex-shrink: 0;
+    scrollbar-width: none;
+  }
+
+  .kanban-col-selector::-webkit-scrollbar {
+    display: none;
+  }
+
+  .kanban-col-selector__tab {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 14px;
+    border: none;
+    border-radius: 20px;
+    background: transparent;
+    color: var(--vscode-descriptionForeground, #888);
+    font-size: 0.85em;
+    font-weight: 500;
+    white-space: nowrap;
+    cursor: pointer;
+    transition: background 0.15s, color 0.15s;
+    min-height: 36px;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .kanban-col-selector__tab:hover {
+    background: var(--vscode-toolbar-hoverBackground);
+  }
+
+  .kanban-col-selector__tab--active {
+    background: var(--tab-color, var(--vscode-button-background));
+    color: var(--vscode-button-foreground, #fff);
+  }
+
+  .kanban-col-selector__tab--active:hover {
+    background: var(--tab-color, var(--vscode-button-hoverBackground));
+    opacity: 0.9;
+  }
+
+  .kanban-col-selector__count {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 20px;
+    height: 20px;
+    border-radius: 10px;
+    font-size: 0.8em;
+    font-weight: 600;
+    background: rgba(255, 255, 255, 0.15);
+  }
+
+  .kanban-col-selector__tab:not(.kanban-col-selector__tab--active) .kanban-col-selector__count {
+    background: var(--vscode-input-background);
+  }
+
+  /* ── Kanban layout: single column fullscreen ─────────────────────── */
   .kanban {
     display: flex;
     flex-direction: column;
-    gap: 16px;
-    padding: 12px;
-    height: auto;
-    overflow-x: visible;
+    gap: 0;
+    padding: 0;
+    height: 100%;
+    overflow: hidden;
+    flex: 1;
   }
 
   .kanban__column {
     flex: 1 1 auto;
     min-width: 100%;
     width: 100%;
+    display: none;
+    border-radius: 0;
+    border: none;
+  }
+
+  .kanban__column[data-active="true"] {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+  }
+
+  .kanban__column-header {
+    display: none;  /* Tab selector already shows column info */
+  }
+
+  .kanban__column-body {
+    flex: 1;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    padding: 12px;
   }
 
   /* ── Increase touch targets ─────────────────────────────────────────── */
@@ -3229,7 +3351,6 @@ body.vscode-high-contrast .md-editor-container {
     height: 18px;
   }
 
-  /* Disable hover effect on mobile, keep button always visible */
   .kanban__col-btn:hover {
     opacity: 1;
     background: var(--vscode-button-hoverBackground, rgba(90, 93, 94, 0.3));
@@ -3238,11 +3359,6 @@ body.vscode-high-contrast .md-editor-container {
   /* ── Increase base font size for readability ────────────────────────── */
   html, body, #root {
     font-size: calc(var(--vscode-font-size) + 2px);
-  }
-
-  .kanban__column-header {
-    padding: 12px 14px;
-    font-size: 1.1em;
   }
 
   .kanban__column-count {
@@ -3398,5 +3514,4 @@ body.vscode-high-contrast .md-editor-container {
       transition: none !important;
     }
   }
-}
 }

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useBoard } from '../context/BoardContext';
 import { DataProvider } from '../DataProvider';
 import { postMessage } from '../hooks/useVsCodeApi';
@@ -8,6 +8,7 @@ import { TaskCard } from './TaskCard';
 export function KanbanBoard() {
   const { state } = useBoard();
   const { tasks, columns, searchText } = state;
+  const [activeCol, setActiveCol] = useState<string | null>(null);
 
   const filtered = tasks.filter(t => {
     if (!searchText) { return true; }
@@ -17,16 +18,43 @@ export function KanbanBoard() {
       || (t.assignee?.toLowerCase().includes(q) ?? false);
   });
 
+  // Default to first column if none selected
+  const selectedCol = activeCol ?? columns[0]?.id ?? '';
+
   return (
-    <div className="kanban">
-      {columns.map(col => (
-        <KanbanColumn key={col.id} column={col} tasks={filtered.filter(t => t.status === col.id)} />
-      ))}
+    <div className="kanban-wrapper">
+      {/* Mobile column selector — hidden on desktop via CSS */}
+      <div className="kanban-col-selector" role="tablist">
+        {columns.map(col => (
+          <button
+            key={col.id}
+            role="tab"
+            aria-selected={col.id === selectedCol}
+            className={`kanban-col-selector__tab${col.id === selectedCol ? ' kanban-col-selector__tab--active' : ''}`}
+            style={col.color ? { '--tab-color': col.color } as React.CSSProperties : undefined}
+            onClick={() => setActiveCol(col.id)}
+          >
+            <span className="kanban-col-selector__label">{col.label}</span>
+            <span className="kanban-col-selector__count">{filtered.filter(t => t.status === col.id).length}</span>
+          </button>
+        ))}
+      </div>
+
+      <div className="kanban">
+        {columns.map(col => (
+          <KanbanColumn
+            key={col.id}
+            column={col}
+            tasks={filtered.filter(t => t.status === col.id)}
+            isActive={col.id === selectedCol}
+          />
+        ))}
+      </div>
     </div>
   );
 }
 
-function KanbanColumn({ column, tasks }: { column: Column; tasks: KanbanTask[] }) {
+function KanbanColumn({ column, tasks, isActive }: { column: Column; tasks: KanbanTask[]; isActive: boolean }) {
   const { dispatch } = useBoard();
   const bgStyle = column.color ? { background: `${column.color}0D` } : undefined;
   const headerStyle = column.color ? { background: `${column.color}1A` } : undefined;
@@ -43,7 +71,7 @@ function KanbanColumn({ column, tasks }: { column: Column; tasks: KanbanTask[] }
   }
 
   return (
-    <div className="kanban__column" style={bgStyle}>
+    <div className="kanban__column" style={bgStyle} data-active={isActive ? 'true' : 'false'}>
       <div className="kanban__column-header" style={headerStyle}>
         <span>{column.label}</span>
         <span className="kanban__column-header-right">

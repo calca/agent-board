@@ -7,6 +7,7 @@ export function Toolbar() {
     workspaceName, mcpEnabled, squadStatus, repoIsGit,
     genAiProviders, availableAgents, selectedSquadProviderId,
     selectedAgentSlug, searchText, showSearchInput, syncing,
+    mobileServerRunning, mobileDevices, mobileRefreshing,
   } = state;
   const isVsCodeWebview = Boolean(getVsCodeApi());
 
@@ -46,8 +47,8 @@ export function Toolbar() {
           </button>
           {isVsCodeWebview && (
             <button
-              className="toolbar__btn toolbar__btn--icon mobile-companion-btn"
-              title="Apri pairing mobile"
+              className={`toolbar__btn toolbar__btn--icon mobile-companion-btn${mobileServerRunning ? ' mobile-companion-btn--on' : ' mobile-companion-btn--off'}${mobileRefreshing ? ' mobile-companion-btn--spinning' : ''}`}
+              title={mobileServerRunning ? `Mobile server attivo — ${mobileDevices.length} device` : 'Mobile server spento'}
               onClick={() => {
                 dispatch({ type: 'START_MOBILE_REFRESH' });
                 postMessage({ type: 'openMobileCompanion' });
@@ -56,6 +57,9 @@ export function Toolbar() {
               <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
                 <path d="M5 1.75A1.75 1.75 0 0 0 3.25 3.5v9A1.75 1.75 0 0 0 5 14.25h6A1.75 1.75 0 0 0 12.75 12.5v-9A1.75 1.75 0 0 0 11 1.75H5Zm0 1.5h6a.25.25 0 0 1 .25.25v9a.25.25 0 0 1-.25.25H5a.25.25 0 0 1-.25-.25v-9A.25.25 0 0 1 5 3.25ZM8 11.25a.75.75 0 1 0 0 1.5.75.75 0 0 0 0-1.5Z"/>
               </svg>
+              {mobileServerRunning && mobileDevices.length > 0 && (
+                <span className="mobile-companion-btn__badge">{mobileDevices.length}</span>
+              )}
             </button>
           )}
           <NotificationBell />
