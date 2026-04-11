@@ -14,11 +14,11 @@
 import * as fs from 'fs';
 import * as http from 'http';
 import * as path from 'path';
-import { Logger } from '../utils/logger';
 import { JsonProvider } from '../providers/JsonProvider';
 import { ProviderRegistry } from '../providers/ProviderRegistry';
-import type { KanbanTask } from '../types/KanbanTask';
 import type { ColumnId } from '../types/ColumnId';
+import type { KanbanTask } from '../types/KanbanTask';
+import { Logger } from '../utils/logger';
 
 export interface MobileDeviceInfo {
   ip: string;
