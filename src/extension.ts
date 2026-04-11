@@ -6,6 +6,7 @@ import { AgentManager } from './agentManager';
 import { AgentsTreeProvider, AgentTreeItem } from './agentsTreeProvider';
 import { refreshTasksCommand } from './commands/refreshTasks';
 import { ProjectConfig } from './config/ProjectConfig';
+import { DiffWatcher } from './diff/DiffWatcher';
 import { AgentInfo, discoverAgents } from './copilot/agentDiscovery';
 import { registerChatParticipant } from './copilot/ChatParticipant';
 import { CopilotLauncher } from './copilot/CopilotLauncher';
@@ -605,6 +606,27 @@ export function activate(context: vscode.ExtensionContext): void {
             const persistedLog = copilotLauncher.readPersistedLog(msg.sessionId);
             if (persistedLog) {
               panel.postMessage({ type: 'streamResume', sessionId: msg.sessionId, log: persistedLog });
+            }
+          }
+          break;
+        }
+        case 'requestFileChanges': {
+          // If a DiffWatcher is still alive, refresh it.
+          const existingDw = copilotLauncher.getDiffWatcher(msg.sessionId);
+          if (existingDw) {
+            const files = await existingDw.refresh();
+            panel.updateFileChanges(msg.sessionId, files);
+          } else {
+            // Recreate a one-shot diff from the session's worktree path.
+            const fcSession = sessionStateManager.getSession(msg.sessionId);
+            const wtPath = fcSession?.worktreePath;
+            const watchRoot = wtPath ?? vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
+            if (watchRoot) {
+              const baseRef = wtPath ? 'main' : 'HEAD';
+              const tempDw = new DiffWatcher(watchRoot, baseRef);
+              const files = await tempDw.refresh();
+              tempDw.dispose();
+              panel.updateFileChanges(msg.sessionId, files);
             }
           }
           break;

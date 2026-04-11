@@ -95,6 +95,7 @@ export type WebViewToHost =
   | { type: 'openTerminalInWorktree'; sessionId: string }
   | { type: 'exportLog'; sessionId: string }
   | { type: 'requestStreamResume'; sessionId: string }
+  | { type: 'requestFileChanges'; sessionId: string }
   | { type: 'sendFollowUp'; sessionId: string; text: string }
   | { type: 'reviewWorktree'; sessionId: string }
   | { type: 'mergeWorktree'; sessionId: string; mergeStrategy: 'squash' | 'merge' | 'rebase' }
