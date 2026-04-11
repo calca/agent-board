@@ -22,9 +22,12 @@ import { GitHubIssueManager } from './github/GitHubIssueManager';
 import { PullRequestManager } from './github/PullRequestManager';
 import { KanbanPanel } from './kanban/KanbanPanel';
 import { OverviewTreeProvider } from './overviewTreeProvider';
+import { AzureDevOpsProvider } from './providers/AzureDevOpsProvider';
+import { BeadsProvider } from './providers/BeadsProvider';
 import { GitHubProvider } from './providers/GitHubProvider';
 import { ITaskProvider } from './providers/ITaskProvider';
 import { JsonProvider } from './providers/JsonProvider';
+import { MarkdownProvider } from './providers/MarkdownProvider';
 import { ProviderPicker } from './providers/ProviderPicker';
 import { ProviderRegistry } from './providers/ProviderRegistry';
 import { SettingsPanel } from './settings/SettingsPanel';
@@ -145,6 +148,18 @@ export function activate(context: vscode.ExtensionContext): void {
   // JSON-backed task provider — always registered, persists to .agent-board/tasks.json
   const jsonProvider = new JsonProvider();
   providerRegistry.register(jsonProvider);
+
+  // Markdown-backed task provider — opt-in via .agent-board/config.json
+  const markdownProvider = new MarkdownProvider();
+  providerRegistry.register(markdownProvider);
+
+  // Azure DevOps task provider — opt-in via .agent-board/config.json
+  const azureDevOpsProvider = new AzureDevOpsProvider();
+  providerRegistry.register(azureDevOpsProvider);
+
+  // Beads task provider — opt-in via .agent-board/config.json
+  const beadsProvider = new BeadsProvider();
+  providerRegistry.register(beadsProvider);
 
   // Overview sidebar view
   const overviewProvider = new OverviewTreeProvider(providerRegistry, squadManager);
@@ -306,7 +321,9 @@ export function activate(context: vscode.ExtensionContext): void {
           });
           break;
         case 'refreshRequest':
-          await refreshTasksCommand(providerRegistry);
+          try {
+            await refreshTasksCommand(providerRegistry);
+          } catch { /* logged in refreshTasksCommand */ }
           await sendTasksToPanel(panel, providerRegistry, genAiRegistry, squadManager, sessionStateManager);
           refreshAgents();
           panel.updateAgents(agentOptions());
@@ -938,7 +955,7 @@ export function activate(context: vscode.ExtensionContext): void {
   });
 
   const openSettings = vscode.commands.registerCommand('agentBoard.openSettings', () => {
-    SettingsPanel.createOrShow();
+    SettingsPanel.createOrShow(providerRegistry);
   });
 
   const runAgent = vscode.commands.registerCommand('agentBoard.runAgent', async (item?: AgentTreeItem) => {
