@@ -1,11 +1,46 @@
-import React, { useCallback } from 'react';
+import React, { useCallback, useRef } from 'react';
+import {
+  MDXEditor,
+  headingsPlugin,
+  listsPlugin,
+  quotePlugin,
+  thematicBreakPlugin,
+  linkPlugin,
+  linkDialogPlugin,
+  markdownShortcutPlugin,
+  toolbarPlugin,
+  BoldItalicUnderlineToggles,
+  UndoRedo,
+  CreateLink,
+  InsertThematicBreak,
+  ListsToggle,
+  BlockTypeSelect,
+  codeBlockPlugin,
+  CodeToggle,
+  type MDXEditorMethods,
+} from '@mdxeditor/editor';
+// @ts-ignore — esbuild loader:text returns a string at runtime
+import editorStylesRaw from '@mdxeditor/editor/style.css';
 import { useBoard } from '../context/BoardContext';
 import { postMessage } from '../hooks/useVsCodeApi';
 import { sanitizeHtml } from '../utils';
 
+let editorStylesInjected = false;
+function injectEditorStyles(): void {
+  if (editorStylesInjected) { return; }
+  const style = document.createElement('style');
+  style.id = 'mdxeditor-styles';
+  style.textContent = editorStylesRaw as string;
+  document.head.appendChild(style);
+  editorStylesInjected = true;
+}
+
 export function TaskForm() {
   const { state, dispatch } = useBoard();
   const { showTaskForm, editingTask, columns, formColumns, editableProviderIds, genAiProviders } = state;
+  const bodyRef = useRef<MDXEditorMethods>(null);
+
+  injectEditorStyles();
 
   if (!showTaskForm && !editingTask) { return null; }
 
@@ -34,13 +69,12 @@ export function TaskForm() {
     const form = e.currentTarget;
 
     const titleEl = form.querySelector('#tf-title') as HTMLInputElement | null;
-    const bodyEl = form.querySelector('#tf-body') as HTMLTextAreaElement | null;
     const labelsEl = form.querySelector('#tf-labels') as HTMLInputElement | null;
     const assigneeEl = form.querySelector('#tf-assignee') as HTMLInputElement | null;
 
     const title = titleEl?.value.trim() ?? task?.title ?? '';
     if (!title) { return; }
-    const body = bodyEl?.value.trim() ?? task?.body ?? '';
+    const body = bodyRef.current?.getMarkdown().trim() ?? task?.body ?? '';
     const status = task
       ? (form.querySelector('#tf-status') as HTMLSelectElement)?.value ?? cols[0]?.id ?? 'todo'
       : cols[0]?.id ?? 'todo';
@@ -77,7 +111,37 @@ export function TaskForm() {
           <label className="task-form__label">Description</label>
           {isEdit && isRemote
             ? <div className="task-form__readonly-body" dangerouslySetInnerHTML={{ __html: isBodyHtml ? sanitizeHtml(task!.body) : (task!.body || '') }} />
-            : <textarea className="task-form__textarea" id="tf-body" rows={8} defaultValue={task?.body ?? ''} placeholder={isEdit ? undefined : 'Describe the task in detail — the agent will use this as instructions…'} />}
+            : <div className="md-editor-container">
+                <MDXEditor
+                  ref={bodyRef}
+                  key={task?.id ?? 'new'}
+                  markdown={task?.body ?? ''}
+                  placeholder="Describe the task in detail — the agent will use this as instructions…"
+                  plugins={[
+                    headingsPlugin(),
+                    listsPlugin(),
+                    quotePlugin(),
+                    thematicBreakPlugin(),
+                    linkPlugin(),
+                    linkDialogPlugin(),
+                    codeBlockPlugin({ defaultCodeBlockLanguage: '' }),
+                    markdownShortcutPlugin(),
+                    toolbarPlugin({
+                      toolbarContents: () => (
+                        <>
+                          <UndoRedo />
+                          <BlockTypeSelect />
+                          <BoldItalicUnderlineToggles />
+                          <CodeToggle />
+                          <ListsToggle />
+                          <CreateLink />
+                          <InsertThematicBreak />
+                        </>
+                      ),
+                    }),
+                  ]}
+                />
+              </div>}
 
           <div className="task-form__row">
             <div className="task-form__field">
@@ -143,3 +207,4 @@ export function TaskForm() {
     </div>
   );
 }
+
