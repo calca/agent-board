@@ -281,12 +281,24 @@ export class AzureDevOpsProvider implements ITaskProvider {
     const fields = item.fields ?? {};
     const assignee = fields['System.AssignedTo'];
     const tags = fields['System.Tags'];
+
+    // Azure DevOps stores the description in different fields depending on work item type:
+    // User Story / Task / Epic / Feature → System.Description
+    // Bug → Microsoft.VSTS.TCM.ReproSteps  (repro steps)
+    // All types may also have acceptance criteria.
+    const descParts: string[] = [];
+    const sysDesc = fields['System.Description'] as string | undefined;
+    const reproSteps = fields['Microsoft.VSTS.TCM.ReproSteps'] as string | undefined;
+    const acceptanceCriteria = fields['Microsoft.VSTS.Common.AcceptanceCriteria'] as string | undefined;
+    if (sysDesc) { descParts.push(sysDesc); }
+    if (reproSteps && reproSteps !== sysDesc) { descParts.push(reproSteps); }
+    if (acceptanceCriteria) { descParts.push('<h3>Acceptance Criteria</h3>' + acceptanceCriteria); }
+    const body = descParts.join('\n') || '';
+
     return {
       id: `${this.id}:${item.id}`,
       title: fields['System.Title'] ?? `#${item.id}`,
-      body: fields['System.Description']
-        ?? (fields['Microsoft.VSTS.TCM.ReproSteps'] as string | undefined)
-        ?? '',
+      body,
       status: this.mapStatus(fields['System.State']),
       labels: tags ? tags.split(';').map(t => t.trim()).filter(Boolean) : [],
       assignee: assignee?.displayName ?? assignee?.uniqueName,
