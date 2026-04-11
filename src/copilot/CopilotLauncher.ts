@@ -13,6 +13,7 @@ import { Logger } from '../utils/logger';
 import { AgentInfo, readAgentInstructions } from './agentDiscovery';
 import { ContextBuilder } from './ContextBuilder';
 import { GenAiProviderRegistry } from './GenAiProviderRegistry';
+import { CopilotCliGenAiProvider } from './providers/CopilotCliGenAiProvider';
 import { SessionStateManager } from './SessionStateManager';
 import { createWorktree, removeWorktree, WorktreeInfo } from './WorktreeManager';
 
@@ -200,6 +201,16 @@ export class CopilotLauncher {
     this.sessionStateManager?.markRunning(taskId);
     this.activeProviders.set(taskId, provider);
 
+    // ── CLI session resume ────────────────────────────────────────────
+    // If a previous CLI session ID is stored, tell the provider to resume it.
+    if (provider instanceof CopilotCliGenAiProvider) {
+      const existingSession = this.sessionStateManager?.getSession(taskId);
+      if (existingSession?.cliSessionId) {
+        provider.setResumeSessionId(existingSession.cliSessionId);
+        this.logger.info(`CopilotLauncher: resuming CLI session ${existingSession.cliSessionId} for task ${taskId}`);
+      }
+    }
+
     // Emit the prompt to the activity log so the user can see what was sent
     stream.append(`-----------------\nPROMPT\n${prompt}\n-----------------`);
 
@@ -218,6 +229,12 @@ export class CopilotLauncher {
 
       // ── Flush stream log to disk for restart recovery ─────────────
       this.flushLogToDisk(taskId, logPath);
+
+      // ── Persist CLI session ID for future resume ────────────────
+      if (provider instanceof CopilotCliGenAiProvider && provider.lastSessionId) {
+        this.sessionStateManager?.setCliSessionId(taskId, provider.lastSessionId);
+        this.logger.info(`CopilotLauncher: saved CLI session-id ${provider.lastSessionId} for task ${taskId}`);
+      }
 
       // ── Auto-commit worktree changes ────────────────────────────
       if (worktree) {

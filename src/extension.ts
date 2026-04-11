@@ -18,7 +18,7 @@ import { LmApiGenAiProvider } from './copilot/providers/LmApiGenAiProvider';
 import { SessionStateManager } from './copilot/SessionStateManager';
 import { SquadManager } from './copilot/SquadManager';
 import { removeWorktree } from './copilot/WorktreeManager';
-import { DiffWatcher } from './diff/DiffWatcher';
+import { DiffWatcher, GIT_REF_SCHEME, GitRefContentProvider } from './diff/DiffWatcher';
 import { GitHubIssueManager } from './github/GitHubIssueManager';
 import { PullRequestManager } from './github/PullRequestManager';
 import { KanbanPanel } from './kanban/KanbanPanel';
@@ -51,6 +51,11 @@ export function activate(context: vscode.ExtensionContext): void {
   const ghIssueManager = new GitHubIssueManager();
   const prManager = new PullRequestManager();
   context.subscriptions.push(ghIssueManager);
+
+  // Register the content provider for agent-board-git: URIs (used by diff views)
+  context.subscriptions.push(
+    vscode.workspace.registerTextDocumentContentProvider(GIT_REF_SCHEME, new GitRefContentProvider()),
+  );
 
   // Register the GitHub provider (uses VSCode SSO + .agent-board/config.json)
   const githubProvider = new GitHubProvider(context, ghIssueManager);

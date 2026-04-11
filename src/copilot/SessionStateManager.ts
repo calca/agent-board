@@ -148,6 +148,14 @@ export class SessionStateManager {
     this.persist();
   }
 
+  /** Store the Copilot CLI session ID for future resume. */
+  setCliSessionId(taskId: string, cliSessionId: string): void {
+    const session = this.sessions.get(taskId);
+    if (!session) { return; }
+    session.cliSessionId = cliSessionId;
+    this.persist();
+  }
+
   /** Clear the worktree path from a session (after worktree deletion) while keeping all other info. */
   clearWorktree(taskId: string): void {
     const session = this.sessions.get(taskId);

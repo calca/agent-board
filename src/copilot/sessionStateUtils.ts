@@ -19,6 +19,8 @@ export interface PersistedSession {
   errorMessage?: string;
   /** Whether the worktree branch has been merged locally. */
   merged?: boolean;
+  /** Copilot CLI session ID captured from `~/.copilot/session-state/`. */
+  cliSessionId?: string;
 }
 
 // ── Pure utilities (testable without VS Code) ─────────────────────────
