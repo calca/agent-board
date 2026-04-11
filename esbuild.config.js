@@ -5,6 +5,29 @@ const path = require('path');
 
 const isWatch = process.argv.includes('--watch');
 
+/** @type {import('esbuild').Plugin} */
+const watchLogPlugin = {
+  name: 'watch-log',
+  setup(build) {
+    build.onStart(() => {
+      console.log('[watch] build started');
+    });
+    build.onEnd((result) => {
+      // Re-copy CSS on every rebuild so theme changes are picked up
+      const src = path.join('webview', 'src', 'theme.css');
+      const dst = path.join('dist', 'webview.css');
+      if (fs.existsSync(src)) {
+        fs.copyFileSync(src, dst);
+      }
+      if (result.errors.length) {
+        console.log(`[watch] build finished with ${result.errors.length} error(s)`);
+      } else {
+        console.log('[watch] build finished');
+      }
+    });
+  },
+};
+
 /** @type {import('esbuild').BuildOptions} */
 const extensionBuildOptions = {
   entryPoints: ['src/extension.ts'],
@@ -47,11 +70,26 @@ async function main() {
   }
 
   if (isWatch) {
-    const extensionCtx = await esbuild.context(extensionBuildOptions);
+    const extensionCtx = await esbuild.context({
+      ...extensionBuildOptions,
+      plugins: [watchLogPlugin],
+    });
     const webviewCtx = await esbuild.context(webviewBuildOptions);
     
     await extensionCtx.watch();
     await webviewCtx.watch();
+
+    // Auto-copy CSS on changes so the webview picks it up via the file watcher
+    if (fs.existsSync(cssSource)) {
+      fs.watch(cssSource, { persistent: false }, (eventType) => {
+        if (eventType === 'change') {
+          try {
+            fs.copyFileSync(cssSource, cssTarget);
+            console.log('[esbuild] re-copied webview CSS');
+          } catch { /* ignore race */ }
+        }
+      });
+    }
     
     console.log('[esbuild] watching for changes…');
   } else {

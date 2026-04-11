@@ -32,7 +32,18 @@
             "presentation": {
                 "reveal": "never"
             },
-            "problemMatcher": []
+            "problemMatcher": {
+                "owner": "esbuild",
+                "fileLocation": ["relative", "${workspaceFolder}"],
+                "pattern": {
+                    "regexp": "^ERROR: .*$"
+                },
+                "background": {
+                    "activeOnStart": true,
+                    "beginsPattern": "\\[watch\\] build started",
+                    "endsPattern": "\\[watch\\] build finished"
+                }
+            }
         },
         {
             "type": "npm",
