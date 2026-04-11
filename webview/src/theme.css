@@ -1007,6 +1007,14 @@ html, body, #root {
   background: #d73a49;
 }
 
+.mobile-companion-btn--spinning svg {
+  animation: mobileSpin 1s linear infinite;
+}
+
+@keyframes mobileSpin {
+  to { transform: rotate(360deg); }
+}
+
 .notification-bell__badge {
   position: absolute;
   top: -2px;
@@ -1165,6 +1173,39 @@ html, body, #root {
   display: flex;
   gap: 8px;
   margin-bottom: 12px;
+}
+
+.mobile-dialog__tunnel-toggle {
+  display: inline-flex;
+  gap: 8px;
+  align-items: center;
+  margin-bottom: 10px;
+  font-size: 0.88em;
+}
+
+.mobile-dialog__tunnel-toggle input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--vscode-button-background);
+  appearance: auto;
+}
+
+.mobile-dialog__tunnel-toggle input[type="checkbox"]:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.mobile-dialog__hint {
+  margin: -2px 0 10px;
+  font-size: 0.8em;
+  opacity: 0.7;
+}
+
+.mobile-dialog__tunnel-url {
+  margin-bottom: 10px;
+  font-size: 0.85em;
+  font-family: var(--vscode-editor-font-family, monospace);
+  word-break: break-all;
 }
 
 .mobile-dialog__devices-title {

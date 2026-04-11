@@ -1,5 +1,5 @@
 import { useBoard } from '../context/BoardContext';
-import { postMessage } from '../hooks/useVsCodeApi';
+import { getVsCodeApi, postMessage } from '../hooks/useVsCodeApi';
 
 export function Toolbar() {
   const { state, dispatch } = useBoard();
@@ -7,8 +7,8 @@ export function Toolbar() {
     workspaceName, mcpEnabled, squadStatus, repoIsGit,
     genAiProviders, availableAgents, selectedSquadProviderId,
     selectedAgentSlug, searchText, showSearchInput, syncing,
-    mobileServerRunning, mobileDevices,
   } = state;
+  const isVsCodeWebview = Boolean(getVsCodeApi());
 
   const filtered = getFilteredCount();
   const squadProviders = genAiProviders.filter(p => !p.disabled && p.id !== 'chat');
@@ -44,16 +44,20 @@ export function Toolbar() {
             <span className="mcp-toggle__dot" />
             <span className="mcp-toggle__label">MCP</span>
           </button>
-          <button
-            className={`toolbar__btn toolbar__btn--icon mobile-companion-btn${mobileServerRunning ? ' mobile-companion-btn--on' : ' mobile-companion-btn--off'}`}
-            title={mobileServerRunning ? 'Mobile companion attivo' : 'Mobile companion non attivo'}
-            onClick={() => postMessage({ type: 'openMobileCompanion' })}
-          >
-            <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
-              <path d="M5 1.75A1.75 1.75 0 0 0 3.25 3.5v9A1.75 1.75 0 0 0 5 14.25h6A1.75 1.75 0 0 0 12.75 12.5v-9A1.75 1.75 0 0 0 11 1.75H5Zm0 1.5h6a.25.25 0 0 1 .25.25v9a.25.25 0 0 1-.25.25H5a.25.25 0 0 1-.25-.25v-9A.25.25 0 0 1 5 3.25ZM8 11.25a.75.75 0 1 0 0 1.5.75.75 0 0 0 0-1.5Z"/>
-            </svg>
-            {mobileDevices.length > 0 && <span className="notification-bell__badge">{mobileDevices.length}</span>}
-          </button>
+          {isVsCodeWebview && (
+            <button
+              className="toolbar__btn toolbar__btn--icon mobile-companion-btn"
+              title="Apri pairing mobile"
+              onClick={() => {
+                dispatch({ type: 'START_MOBILE_REFRESH' });
+                postMessage({ type: 'openMobileCompanion' });
+              }}
+            >
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+                <path d="M5 1.75A1.75 1.75 0 0 0 3.25 3.5v9A1.75 1.75 0 0 0 5 14.25h6A1.75 1.75 0 0 0 12.75 12.5v-9A1.75 1.75 0 0 0 11 1.75H5Zm0 1.5h6a.25.25 0 0 1 .25.25v9a.25.25 0 0 1-.25.25H5a.25.25 0 0 1-.25-.25v-9A.25.25 0 0 1 5 3.25ZM8 11.25a.75.75 0 1 0 0 1.5.75.75 0 0 0 0-1.5Z"/>
+              </svg>
+            </button>
+          )}
           <NotificationBell />
         </div>
       </div>
@@ -144,7 +148,7 @@ export function Toolbar() {
 
 function NotificationBell() {
   const { state, dispatch } = useBoard();
-  const notifications = getNotifications(state.repoIsGit, state.repoIsGitHub, state.mobileServerRunning, state.mobileDevices);
+  const notifications = getNotifications(state.repoIsGit, state.repoIsGitHub);
   const count = notifications.length;
 
   return (
@@ -161,21 +165,12 @@ function NotificationBell() {
   );
 }
 
-export function getNotifications(repoIsGit: boolean, repoIsGitHub: boolean, mobileServerRunning: boolean, mobileDevices: Array<{ ip: string; lastAccess: string }>): string[] {
+export function getNotifications(repoIsGit: boolean, repoIsGitHub: boolean): string[] {
   const notifications: string[] = [];
   if (!repoIsGit) {
     notifications.push('⚠︎ Questo progetto non è un repository Git. Squad, Copilot LM API, Copilot CLI e Cloud sono disabilitati.');
   } else if (!repoIsGitHub) {
     notifications.push('⚠︎ Nessun remote GitHub collegato. Cloud è disabilitato.');
-  }
-  notifications.push(`${mobileServerRunning ? '●' : '○'} Mobile server ${mobileServerRunning ? 'attivo' : 'non attivo'}.`);
-  if (mobileDevices.length === 0) {
-    notifications.push('Nessun device mobile connesso.');
-  } else {
-    for (const d of mobileDevices) {
-      const ts = new Date(d.lastAccess).toLocaleString();
-      notifications.push(`Device ${d.ip} - ultimo accesso ${ts}`);
-    }
   }
   return notifications;
 }

@@ -19,6 +19,10 @@ export interface BoardState {
   mobileDevices: MobileDeviceInfo[];
   mobileQrSvg: string;
   showMobileDialog: boolean;
+  mobileTunnelEnabled: boolean;
+  mobileTunnelActive: boolean;
+  mobileTunnelUrl: string;
+  mobileRefreshing: boolean;
   repoIsGit: boolean;
   repoIsGitHub: boolean;
   repoIsAzureDevOps: boolean;
@@ -55,6 +59,10 @@ export const initialState: BoardState = {
   mobileDevices: [],
   mobileQrSvg: '',
   showMobileDialog: false,
+  mobileTunnelEnabled: false,
+  mobileTunnelActive: false,
+  mobileTunnelUrl: '',
+  mobileRefreshing: false,
   repoIsGit: true,
   repoIsGitHub: true,
   repoIsAzureDevOps: false,
@@ -81,9 +89,10 @@ export type BoardAction =
   | { type: 'AGENTS_AVAILABLE'; agents: AgentOption[] }
   | { type: 'SQUAD_STATUS'; status: SquadStatus }
   | { type: 'MCP_STATUS'; enabled: boolean }
-  | { type: 'MOBILE_STATUS'; running: boolean; url: string; devices: MobileDeviceInfo[]; qrSvg?: string }
+  | { type: 'MOBILE_STATUS'; running: boolean; url: string; devices: MobileDeviceInfo[]; qrSvg?: string; tunnelEnabled?: boolean; tunnelActive?: boolean; tunnelUrl?: string; refreshing?: boolean }
   | { type: 'OPEN_MOBILE_DIALOG' }
   | { type: 'CLOSE_MOBILE_DIALOG' }
+  | { type: 'START_MOBILE_REFRESH' }
   | { type: 'SHOW_TASK_FORM'; columns: Column[] }
   | { type: 'REPO_STATUS'; isGit: boolean; isGitHub: boolean; isAzureDevOps: boolean; workspaceRoot: string; workspaceName: string }
   | { type: 'SET_SEARCH_TEXT'; text: string }
@@ -153,11 +162,17 @@ export function boardReducer(state: BoardState, action: BoardAction): BoardState
         mobileServerUrl: action.url,
         mobileDevices: action.devices,
         mobileQrSvg: action.qrSvg ?? state.mobileQrSvg,
+        mobileTunnelEnabled: action.tunnelEnabled ?? state.mobileTunnelEnabled,
+        mobileTunnelActive: action.tunnelActive ?? state.mobileTunnelActive,
+        mobileTunnelUrl: action.tunnelUrl ?? state.mobileTunnelUrl,
+        mobileRefreshing: action.refreshing ?? false,
       };
     case 'OPEN_MOBILE_DIALOG':
       return { ...state, showMobileDialog: true };
     case 'CLOSE_MOBILE_DIALOG':
       return { ...state, showMobileDialog: false };
+    case 'START_MOBILE_REFRESH':
+      return { ...state, mobileRefreshing: true };
     case 'SHOW_TASK_FORM':
       return { ...state, showTaskForm: true, formColumns: action.columns, selectedTask: null };
     case 'REPO_STATUS':

@@ -2,6 +2,7 @@ import { exec } from 'child_process';
 import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
+import type * as LocalTunnelNS from 'localtunnel';
 import * as QRCode from 'qrcode';
 import * as vscode from 'vscode';
 import { AgentManager } from './agentManager';
@@ -51,11 +52,54 @@ export function activate(context: vscode.ExtensionContext): void {
   const providerPicker = new ProviderPicker(providerRegistry, context);
   const mobileServerPort = 3333;
   const mobileServer = new LocalApiServer(providerRegistry, context.extensionUri.fsPath);
-  mobileServer.start(mobileServerPort);
+  let mobileTunnelEnabled = false;
+  let mobileTunnel: LocalTunnelNS.Tunnel | undefined;
+
+  const stopMobileTunnel = async (): Promise<void> => {
+    if (!mobileTunnel) {
+      return;
+    }
+    try {
+      await mobileTunnel.close();
+    } catch {
+      // no-op
+    }
+    mobileTunnel = undefined;
+  };
+
+  const ensureMobileTunnel = async (): Promise<void> => {
+    if (!mobileTunnelEnabled || !mobileServer.isRunning() || mobileTunnel) {
+      return;
+    }
+    const ltModule = await import('localtunnel');
+    const ltFn = (ltModule as unknown as {
+      default?: (opts: { port: number }) => Promise<LocalTunnelNS.Tunnel>;
+      'module.exports'?: (opts: { port: number }) => Promise<LocalTunnelNS.Tunnel>;
+    }).default ?? (ltModule as unknown as {
+      default?: (opts: { port: number }) => Promise<LocalTunnelNS.Tunnel>;
+      'module.exports'?: (opts: { port: number }) => Promise<LocalTunnelNS.Tunnel>;
+    })['module.exports'];
+    if (!ltFn) {
+      throw new Error('localtunnel module did not expose a callable export');
+    }
+    const tunnel = await ltFn({ port: mobileServer.getPort() });
+    mobileTunnel = tunnel;
+    tunnel.on('close', () => {
+      mobileTunnel = undefined;
+    });
+  };
 
   const getMobileStatusPayload = async () => {
     const localIp = getLocalIPv4() ?? '127.0.0.1';
-    const url = `http://${localIp}:${mobileServer.getPort()}`;
+    if (!mobileServer.isRunning()) {
+      await stopMobileTunnel();
+    } else if (mobileTunnelEnabled) {
+      await ensureMobileTunnel();
+    }
+
+    const url = mobileTunnelEnabled && mobileTunnel?.url
+      ? mobileTunnel.url
+      : `http://${localIp}:${mobileServer.getPort()}`;
     const qrSvg = await QRCode.toString(url, {
       type: 'svg',
       margin: 1,
@@ -66,6 +110,9 @@ export function activate(context: vscode.ExtensionContext): void {
       url,
       devices: mobileServer.getConnectedDevices().map(d => ({ ip: d.ip, lastAccess: d.lastAccess })),
       qrSvg,
+      tunnelEnabled: mobileTunnelEnabled,
+      tunnelActive: Boolean(mobileTunnel?.url),
+      tunnelUrl: mobileTunnel?.url,
     };
   };
 
@@ -446,8 +493,22 @@ export function activate(context: vscode.ExtensionContext): void {
         case 'toggleMobileServer': {
           if (mobileServer.isRunning()) {
             mobileServer.stop();
+            await stopMobileTunnel();
           } else {
             mobileServer.start(mobileServerPort);
+            if (mobileTunnelEnabled) {
+              await ensureMobileTunnel();
+            }
+          }
+          await pushMobileStatus(panel);
+          break;
+        }
+        case 'setMobileTunnelEnabled': {
+          mobileTunnelEnabled = msg.enabled;
+          if (!mobileTunnelEnabled) {
+            await stopMobileTunnel();
+          } else if (mobileServer.isRunning()) {
+            await ensureMobileTunnel();
           }
           await pushMobileStatus(panel);
           break;
@@ -1134,7 +1195,7 @@ export function activate(context: vscode.ExtensionContext): void {
     logger,
   );
 
-  context.subscriptions.push({ dispose: () => mobileServer.stop() });
+  context.subscriptions.push({ dispose: () => { void stopMobileTunnel(); mobileServer.stop(); } });
   logger.info('Mobile companion server started on http://localhost:%d', mobileServerPort);
   if (chatParticipant) {
     context.subscriptions.push(chatParticipant);

@@ -5,7 +5,7 @@ export function NotificationCenter() {
   const { state, dispatch } = useBoard();
   if (!state.showNotificationCenter) { return null; }
 
-  const items = getNotifications(state.repoIsGit, state.repoIsGitHub, state.mobileServerRunning, state.mobileDevices);
+  const items = getNotifications(state.repoIsGit, state.repoIsGitHub);
 
   return (
     <div className="notification-center" id="notification-center">

@@ -65,7 +65,7 @@ export type HostToWebView =
   | { type: 'toolCall'; sessionId: string; status: string }
   | { type: 'fileChanges'; sessionId: string; files: FileChangeInfo[] }
   | { type: 'repoStatus'; isGit: boolean; isGitHub: boolean; workspaceRoot?: string; workspaceName?: string }
-  | { type: 'mobileStatus'; running: boolean; url: string; devices: MobileDeviceInfo[]; qrSvg?: string }
+  | { type: 'mobileStatus'; running: boolean; url: string; devices: MobileDeviceInfo[]; qrSvg?: string; tunnelEnabled?: boolean; tunnelActive?: boolean; tunnelUrl?: string; refreshing?: boolean }
   | { type: 'mobileDialog'; open: boolean }
   | { type: 'mergeResult'; sessionId: string; success: boolean; message: string }
   | { type: 'deleteWorktreeResult'; sessionId: string; success: boolean; message?: string };
@@ -98,6 +98,7 @@ export type WebViewToHost =
   | { type: 'toggleAutoSquad'; agentSlug?: string; genAiProviderId?: string }
   | { type: 'toggleMcp' }
   | { type: 'toggleMobileServer' }
+  | { type: 'setMobileTunnelEnabled'; enabled: boolean }
   | { type: 'refreshMobileStatus' }
   | { type: 'openMobileCompanion' }
   | { type: 'openDiff'; sessionId: string; filePath: string }

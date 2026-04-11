@@ -1,7 +1,8 @@
 import { useEffect, useRef } from 'react';
 import { useBoard } from '../context/BoardContext';
 import type { Column, FileChangeInfo, KanbanTask, TaskLogEntry } from '../types';
-import { postMessage } from './useVsCodeApi';
+import { DataProvider } from '../DataProvider';
+import { getVsCodeApi, postMessage } from './useVsCodeApi';
 
 /**
  * Listens for messages from the extension host and dispatches
@@ -76,7 +77,17 @@ export function useHostMessages(): void {
           dispatch({ type: 'MCP_STATUS', enabled: msg.enabled ?? false });
           break;
         case 'mobileStatus':
-          dispatch({ type: 'MOBILE_STATUS', running: msg.running ?? false, url: msg.url ?? '', devices: msg.devices ?? [], qrSvg: msg.qrSvg });
+          dispatch({
+            type: 'MOBILE_STATUS',
+            running: msg.running ?? false,
+            url: msg.url ?? '',
+            devices: msg.devices ?? [],
+            qrSvg: msg.qrSvg,
+            tunnelEnabled: msg.tunnelEnabled,
+            tunnelActive: msg.tunnelActive,
+            tunnelUrl: msg.tunnelUrl,
+            refreshing: msg.refreshing,
+          });
           break;
         case 'mobileDialog':
           dispatch({ type: msg.open ? 'OPEN_MOBILE_DIALOG' : 'CLOSE_MOBILE_DIALOG' });
@@ -212,4 +223,43 @@ export function useHostMessages(): void {
     }, 2000);
     return () => clearInterval(interval);
   }, [state.loaded]);
+
+  // Mobile browser fallback: poll tasks from HTTP API and keep board updated.
+  useEffect(() => {
+    if (getVsCodeApi()) {
+      return;
+    }
+
+    let disposed = false;
+
+    const pullTasks = async () => {
+      const tasks = await DataProvider.getTasks();
+      if (disposed) {
+        return;
+      }
+
+      const statusOrder = ['todo', 'inprogress', 'review', 'done'];
+      const statuses = [...new Set(tasks.map(t => t.status))];
+      const ordered = [...statusOrder.filter(s => statuses.includes(s)), ...statuses.filter(s => !statusOrder.includes(s))];
+      const columns = ordered.map(id => ({ id, label: id }));
+
+      dispatch({
+        type: 'TASKS_UPDATE',
+        tasks: tasks as unknown as KanbanTask[],
+        columns,
+        editableProviderIds: ['json'],
+        genAiProviders: [],
+      });
+    };
+
+    void pullTasks();
+    const interval = setInterval(() => {
+      void pullTasks();
+    }, 3000);
+
+    return () => {
+      disposed = true;
+      clearInterval(interval);
+    };
+  }, [dispatch]);
 }
