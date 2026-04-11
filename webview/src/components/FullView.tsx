@@ -224,7 +224,7 @@ function FvReadOnlyDetails({ task, statusCol, columns }: { task: KanbanTask; sta
         )}
       </div>
       {task.body && (
-        <MarkdownBody body={task.body} className="fv-description" />
+        <MarkdownBody body={task.body} className="fv-description" snippet />
       )}
     </>
   );
