@@ -41,6 +41,7 @@ export interface BoardState {
   showCleanConfirm: boolean;
   logExpanded: boolean;
   syncing: boolean;
+  connectionError: boolean;
 }
 
 export const initialState: BoardState = {
@@ -80,6 +81,7 @@ export const initialState: BoardState = {
   showCleanConfirm: false,
   logExpanded: false,
   syncing: false,
+  connectionError: false,
 };
 
 // ── Actions ──────────────────────────────────────────────────────────────
@@ -111,6 +113,7 @@ export type BoardAction =
   | { type: 'SHOW_CLEAN_CONFIRM' }
   | { type: 'HIDE_CLEAN_CONFIRM' }
   | { type: 'START_SYNC' }
+  | { type: 'SET_CONNECTION_ERROR'; error: boolean }
   | { type: 'SETTLE' };
 
 // ── Reducer ──────────────────────────────────────────────────────────────
@@ -214,6 +217,8 @@ export function boardReducer(state: BoardState, action: BoardAction): BoardState
       return { ...state, selectedSquadProviderId: action.id };
     case 'START_SYNC':
       return { ...state, syncing: true };
+    case 'SET_CONNECTION_ERROR':
+      return { ...state, connectionError: action.error };
     case 'SHOW_CLEAN_CONFIRM':
       return { ...state, showCleanConfirm: true };
     case 'HIDE_CLEAN_CONFIRM':

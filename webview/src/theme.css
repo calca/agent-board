@@ -1048,6 +1048,21 @@ html, body, #root {
   color: #fff;
 }
 
+/* ── Connection Error Indicator ──────────────────────────────────────── */
+.connection-error {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--vscode-errorForeground, #f44747);
+  animation: connection-pulse 1.5s ease-in-out infinite;
+  cursor: default;
+}
+
+@keyframes connection-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+
 /* ── Notification Center ───────────────────────────────────────────── */
 .notification-center {
   position: absolute;
@@ -3238,6 +3253,7 @@ body.vscode-high-contrast .md-editor-container {
   /* ── Column selector tabs ─────────────────────────────────────────── */
   .kanban-col-selector {
     display: flex;
+    justify-content: center;
     gap: 4px;
     padding: 8px 12px;
     overflow-x: auto;
@@ -3459,9 +3475,33 @@ body.vscode-high-contrast .md-editor-container {
     overflow-y: auto;
   }
 
-  /* ── Hide MCP toggle on mobile ──────────────────────────────────────── */
-  .mcp-toggle {
+  /* ── Hide MCP toggle on mobile, keep squad controls interactive ──────── */
+  .mcp-toggle:not(.mcp-toggle--toolbar) {
     display: none;
+  }
+
+  /* ── Mobile: hide non-squad controls, keep squad + sync ─────────────── */
+  .toolbar__btn--secondary:not(.toolbar__btn--sync),
+  .toolbar__btn--icon[title="Filter"],
+  .toolbar__search-input,
+  .task-card__edit-btn,
+  .kanban__col-btn,
+  .kanban__column-actions {
+    display: none !important;
+  }
+
+  .toolbar__btn--sync,
+  .toolbar__btn--primary {
+    display: inline-flex !important;
+  }
+
+  .task-card {
+    cursor: default;
+  }
+
+  .task-card[draggable] {
+    -webkit-user-drag: none;
+    user-select: text;
   }
 
   /* ── Project bar responsive ─────────────────────────────────────────── */

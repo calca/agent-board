@@ -25,6 +25,23 @@ export function Toolbar() {
     ).length;
   }
 
+  function squadAction(action: 'startSquad' | 'toggleAutoSquad') {
+    const payload = {
+      agentSlug: selectedAgentSlug || undefined,
+      genAiProviderId: selectedSquadProviderId || undefined,
+    };
+    if (isVsCodeWebview) {
+      postMessage({ type: action, ...payload });
+    } else {
+      const endpoint = action === 'startSquad' ? '/squad/start' : '/squad/toggle-auto';
+      fetch(endpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      }).catch(() => { /* ignore */ });
+    }
+  }
+
   return (
     <header className="toolbar">
       <div className="project-bar">
@@ -62,6 +79,7 @@ export function Toolbar() {
               )}
             </button>
           )}
+          {!isVsCodeWebview && <ConnectionIndicator />}
           <NotificationBell />
         </div>
       </div>
@@ -70,9 +88,8 @@ export function Toolbar() {
         <div className="toolbar__group" data-label="Squad">
           <button
             className={`mcp-toggle mcp-toggle--toolbar${squadStatus.autoSquadEnabled ? ' mcp-toggle--on' : ''}`}
-            disabled={!repoIsGit}
             title="Toggle Auto‑Squad"
-            onClick={() => postMessage({ type: 'toggleAutoSquad', agentSlug: selectedAgentSlug || undefined, genAiProviderId: selectedSquadProviderId || undefined })}
+            onClick={() => squadAction('toggleAutoSquad')}
           >
             <span className="mcp-toggle__dot" />
             <span className="mcp-toggle__label">Auto</span>
@@ -104,9 +121,9 @@ export function Toolbar() {
           </select>
           <button
             className="toolbar__btn toolbar__btn--primary"
-            disabled={!repoIsGit || squadStatus.activeCount >= squadStatus.maxSessions}
+            disabled={squadStatus.activeCount >= squadStatus.maxSessions}
             title="Start Squad"
-            onClick={() => postMessage({ type: 'startSquad', agentSlug: selectedAgentSlug || undefined, genAiProviderId: selectedSquadProviderId || undefined })}
+            onClick={() => squadAction('startSquad')}
           >
             ▶ Start
           </button>
@@ -142,7 +159,7 @@ export function Toolbar() {
               }}
             />
           )}
-          <button className={`toolbar__btn toolbar__btn--secondary${syncing ? ' toolbar__btn--syncing' : ''}`} onClick={() => { dispatch({ type: 'START_SYNC' }); postMessage({ type: 'refreshRequest' }); }}>{syncing ? 'Syncing…' : 'Sync'}</button>
+          <button className={`toolbar__btn toolbar__btn--secondary toolbar__btn--sync${syncing ? ' toolbar__btn--syncing' : ''}`} onClick={() => { dispatch({ type: 'START_SYNC' }); postMessage({ type: 'refreshRequest' }); }}>{syncing ? 'Syncing…' : 'Sync'}</button>
           <button className="toolbar__btn toolbar__btn--secondary" onClick={() => dispatch({ type: 'OPEN_TASK_FORM' })}>+ New Issue</button>
         </div>
       </div>
@@ -166,6 +183,19 @@ function NotificationBell() {
       </svg>
       {count > 0 && <span className="notification-bell__badge">{count}</span>}
     </button>
+  );
+}
+
+function ConnectionIndicator() {
+  const { state } = useBoard();
+  if (!state.connectionError) { return null; }
+
+  return (
+    <span className="connection-error" title="Connessione al server persa">
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+        <path d="M8 1a7 7 0 1 0 0 14A7 7 0 0 0 8 1Zm0 1.5a5.5 5.5 0 1 1 0 11 5.5 5.5 0 0 1 0-11ZM7.25 4v5h1.5V4h-1.5ZM8 10.5a.75.75 0 1 0 0 1.5.75.75 0 0 0 0-1.5Z"/>
+      </svg>
+    </span>
   );
 }
 

@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useRef } from 'react';
 import { useBoard } from '../context/BoardContext';
 import { DataProvider } from '../DataProvider';
+import { postMessage } from '../hooks/useVsCodeApi';
 import type { Column, KanbanTask } from '../types';
 import { relativeWorktreePath } from '../utils';
 import { MarkdownBody } from './MarkdownBody';

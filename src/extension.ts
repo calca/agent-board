@@ -51,7 +51,7 @@ export function activate(context: vscode.ExtensionContext): void {
   const providerRegistry = new ProviderRegistry();
   const providerPicker = new ProviderPicker(providerRegistry, context);
   const mobileServerPort = 3333;
-  const mobileServer = new LocalApiServer(providerRegistry, context.extensionUri.fsPath);
+  const mobileServer = new LocalApiServer(providerRegistry, context.extensionUri.fsPath, vscode.workspace.name ?? vscode.workspace.workspaceFolders?.[0]?.name ?? '');
   let mobileTunnelEnabled = false;
   let mobileTunnel: LocalTunnelNS.Tunnel | undefined;
 
@@ -206,6 +206,46 @@ export function activate(context: vscode.ExtensionContext): void {
   }
 
   refreshAgents();
+
+  // Cache repo status for the mobile status provider (sync callback)
+  let cachedIsGit = false;
+  let cachedIsGitHub = false;
+  (async () => {
+    cachedIsGit = await isGitRepository();
+    cachedIsGitHub = await isGitHubRepository();
+  })();
+
+  // Provide live status to mobile server API
+  mobileServer.setStatusProvider(() => {
+    const isGit = cachedIsGit;
+    const isGH = cachedIsGitHub;
+    const providers = genAiRegistry.getAll().map(p => {
+      const entry: { id: string; displayName: string; disabled?: boolean } = { id: p.id, displayName: p.displayName };
+      if (!isGit && (p.id === 'copilot-cli' || p.id === 'cloud' || p.id === 'copilot-lm')) {
+        entry.disabled = true;
+      } else if (!isGH && p.id === 'cloud') {
+        entry.disabled = true;
+      }
+      return entry;
+    }).filter(p => !p.disabled);
+    return {
+      squadStatus: squadManager.getStatus(),
+      providers,
+      agents: agentOptions(),
+      repoIsGit: isGit,
+      repoIsGitHub: isGH,
+      hiddenTaskIds: ProjectConfig.getProjectConfig()?.hiddenTaskIds ?? [],
+    };
+  });
+
+  // Handle squad actions from mobile browser
+  mobileServer.setSquadActionHandler(async (action, agentSlug, genAiProviderId) => {
+    if (action === 'startSquad') {
+      await handleStartSquad(squadManager, agentSlug, genAiProviderId);
+    } else if (action === 'toggleAutoSquad') {
+      handleToggleAutoSquad(squadManager, agentSlug, genAiProviderId);
+    }
+  });
 
   // Register @taskai chat participant (gracefully skipped if API unavailable)
   const chatParticipant = registerChatParticipant(context, providerRegistry);

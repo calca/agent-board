@@ -231,29 +231,79 @@ export function useHostMessages(): void {
     }
 
     let disposed = false;
+    let infoFetched = false;
 
-    const pullTasks = async () => {
-      const tasks = await DataProvider.getTasks();
-      if (disposed) {
-        return;
+    const pullInfo = async () => {
+      try {
+        const r = await fetch('/info');
+        const info = await r.json();
+        if (disposed) { return; }
+
+        dispatch({ type: 'SET_CONNECTION_ERROR', error: false });
+
+        if (!infoFetched && info.workspaceName) {
+          dispatch({
+            type: 'REPO_STATUS',
+            isGit: info.repoIsGit ?? false,
+            isGitHub: info.repoIsGitHub ?? false,
+            isAzureDevOps: false,
+            workspaceRoot: '',
+            workspaceName: info.workspaceName,
+          });
+          infoFetched = true;
+        }
+
+        if (info.squadStatus) {
+          dispatch({ type: 'SQUAD_STATUS', status: info.squadStatus });
+        }
+        if (info.agents) {
+          dispatch({ type: 'AGENTS_AVAILABLE', agents: info.agents });
+        }
+        if (info.providers) {
+          // Merge into next TASKS_UPDATE as genAiProviders
+          latestProviders = info.providers;
+        }
+      } catch {
+        if (!disposed) {
+          dispatch({ type: 'SET_CONNECTION_ERROR', error: true });
+        }
       }
-
-      const statusOrder = ['todo', 'inprogress', 'review', 'done'];
-      const extraStatuses = [...new Set(tasks.map(t => t.status))].filter(s => !statusOrder.includes(s));
-      const ordered = [...statusOrder, ...extraStatuses];
-      const columns = ordered.map(id => ({ id, label: id }));
-
-      dispatch({
-        type: 'TASKS_UPDATE',
-        tasks: tasks as unknown as KanbanTask[],
-        columns,
-        editableProviderIds: ['json'],
-        genAiProviders: [],
-      });
     };
 
+    let latestProviders: { id: string; displayName: string }[] = [];
+
+    const pullTasks = async () => {
+      try {
+        const tasks = await DataProvider.getTasks();
+        if (disposed) {
+          return;
+        }
+
+        dispatch({ type: 'SET_CONNECTION_ERROR', error: false });
+
+        const statusOrder = ['todo', 'inprogress', 'review', 'done'];
+        const extraStatuses = [...new Set(tasks.map(t => t.status))].filter(s => !statusOrder.includes(s));
+        const ordered = [...statusOrder, ...extraStatuses];
+        const columns = ordered.map(id => ({ id, label: id }));
+
+        dispatch({
+          type: 'TASKS_UPDATE',
+          tasks: tasks as unknown as KanbanTask[],
+          columns,
+          editableProviderIds: ['json'],
+          genAiProviders: latestProviders.map(p => ({ id: p.id, displayName: p.displayName, icon: '' })),
+        });
+      } catch {
+        if (!disposed) {
+          dispatch({ type: 'SET_CONNECTION_ERROR', error: true });
+        }
+      }
+    };
+
+    void pullInfo();
     void pullTasks();
     const interval = setInterval(() => {
+      void pullInfo();
       void pullTasks();
     }, 3000);
 

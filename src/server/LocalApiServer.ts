@@ -26,19 +26,41 @@ export interface MobileDeviceInfo {
   userAgent?: string;
 }
 
+export interface MobileStatusSnapshot {
+  squadStatus: { activeCount: number; maxSessions: number; autoSquadEnabled: boolean };
+  providers: { id: string; displayName: string; disabled?: boolean }[];
+  agents: { slug: string; displayName: string; canSquad?: boolean }[];
+  repoIsGit: boolean;
+  repoIsGitHub: boolean;
+  hiddenTaskIds: string[];
+}
+
 export class LocalApiServer {
   private readonly logger = Logger.getInstance();
   private server?: http.Server;
   private port: number = 3333;
   private distPath: string;
   private readonly connectedDevices = new Map<string, MobileDeviceInfo>();
+  private statusProvider?: () => MobileStatusSnapshot;
+  private squadActionHandler?: (action: 'startSquad' | 'toggleAutoSquad', agentSlug?: string, genAiProviderId?: string) => Promise<void>;
 
   constructor(
     private readonly registry: ProviderRegistry,
     private readonly extensionUri: string,
+    private readonly workspaceName: string = '',
   ) {
     // Path to built webview assets
     this.distPath = path.join(extensionUri, 'dist');
+  }
+
+  /** Register a callback that returns the live status snapshot. */
+  setStatusProvider(fn: () => MobileStatusSnapshot): void {
+    this.statusProvider = fn;
+  }
+
+  /** Register a handler for squad actions from mobile. */
+  setSquadActionHandler(fn: (action: 'startSquad' | 'toggleAutoSquad', agentSlug?: string, genAiProviderId?: string) => Promise<void>): void {
+    this.squadActionHandler = fn;
   }
 
   /**
@@ -120,6 +142,11 @@ export class LocalApiServer {
       }
 
       // API Routes
+      if ((pathname === '/info' || pathname === '/api/info') && req.method === 'GET') {
+        this.handleGetInfo(res);
+        return;
+      }
+
       if ((pathname === '/tasks' || pathname === '/api/tasks') && req.method === 'GET') {
         await this.handleGetTasks(res);
         return;
@@ -127,6 +154,17 @@ export class LocalApiServer {
 
       if ((pathname === '/tasks' || pathname === '/api/tasks') && req.method === 'POST') {
         await this.handlePostTask(req, res);
+        return;
+      }
+
+      // Squad actions
+      if ((pathname === '/squad/start' || pathname === '/api/squad/start') && req.method === 'POST') {
+        await this.handleSquadAction('startSquad', req, res);
+        return;
+      }
+
+      if ((pathname === '/squad/toggle-auto' || pathname === '/api/squad/toggle-auto') && req.method === 'POST') {
+        await this.handleSquadAction('toggleAutoSquad', req, res);
         return;
       }
 
@@ -268,6 +306,45 @@ export class LocalApiServer {
 
   // ── Handler: GET /api/tasks ────────────────────────────────────────
 
+  // ── Handler: GET /api/info ─────────────────────────────────────────
+
+  private async handleSquadAction(action: 'startSquad' | 'toggleAutoSquad', req: http.IncomingMessage, res: http.ServerResponse): Promise<void> {
+    if (!this.squadActionHandler) {
+      res.writeHead(503, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: 'Squad handler not available' }));
+      return;
+    }
+    try {
+      const body = await this.readJsonBody(req);
+      const agentSlug = body?.agentSlug as string | undefined;
+      const genAiProviderId = body?.genAiProviderId as string | undefined;
+      await this.squadActionHandler(action, agentSlug, genAiProviderId);
+      const status = this.statusProvider?.();
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ ok: true, squadStatus: status?.squadStatus }));
+    } catch (error) {
+      this.logger.error(`Squad action error: ${error}`);
+      res.writeHead(500, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: error instanceof Error ? error.message : String(error) }));
+    }
+  }
+
+  private handleGetInfo(res: http.ServerResponse): void {
+    const status = this.statusProvider?.();
+    const payload = {
+      workspaceName: this.workspaceName,
+      ...(status ? {
+        squadStatus: status.squadStatus,
+        providers: status.providers,
+        agents: status.agents,
+        repoIsGit: status.repoIsGit,
+        repoIsGitHub: status.repoIsGitHub,
+      } : {}),
+    };
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify(payload));
+  }
+
   private async handleGetTasks(res: http.ServerResponse): Promise<void> {
     try {
       const allTasks: KanbanTask[] = [];
@@ -280,8 +357,12 @@ export class LocalApiServer {
         }
       }
 
+      // Filter hidden tasks (same filter used by the VS Code webview)
+      const hiddenIds = new Set(this.statusProvider?.().hiddenTaskIds ?? []);
+      const visibleTasks = allTasks.filter(t => !hiddenIds.has(t.id));
+
       // Convert KanbanTask to simplified Task format for mobile
-      const simplifiedTasks = allTasks.map(t => ({
+      const simplifiedTasks = visibleTasks.map(t => ({
         id: t.id,
         title: t.title,
         body: t.body,

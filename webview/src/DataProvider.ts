@@ -175,20 +175,14 @@ class DataProviderImpl {
   // ── HTTP API Communication ────────────────────────────────────────────
 
   private async getTasksFromApi(): Promise<Task[]> {
-    try {
-      const response = await fetch(`${getApiBaseUrl()}/tasks`, {
-        method: 'GET',
-        headers: { 'Content-Type': 'application/json' },
-      });
-      if (!response.ok) {
-        console.error('Failed to fetch tasks:', response.statusText);
-        return [];
-      }
-      return response.json();
-    } catch (error) {
-      console.error('Error fetching tasks:', error);
-      return [];
+    const response = await fetch(`${getApiBaseUrl()}/tasks`, {
+      method: 'GET',
+      headers: { 'Content-Type': 'application/json' },
+    });
+    if (!response.ok) {
+      throw new Error(`Failed to fetch tasks: ${response.statusText}`);
     }
+    return response.json();
   }
 
   private async updateTaskStatusViaApi(id: string, status: ColumnId): Promise<void> {
