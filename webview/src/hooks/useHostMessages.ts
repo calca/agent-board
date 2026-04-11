@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { useBoard } from '../context/BoardContext';
 import type { Column, FileChangeInfo, KanbanTask, TaskLogEntry } from '../types';
 import { postMessage } from './useVsCodeApi';
@@ -9,6 +9,7 @@ import { postMessage } from './useVsCodeApi';
  */
 export function useHostMessages(): void {
   const { state, dispatch, imp, forceUpdate } = useBoard();
+  const settleTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     function handler(event: MessageEvent) {
@@ -59,6 +60,10 @@ export function useHostMessages(): void {
             editableProviderIds: msg.editableProviderIds ?? [],
             genAiProviders: msg.genAiProviders ?? [],
           });
+
+          // Debounce: wait for data to stabilise before revealing the board
+          if (settleTimer.current) { clearTimeout(settleTimer.current); }
+          settleTimer.current = setTimeout(() => dispatch({ type: 'SETTLE' }), 400);
           break;
         }
         case 'agentsAvailable':

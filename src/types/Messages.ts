@@ -59,10 +59,9 @@ export type HostToWebView =
   | { type: 'streamResume'; sessionId: string; log: string }
   | { type: 'toolCall'; sessionId: string; status: string }
   | { type: 'fileChanges'; sessionId: string; files: FileChangeInfo[] }
-  | { type: 'repoStatus'; isGit: boolean; isGitHub: boolean; isAzureDevOps: boolean; workspaceRoot?: string; workspaceName?: string }
+  | { type: 'repoStatus'; isGit: boolean; isGitHub: boolean; workspaceRoot?: string; workspaceName?: string }
   | { type: 'mergeResult'; sessionId: string; success: boolean; message: string }
-  | { type: 'deleteWorktreeResult'; sessionId: string; success: boolean; message?: string }
-  | { type: 'createPullRequestResult'; sessionId: string; success: boolean; prUrl?: string; message?: string };
+  | { type: 'deleteWorktreeResult'; sessionId: string; success: boolean; message?: string };
 
 // ── WebView → Host ──────────────────────────────────────────────────────────
 
@@ -102,8 +101,6 @@ export type WebViewToHost =
   | { type: 'agentMerge'; sessionId: string; mergeStrategy: 'squash' | 'merge' | 'rebase'; providerId: string }
   | { type: 'alignWorktree'; sessionId: string }
   | { type: 'deleteWorktree'; sessionId: string }
-  | { type: 'resetSession'; sessionId: string }
   | { type: 'deleteTask'; taskId: string }
   | { type: 'exportDoneMd' }
-  | { type: 'cleanDone' }
-  | { type: 'createPullRequest'; sessionId: string };
+  | { type: 'cleanDone' };

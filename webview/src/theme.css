@@ -92,6 +92,16 @@ html, body, #root {
   opacity: 0.6;
 }
 
+.project-bar__spinner {
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
+  border: 2px solid var(--vscode-panel-border);
+  border-top-color: var(--vscode-focusBorder);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
 .project-bar__actions {
   display: flex;
   align-items: center;
@@ -533,6 +543,14 @@ html, body, #root {
   min-width: 0;
 }
 
+.task-card__badges {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: auto;
+  flex-shrink: 0;
+}
+
 .task-card__id {
   font-size: 0.7em;
   font-weight: 600;
@@ -551,7 +569,6 @@ html, body, #root {
 .task-card__session--merged {
   background: var(--vscode-terminal-ansiGreen, #16825d);
   color: var(--vscode-button-foreground, #fff);
-  margin-left: auto;
 }
 
 .task-card__session {
@@ -652,6 +669,15 @@ html, body, #root {
   -webkit-box-orient: vertical;
   overflow: hidden;
 }
+.task-card__body code {
+  background: var(--vscode-textCodeBlock-background, rgba(127,127,127,.15));
+  padding: 1px 3px;
+  border-radius: 3px;
+  font-size: 0.9em;
+}
+.task-card__body strong { font-weight: 600; }
+.task-card__body em { font-style: italic; }
+.task-card__body del { opacity: 0.55; }
 
 .task-card__footer {
   display: flex;
@@ -2618,7 +2644,6 @@ html, body, #root {
 }
 
 /* Toolbar — flat style */
-.md-editor-container [class*="toolbar"],
 .md-editor-container [class*="_toolbarRoot_"] {
   background: transparent;
   border-bottom: 1px solid var(--vscode-input-border, rgba(128, 128, 128, 0.2));

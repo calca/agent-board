@@ -29,9 +29,8 @@ export interface BoardState {
   fullViewTaskId: string | null;
   sessionPanelTaskId: string | null;
   showNotificationCenter: boolean;
-  logExpanded: boolean;
-  syncing: boolean;
   showCleanConfirm: boolean;
+  logExpanded: boolean;
 }
 
 export const initialState: BoardState = {
@@ -59,9 +58,8 @@ export const initialState: BoardState = {
   fullViewTaskId: null,
   sessionPanelTaskId: null,
   showNotificationCenter: false,
-  logExpanded: false,
-  syncing: false,
   showCleanConfirm: false,
+  logExpanded: false,
 };
 
 // ── Actions ──────────────────────────────────────────────────────────────
@@ -86,9 +84,9 @@ export type BoardAction =
   | { type: 'CLOSE_SESSION_PANEL' }
   | { type: 'SET_SELECTED_AGENT'; slug: string }
   | { type: 'SET_SELECTED_SQUAD_PROVIDER'; id: string }
-  | { type: 'SET_SYNCING'; syncing: boolean }
   | { type: 'SHOW_CLEAN_CONFIRM' }
-  | { type: 'HIDE_CLEAN_CONFIRM' };
+  | { type: 'HIDE_CLEAN_CONFIRM' }
+  | { type: 'SETTLE' };
 
 // ── Reducer ──────────────────────────────────────────────────────────────
 
@@ -108,7 +106,6 @@ export function boardReducer(state: BoardState, action: BoardAction): BoardState
       return {
         ...state,
         loaded: true,
-        syncing: false,
         tasks: action.tasks,
         columns: action.columns,
         editableProviderIds: action.editableProviderIds,
@@ -171,12 +168,12 @@ export function boardReducer(state: BoardState, action: BoardAction): BoardState
       return { ...state, selectedAgentSlug: action.slug };
     case 'SET_SELECTED_SQUAD_PROVIDER':
       return { ...state, selectedSquadProviderId: action.id };
-    case 'SET_SYNCING':
-      return { ...state, syncing: action.syncing };
     case 'SHOW_CLEAN_CONFIRM':
       return { ...state, showCleanConfirm: true };
     case 'HIDE_CLEAN_CONFIRM':
       return { ...state, showCleanConfirm: false };
+    case 'SETTLE':
+      return state;
     default:
       return state;
   }

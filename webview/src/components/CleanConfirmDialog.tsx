@@ -7,7 +7,7 @@ const DELETABLE_PROVIDERS = ['json'];
 
 export function CleanConfirmDialog() {
   const { state, dispatch } = useBoard();
-  const { showCleanConfirm, tasks, columns, editableProviderIds } = state;
+  const { showCleanConfirm, tasks, columns } = state;
 
   const lastColId = columns[columns.length - 1]?.id;
   const doneTasks = useMemo(

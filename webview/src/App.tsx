@@ -26,8 +26,8 @@ export function App() {
       <Toolbar />
       <NotificationCenter />
       <KanbanBoard />
-      <TaskForm />
       <CleanConfirmDialog />
+      <TaskForm />
       <SessionPanel />
       <FullView />
     </>
