@@ -20,7 +20,7 @@ const extensionBuildOptions = {
 
 /** @type {import('esbuild').BuildOptions} */
 const webviewBuildOptions = {
-  entryPoints: ['webview/src/main.ts'],
+  entryPoints: ['webview/src/main.tsx'],
   bundle: true,
   outfile: 'dist/webview.js',
   format: 'iife',
@@ -28,6 +28,8 @@ const webviewBuildOptions = {
   target: 'es2020',
   sourcemap: true,
   minify: false,
+  jsx: 'automatic',
+  loader: { '.tsx': 'tsx', '.ts': 'ts', '.css': 'text' },
 };
 
 async function main() {
