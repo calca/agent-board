@@ -16,14 +16,18 @@ export class KanbanPanel {
   private static instance: KanbanPanel | undefined;
   private readonly panel: vscode.WebviewPanel;
   private disposables: vscode.Disposable[] = [];
+  private readonly isDev: boolean;
+  private reloadTimer: ReturnType<typeof setTimeout> | undefined;
 
   private onMessageCallback: ((msg: WebViewToHost) => void) | undefined;
 
   private constructor(
     panel: vscode.WebviewPanel,
     private readonly extensionUri: vscode.Uri,
+    extensionMode: vscode.ExtensionMode,
   ) {
     this.panel = panel;
+    this.isDev = extensionMode === vscode.ExtensionMode.Development;
     this.panel.webview.html = this.getHtml(this.panel.webview);
 
     this.panel.onDidDispose(() => this.dispose(), null, this.disposables);
@@ -35,10 +39,14 @@ export class KanbanPanel {
       null,
       this.disposables,
     );
+
+    if (this.isDev) {
+      this.setupDevWatcher();
+    }
   }
 
   /** Create or reveal the singleton panel. */
-  static createOrShow(extensionUri: vscode.Uri): KanbanPanel {
+  static createOrShow(extensionUri: vscode.Uri, extensionMode: vscode.ExtensionMode): KanbanPanel {
     const column = vscode.window.activeTextEditor
       ? vscode.window.activeTextEditor.viewColumn
       : undefined;
@@ -59,7 +67,7 @@ export class KanbanPanel {
       },
     );
 
-    KanbanPanel.instance = new KanbanPanel(panel, extensionUri);
+    KanbanPanel.instance = new KanbanPanel(panel, extensionUri, extensionMode);
     return KanbanPanel.instance;
   }
 
@@ -69,10 +77,10 @@ export class KanbanPanel {
   }
 
   /** Serializer for restoring the panel after reload. */
-  static getSerializer(extensionUri: vscode.Uri): vscode.WebviewPanelSerializer {
+  static getSerializer(extensionUri: vscode.Uri, extensionMode: vscode.ExtensionMode): vscode.WebviewPanelSerializer {
     return {
       async deserializeWebviewPanel(panel: vscode.WebviewPanel): Promise<void> {
-        KanbanPanel.instance = new KanbanPanel(panel, extensionUri);
+        KanbanPanel.instance = new KanbanPanel(panel, extensionUri, extensionMode);
         // Re-wire all handlers by executing the openKanban command.
         // The command checks for an existing instance and just reveals + wires it.
         await vscode.commands.executeCommand('agentBoard.openKanban');
@@ -138,8 +146,15 @@ export class KanbanPanel {
     this.postMessage({ type: 'fileChanges', sessionId, files });
   }
 
+  /** Reload the webview HTML (triggers full React remount + ready handshake). */
+  reloadHtml(): void {
+    if (this.disposed) { return; }
+    this.panel.webview.html = this.getHtml(this.panel.webview);
+  }
+
   dispose(): void {
     this.disposed = true;
+    if (this.reloadTimer) { clearTimeout(this.reloadTimer); }
     KanbanPanel.instance = undefined;
     this.panel.dispose();
     for (const d of this.disposables) {
@@ -150,8 +165,25 @@ export class KanbanPanel {
 
   // ── private ─────────────────────────────────────────────────────────
 
+  /** Watch dist/webview.* for changes and auto-reload in dev mode. */
+  private setupDevWatcher(): void {
+    const distPattern = new vscode.RelativePattern(
+      vscode.Uri.joinPath(this.extensionUri, 'dist'),
+      'webview.*',
+    );
+    const watcher = vscode.workspace.createFileSystemWatcher(distPattern);
+    const scheduleReload = () => {
+      if (this.reloadTimer) { clearTimeout(this.reloadTimer); }
+      this.reloadTimer = setTimeout(() => this.reloadHtml(), 300);
+    };
+    watcher.onDidChange(scheduleReload, null, this.disposables);
+    watcher.onDidCreate(scheduleReload, null, this.disposables);
+    this.disposables.push(watcher);
+  }
+
   private getHtml(webview: vscode.Webview): string {
     const nonce = this.getNonce();
+    const cacheBust = Date.now();
     const scriptUri = webview.asWebviewUri(
       vscode.Uri.joinPath(this.extensionUri, 'dist', 'webview.js'),
     );
@@ -170,12 +202,12 @@ export class KanbanPanel {
                  script-src 'nonce-${nonce}';
                  font-src ${webview.cspSource};
                  img-src ${webview.cspSource} https:;">
-  <link rel="stylesheet" href="${styleUri}">
+  <link rel="stylesheet" href="${styleUri}?v=${cacheBust}">
   <title>Agent Board - Kanban</title>
 </head>
 <body>
   <div id="root"></div>
-  <script nonce="${nonce}" src="${scriptUri}"></script>
+  <script nonce="${nonce}" src="${scriptUri}?v=${cacheBust}"></script>
 </body>
 </html>`;
   }
