@@ -1,8 +1,8 @@
 import React, { useCallback, useRef } from 'react';
 import { useBoard } from '../context/BoardContext';
 import { postMessage } from '../hooks/useVsCodeApi';
-import { MarkdownEditor, type MDXEditorMethods } from './MarkdownEditor';
 import { MarkdownBody } from './MarkdownBody';
+import { MarkdownEditor, type MDXEditorMethods } from './MarkdownEditor';
 
 export function TaskForm() {
   const { state, dispatch } = useBoard();
