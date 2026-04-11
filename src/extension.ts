@@ -1,6 +1,8 @@
 import { exec } from 'child_process';
 import * as fs from 'fs';
+import * as os from 'os';
 import * as path from 'path';
+import * as QRCode from 'qrcode';
 import * as vscode from 'vscode';
 import { AgentManager } from './agentManager';
 import { AgentsTreeProvider, AgentTreeItem } from './agentsTreeProvider';
@@ -33,6 +35,7 @@ import { ProviderPicker } from './providers/ProviderPicker';
 import { ProviderRegistry } from './providers/ProviderRegistry';
 import { SettingsPanel } from './settings/SettingsPanel';
 import { TaskStore } from './taskStore';
+import { LocalApiServer } from './server/LocalApiServer';
 import { TaskTreeItem } from './tasksTreeProvider';
 import { COLUMN_IDS, COLUMN_LABELS, DEFAULT_COLUMN_COLORS } from './types/ColumnId';
 import { AgentOption, GenAiProviderOption } from './types/Messages';
@@ -46,6 +49,29 @@ export function activate(context: vscode.ExtensionContext): void {
 
   const providerRegistry = new ProviderRegistry();
   const providerPicker = new ProviderPicker(providerRegistry, context);
+  const mobileServerPort = 3333;
+  const mobileServer = new LocalApiServer(providerRegistry, context.extensionUri.fsPath);
+  mobileServer.start(mobileServerPort);
+
+  const getMobileStatusPayload = async () => {
+    const localIp = getLocalIPv4() ?? '127.0.0.1';
+    const url = `http://${localIp}:${mobileServer.getPort()}`;
+    const qrSvg = await QRCode.toString(url, {
+      type: 'svg',
+      margin: 1,
+      width: 240,
+    });
+    return {
+      running: mobileServer.isRunning(),
+      url,
+      devices: mobileServer.getConnectedDevices().map(d => ({ ip: d.ip, lastAccess: d.lastAccess })),
+      qrSvg,
+    };
+  };
+
+  const pushMobileStatus = async (panel: KanbanPanel): Promise<void> => {
+    panel.postMessage({ type: 'mobileStatus', ...(await getMobileStatusPayload()) });
+  };
 
   // GitHub service layer (labels, polling, avatars, comments)
   const ghIssueManager = new GitHubIssueManager();
@@ -325,6 +351,7 @@ export function activate(context: vscode.ExtensionContext): void {
             workspaceRoot: vscode.workspace.workspaceFolders?.[0]?.uri.fsPath,
             workspaceName: vscode.workspace.name ?? vscode.workspace.workspaceFolders?.[0]?.name ?? '',
           });
+          await pushMobileStatus(panel);
           break;
         case 'refreshRequest':
           try {
@@ -333,6 +360,7 @@ export function activate(context: vscode.ExtensionContext): void {
           await sendTasksToPanel(panel, providerRegistry, genAiRegistry, squadManager, sessionStateManager);
           refreshAgents();
           panel.updateAgents(agentOptions());
+          await pushMobileStatus(panel);
           break;
         case 'taskMoved': {
           const [providerId] = msg.taskId.split(':');
@@ -415,6 +443,24 @@ export function activate(context: vscode.ExtensionContext): void {
           logger.info(`MCP server ${newMcpEnabled ? 'enabled' : 'disabled'} via board toggle`);
           break;
         }
+        case 'toggleMobileServer': {
+          if (mobileServer.isRunning()) {
+            mobileServer.stop();
+          } else {
+            mobileServer.start(mobileServerPort);
+          }
+          await pushMobileStatus(panel);
+          break;
+        }
+        case 'refreshMobileStatus': {
+          await pushMobileStatus(panel);
+          break;
+        }
+        case 'openMobileCompanion': {
+          await pushMobileStatus(panel);
+          panel.postMessage({ type: 'mobileDialog', open: true });
+          break;
+        }
         case 'addTask': {
           const columns = COLUMN_IDS.map(id => ({ id, label: COLUMN_LABELS[id], color: DEFAULT_COLUMN_COLORS[id] }));
           panel.postMessage({ type: 'showTaskForm', columns });
@@ -471,16 +517,10 @@ export function activate(context: vscode.ExtensionContext): void {
           break;
         }
         case 'hideTask': {
-          const [hideProviderId] = msg.taskId.split(':');
-          const hideProvider = providerRegistry.get(hideProviderId);
-          if (hideProvider) {
-            if ('deleteTaskById' in hideProvider && typeof (hideProvider as Record<string, unknown>).deleteTaskById === 'function') {
-              await (hideProvider as unknown as { deleteTaskById(id: string): Promise<boolean> }).deleteTaskById(msg.taskId);
-            } else if ('removeDoneTask' in hideProvider && typeof (hideProvider as Record<string, unknown>).removeDoneTask === 'function') {
-              await (hideProvider as unknown as { removeDoneTask(id: string): Promise<void> }).removeDoneTask(msg.taskId);
-            }
+          const hiddenIds = ProjectConfig.getProjectConfig()?.hiddenTaskIds ?? [];
+          if (!hiddenIds.includes(msg.taskId)) {
+            ProjectConfig.updateConfig({ hiddenTaskIds: [...hiddenIds, msg.taskId] });
           }
-          refresh();
           await sendTasksToPanel(panel, providerRegistry, genAiRegistry, squadManager, sessionStateManager);
           break;
         }
@@ -521,16 +561,11 @@ export function activate(context: vscode.ExtensionContext): void {
             .flatMap(r => r.value);
           const doneTasks2 = allTasks2.filter(t => t.status === doneColId2);
           if (doneTasks2.length === 0) { break; }
-          for (const t of doneTasks2) {
-            const [pid] = t.id.split(':');
-            const prov = providerRegistry.get(pid);
-            if (prov && 'deleteTaskById' in prov && typeof (prov as Record<string, unknown>).deleteTaskById === 'function') {
-              await (prov as unknown as { deleteTaskById(id: string): Promise<boolean> }).deleteTaskById(t.id);
-            } else if (prov && 'removeDoneTask' in prov && typeof (prov as Record<string, unknown>).removeDoneTask === 'function') {
-              await (prov as unknown as { removeDoneTask(id: string): Promise<void> }).removeDoneTask(t.id);
-            }
+          const existingHidden = ProjectConfig.getProjectConfig()?.hiddenTaskIds ?? [];
+          const newHidden = doneTasks2.map(t => t.id).filter(id => !existingHidden.includes(id));
+          if (newHidden.length > 0) {
+            ProjectConfig.updateConfig({ hiddenTaskIds: [...existingHidden, ...newHidden] });
           }
-          refresh();
           await sendTasksToPanel(panel, providerRegistry, genAiRegistry, squadManager, sessionStateManager);
           break;
         }
@@ -999,6 +1034,20 @@ export function activate(context: vscode.ExtensionContext): void {
     SettingsPanel.createOrShow(providerRegistry);
   });
 
+  const openMobileCompanion = vscode.commands.registerCommand('agentBoard.openMobileCompanion', async () => {
+    await vscode.commands.executeCommand('agentBoard.openKanban');
+    const panel = KanbanPanel.getInstance();
+    if (!panel) {
+      return;
+    }
+    await pushMobileStatus(panel);
+    panel.postMessage({ type: 'mobileDialog', open: true });
+  });
+
+  const openMobileCompanionAlias = vscode.commands.registerCommand('agent-board.openMobileCompanion', async () => {
+    await vscode.commands.executeCommand('agentBoard.openMobileCompanion');
+  });
+
   const runAgent = vscode.commands.registerCommand('agentBoard.runAgent', async (item?: AgentTreeItem) => {
     if (item) {
       const started = agentManager.startAgent(item.agent.id);
@@ -1071,6 +1120,8 @@ export function activate(context: vscode.ExtensionContext): void {
     stopAgent,
     openKanban,
     openSettings,
+    openMobileCompanion,
+    openMobileCompanionAlias,
     toggleMaximize,
     selectProvider,
     launchCopilot,
@@ -1083,6 +1134,8 @@ export function activate(context: vscode.ExtensionContext): void {
     logger,
   );
 
+  context.subscriptions.push({ dispose: () => mobileServer.stop() });
+  logger.info('Mobile companion server started on http://localhost:%d', mobileServerPort);
   if (chatParticipant) {
     context.subscriptions.push(chatParticipant);
   }
@@ -1138,11 +1191,13 @@ const EDITABLE_PROVIDER_IDS = ['json', 'github'];
  */
 async function sendTasksToPanel(panel: KanbanPanel, registry: ProviderRegistry, genAiRegistry?: import('./copilot/GenAiProviderRegistry').GenAiProviderRegistry, squadMgr?: SquadManager, sessionStateMgr?: SessionStateManager): Promise<void> {
   const providers = registry.getAll();
+  const hiddenIds = new Set(ProjectConfig.getProjectConfig()?.hiddenTaskIds ?? []);
   const allTasks = (
     await Promise.allSettled(providers.map(p => p.getTasks()))
   )
     .filter((r): r is PromiseFulfilledResult<import('./types/KanbanTask').KanbanTask[]> => r.status === 'fulfilled')
-    .flatMap(r => r.value);
+    .flatMap(r => r.value)
+    .filter(t => !hiddenIds.has(t.id));
 
   // Inject session info into tasks so the webview can show status, worktree, errors
   // Prefer SessionStateManager (has worktreePath, errorMessage), fallback to SquadManager active sessions
@@ -1167,9 +1222,6 @@ async function sendTasksToPanel(panel: KanbanPanel, registry: ProviderRegistry, 
     : [];
   panel.updateTasks(allTasks, EDITABLE_PROVIDER_IDS, genAiOptions);
 }
-
-/** IDs of GenAI providers that are always registered (VS Code integrated). */
-const GLOBAL_GENAI_PROVIDER_IDS = ['chat', 'cloud', 'copilot-cli'];
 
 /**
  * Handle starting a squad session — shared between command and WebView handler.
@@ -1304,6 +1356,18 @@ async function buildGenAiOptions(registry: GenAiProviderRegistry): Promise<GenAi
 
     return option;
   });
+}
+
+function getLocalIPv4(): string | undefined {
+  const interfaces = os.networkInterfaces();
+  for (const values of Object.values(interfaces)) {
+    for (const entry of values ?? []) {
+      if (entry.family === 'IPv4' && !entry.internal) {
+        return entry.address;
+      }
+    }
+  }
+  return undefined;
 }
 
 /** Promisified `exec` helper for git commands. */

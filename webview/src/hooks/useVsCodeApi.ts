@@ -10,15 +10,26 @@ interface VsCodeApi {
 
 declare function acquireVsCodeApi(): VsCodeApi;
 
-let _api: VsCodeApi | undefined;
+let _api: VsCodeApi | null | undefined;
 
-export function getVsCodeApi(): VsCodeApi {
-  if (!_api) {
-    _api = acquireVsCodeApi();
+export function getVsCodeApi(): VsCodeApi | null {
+  if (_api !== undefined) {
+    return _api;
   }
+
+  try {
+    if (typeof acquireVsCodeApi === 'function') {
+      _api = acquireVsCodeApi();
+      return _api;
+    }
+  } catch {
+    // Not running in VS Code webview context.
+  }
+
+  _api = null;
   return _api;
 }
 
 export function postMessage(msg: unknown): void {
-  getVsCodeApi().postMessage(msg);
+  getVsCodeApi()?.postMessage(msg);
 }

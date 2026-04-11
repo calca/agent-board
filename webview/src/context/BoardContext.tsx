@@ -1,5 +1,5 @@
 import React, { createContext, useCallback, useContext, useReducer, useRef, type Dispatch } from 'react';
-import { AgentOption, ChatMessage, Column, FileChangeInfo, GenAiProviderOption, KanbanTask, SquadStatus, TaskLogEntry } from '../types';
+import { AgentOption, ChatMessage, Column, FileChangeInfo, GenAiProviderOption, KanbanTask, MobileDeviceInfo, SquadStatus, TaskLogEntry } from '../types';
 
 // ── State ────────────────────────────────────────────────────────────────
 
@@ -14,6 +14,11 @@ export interface BoardState {
   selectedSquadProviderId: string;
   squadStatus: SquadStatus;
   mcpEnabled: boolean;
+  mobileServerRunning: boolean;
+  mobileServerUrl: string;
+  mobileDevices: MobileDeviceInfo[];
+  mobileQrSvg: string;
+  showMobileDialog: boolean;
   repoIsGit: boolean;
   repoIsGitHub: boolean;
   repoIsAzureDevOps: boolean;
@@ -45,6 +50,11 @@ export const initialState: BoardState = {
   selectedSquadProviderId: '',
   squadStatus: { activeCount: 0, maxSessions: 10, autoSquadEnabled: false },
   mcpEnabled: false,
+  mobileServerRunning: false,
+  mobileServerUrl: '',
+  mobileDevices: [],
+  mobileQrSvg: '',
+  showMobileDialog: false,
   repoIsGit: true,
   repoIsGitHub: true,
   repoIsAzureDevOps: false,
@@ -71,6 +81,9 @@ export type BoardAction =
   | { type: 'AGENTS_AVAILABLE'; agents: AgentOption[] }
   | { type: 'SQUAD_STATUS'; status: SquadStatus }
   | { type: 'MCP_STATUS'; enabled: boolean }
+  | { type: 'MOBILE_STATUS'; running: boolean; url: string; devices: MobileDeviceInfo[]; qrSvg?: string }
+  | { type: 'OPEN_MOBILE_DIALOG' }
+  | { type: 'CLOSE_MOBILE_DIALOG' }
   | { type: 'SHOW_TASK_FORM'; columns: Column[] }
   | { type: 'REPO_STATUS'; isGit: boolean; isGitHub: boolean; isAzureDevOps: boolean; workspaceRoot: string; workspaceName: string }
   | { type: 'SET_SEARCH_TEXT'; text: string }
@@ -133,6 +146,18 @@ export function boardReducer(state: BoardState, action: BoardAction): BoardState
       return { ...state, squadStatus: action.status };
     case 'MCP_STATUS':
       return { ...state, mcpEnabled: action.enabled };
+    case 'MOBILE_STATUS':
+      return {
+        ...state,
+        mobileServerRunning: action.running,
+        mobileServerUrl: action.url,
+        mobileDevices: action.devices,
+        mobileQrSvg: action.qrSvg ?? state.mobileQrSvg,
+      };
+    case 'OPEN_MOBILE_DIALOG':
+      return { ...state, showMobileDialog: true };
+    case 'CLOSE_MOBILE_DIALOG':
+      return { ...state, showMobileDialog: false };
     case 'SHOW_TASK_FORM':
       return { ...state, showTaskForm: true, formColumns: action.columns, selectedTask: null };
     case 'REPO_STATUS':

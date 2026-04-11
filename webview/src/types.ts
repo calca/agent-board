@@ -58,6 +58,11 @@ export interface FileChangeInfo {
   status: 'added' | 'modified' | 'deleted';
 }
 
+export interface MobileDeviceInfo {
+  ip: string;
+  lastAccess: string;
+}
+
 export interface TaskLogEntry {
   ts: string;
   source: 'board' | 'agent' | 'tool' | 'system';

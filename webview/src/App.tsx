@@ -1,6 +1,7 @@
 import { CleanConfirmDialog } from './components/CleanConfirmDialog';
 import { FullView } from './components/FullView';
 import { KanbanBoard } from './components/KanbanBoard';
+import { MobileCompanionDialog } from './components/MobileCompanionDialog';
 import { NotificationCenter } from './components/NotificationCenter';
 import { SessionPanel } from './components/SessionPanel';
 import { TaskForm } from './components/TaskForm';
@@ -25,6 +26,7 @@ export function App() {
     <>
       <Toolbar />
       <NotificationCenter />
+      <MobileCompanionDialog />
       <KanbanBoard />
       <CleanConfirmDialog />
       <TaskForm />

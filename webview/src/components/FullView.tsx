@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useRef } from 'react';
 import { useBoard } from '../context/BoardContext';
-import { postMessage } from '../hooks/useVsCodeApi';
+import { DataProvider } from '../DataProvider';
 import type { Column, KanbanTask } from '../types';
 import { relativeWorktreePath } from '../utils';
 import { MarkdownBody } from './MarkdownBody';
@@ -199,7 +199,7 @@ function FvReadOnlyDetails({ task, statusCol, columns }: { task: KanbanTask; sta
           <select
             className="task-form__select fv-status-select"
             defaultValue={task.status}
-            onChange={e => postMessage({ type: 'taskMoved', taskId: task.id, toCol: e.target.value, index: 0 })}
+            onChange={e => DataProvider.updateTaskStatus(task.id, e.target.value as any).catch(err => console.error('Error updating task status:', err))}
           >
             {columns.map(c => <option key={c.id} value={c.id}>{c.label}</option>)}
           </select>

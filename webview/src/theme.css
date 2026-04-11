@@ -984,6 +984,29 @@ html, body, #root {
 .notification-bell svg {
   display: block;
 }
+
+.mobile-companion-btn {
+  position: relative;
+}
+
+.mobile-companion-btn::after {
+  content: '';
+  position: absolute;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  bottom: 3px;
+  right: 3px;
+}
+
+.mobile-companion-btn--on::after {
+  background: #2ea043;
+}
+
+.mobile-companion-btn--off::after {
+  background: #d73a49;
+}
+
 .notification-bell__badge {
   position: absolute;
   top: -2px;
@@ -1061,6 +1084,109 @@ html, body, #root {
   font-size: 0.85em;
 }
 
+.mobile-dialog__overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45);
+  z-index: 1200;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+
+.mobile-dialog {
+  width: min(560px, 100%);
+  max-height: 92vh;
+  overflow: auto;
+  border: 1px solid var(--vscode-panel-border);
+  border-radius: 10px;
+  background: var(--vscode-editor-background);
+  padding: 16px;
+}
+
+.mobile-dialog__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+
+.mobile-dialog__header h3 {
+  margin: 0;
+  font-size: 1.05em;
+}
+
+.mobile-dialog__close {
+  border: none;
+  background: transparent;
+  color: var(--vscode-foreground);
+  cursor: pointer;
+  font-size: 1.1em;
+}
+
+.mobile-dialog__status {
+  display: inline-flex;
+  gap: 8px;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.mobile-dialog__dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+}
+
+.mobile-dialog__dot--on { background: #2ea043; }
+.mobile-dialog__dot--off { background: #d73a49; }
+
+.mobile-dialog__qr {
+  background: #fff;
+  padding: 10px;
+  border-radius: 8px;
+  display: inline-block;
+  margin-bottom: 10px;
+}
+
+.mobile-dialog__fallback {
+  margin-bottom: 10px;
+  opacity: 0.75;
+}
+
+.mobile-dialog__url {
+  font-family: var(--vscode-editor-font-family, monospace);
+  font-size: 0.9em;
+  margin-bottom: 12px;
+  word-break: break-all;
+}
+
+.mobile-dialog__actions {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.mobile-dialog__devices-title {
+  font-weight: 600;
+  margin-bottom: 8px;
+}
+
+.mobile-dialog__empty {
+  opacity: 0.75;
+}
+
+.mobile-dialog__device {
+  border: 1px solid var(--vscode-panel-border);
+  border-radius: 6px;
+  padding: 8px;
+  margin-bottom: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 0.86em;
+}
 /* ── Task Form Panel ───────────────────────────────────────────────── */
 
 .task-form-overlay {
@@ -2753,4 +2879,208 @@ body.vscode-high-contrast .md-editor-container {
 }
 .md-viewer [class*="_contentEditable_"] {
   padding: 0 !important;
+
+/* ── Mobile Responsive (max-width: 768px) ─────────────────────────────── */
+
+@media (max-width: 768px) {
+  /* ── Kanban layout: stack columns vertically ──────────────────────────── */
+  .kanban {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    padding: 12px;
+    height: auto;
+    overflow-x: visible;
+  }
+
+  .kanban__column {
+    flex: 1 1 auto;
+    min-width: 100%;
+    width: 100%;
+  }
+
+  /* ── Increase touch targets ─────────────────────────────────────────── */
+  .kanban__col-btn {
+    width: 44px;
+    height: 44px;
+    opacity: 1;
+    background: var(--vscode-button-hoverBackground, rgba(90, 93, 94, 0.2));
+    border-color: var(--col-btn-color, var(--vscode-badge-background));
+  }
+
+  .kanban__col-btn svg {
+    width: 18px;
+    height: 18px;
+  }
+
+  /* Disable hover effect on mobile, keep button always visible */
+  .kanban__col-btn:hover {
+    opacity: 1;
+    background: var(--vscode-button-hoverBackground, rgba(90, 93, 94, 0.3));
+  }
+
+  /* ── Increase base font size for readability ────────────────────────── */
+  html, body, #root {
+    font-size: calc(var(--vscode-font-size) + 2px);
+  }
+
+  .kanban__column-header {
+    padding: 12px 14px;
+    font-size: 1.1em;
+  }
+
+  .kanban__column-count {
+    min-width: 28px;
+    height: 28px;
+    font-size: 0.9em;
+  }
+
+  /* ── Task card styling for mobile ──────────────────────────────────── */
+  .task-card {
+    padding: 14px 16px;
+    border-radius: 8px;
+  }
+
+  .task-card__header {
+    margin-bottom: 10px;
+  }
+
+  .task-card__title {
+    font-size: 1.05em;
+    line-height: 1.4;
+  }
+
+  .task-card__body-preview {
+    font-size: 0.95em;
+    line-height: 1.4;
+  }
+
+  .task-card__label {
+    padding: 4px 10px;
+    font-size: 0.9em;
+    min-height: 32px;
+    display: flex;
+    align-items: center;
+  }
+
+  .task-card__footer {
+    margin-top: 10px;
+    gap: 8px;
+  }
+
+  /* ── Full-width modals and panels ──────────────────────────────────── */
+  .modal {
+    width: 90vw;
+    max-width: 100%;
+    max-height: 90vh;
+    margin: 5vh auto;
+  }
+
+  /* ── Status selector on full-view (stack labels vertically) ─────────── */
+  .fv-status-select,
+  .task-form__select {
+    min-height: 44px;
+    padding: 10px 12px;
+    font-size: 1em;
+  }
+
+  /* ── Buttons: minimum 44x44 touch target ─────────────────────────── */
+  button, .btn {
+    min-height: 44px;
+    min-width: 44px;
+    padding: 10px 16px;
+    font-size: 1em;
+  }
+
+  /* ── Toolbar: adjust for smaller screens ────────────────────────────── */
+  .toolbar {
+    padding: 12px 8px;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .toolbar__search {
+    min-height: 40px;
+    font-size: 1em;
+  }
+
+  .toolbar__input {
+    padding: 8px 12px;
+    font-size: 1em;
+    min-height: 40px;
+  }
+
+  /* ── Markdown editor in forms ───────────────────────────────────────── */
+  .md-editor-container {
+    min-height: 120px;
+  }
+
+  .md-editor-container .mdxeditor-root-contenteditable {
+    min-height: 100px;
+    padding: 12px;
+    font-size: 1em;
+  }
+
+  /* ── Prevent horizontal scroll on task cards ────────────────────────── */
+  .kanban__column-body {
+    overflow-x: hidden;
+    overflow-y: auto;
+  }
+
+  /* ── Project bar responsive ─────────────────────────────────────────── */
+  .project-bar {
+    padding: 8px 0 6px;
+    margin-bottom: 8px;
+  }
+
+  .project-bar__name {
+    max-width: 100%;
+    font-size: 1em;
+  }
+
+  /* ── Notification center responsive ─────────────────────────────────── */
+  .notification-center {
+    bottom: 20px;
+    right: 12px;
+    max-width: calc(100vw - 24px);
+  }
+
+  .notification-item {
+    min-height: 44px;
+    padding: 12px 14px;
+    font-size: 0.95em;
+  }
+
+  /* ── Full view details: make readable on mobile ──────────────────── */
+  .fv-detail-row {
+    flex-direction: column;
+    gap: 8px;
+    padding: 10px 0;
+  }
+
+  .fv-detail-label {
+    font-weight: 600;
+    font-size: 0.95em;
+  }
+
+  .fv-status-select {
+    width: 100%;
+  }
+
+  /* ── Session panel: full-width on mobile ────────────────────────────– */
+  .session-panel {
+    width: calc(100vw - 20px);
+    max-height: 70vh;
+    margin: auto;
+  }
+
+  /* ── Reduce animation if reduced-motion is preferred ─────────────── */
+  @media (prefers-reduced-motion: reduce) {
+    .kanban__col-btn,
+    .task-card,
+    button {
+      transition: none !important;
+    }
+  }
+}
 }

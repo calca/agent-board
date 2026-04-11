@@ -9,6 +9,11 @@ export interface FileChangeInfo {
   status: 'added' | 'modified' | 'deleted';
 }
 
+export interface MobileDeviceInfo {
+  ip: string;
+  lastAccess: string;
+}
+
 // ── Host → WebView ──────────────────────────────────────────────────────────
 
 export interface Column {
@@ -60,6 +65,8 @@ export type HostToWebView =
   | { type: 'toolCall'; sessionId: string; status: string }
   | { type: 'fileChanges'; sessionId: string; files: FileChangeInfo[] }
   | { type: 'repoStatus'; isGit: boolean; isGitHub: boolean; workspaceRoot?: string; workspaceName?: string }
+  | { type: 'mobileStatus'; running: boolean; url: string; devices: MobileDeviceInfo[]; qrSvg?: string }
+  | { type: 'mobileDialog'; open: boolean }
   | { type: 'mergeResult'; sessionId: string; success: boolean; message: string }
   | { type: 'deleteWorktreeResult'; sessionId: string; success: boolean; message?: string };
 
@@ -90,6 +97,9 @@ export type WebViewToHost =
   | { type: 'startSquad'; agentSlug?: string; genAiProviderId?: string }
   | { type: 'toggleAutoSquad'; agentSlug?: string; genAiProviderId?: string }
   | { type: 'toggleMcp' }
+  | { type: 'toggleMobileServer' }
+  | { type: 'refreshMobileStatus' }
+  | { type: 'openMobileCompanion' }
   | { type: 'openDiff'; sessionId: string; filePath: string }
   | { type: 'openFullDiff'; sessionId: string }
   | { type: 'openTerminalInWorktree'; sessionId: string }

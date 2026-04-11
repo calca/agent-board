@@ -17,6 +17,7 @@ interface JsonTaskEntry {
   url?: string;
   createdAt?: string;
   agent?: string;
+  hidden?: boolean;
   [key: string]: unknown;
 }
 
@@ -89,6 +90,17 @@ export class JsonProvider implements ITaskProvider {
     if (index === -1) { return false; }
     const [task] = this.tasks.splice(index, 1);
     this.deleteTaskFile(task);
+    this._onDidChangeTasks.fire(this.tasks);
+    return true;
+  }
+
+  /** Mark a task as hidden so it no longer appears on the board. */
+  async hideTask(compositeId: string): Promise<boolean> {
+    const task = this.tasks.find(t => t.id === compositeId);
+    if (!task) { return false; }
+    (task.meta as Record<string, unknown>).hidden = true;
+    await this.writeTaskFile(task);
+    this.tasks = this.tasks.filter(t => t.id !== compositeId);
     this._onDidChangeTasks.fire(this.tasks);
     return true;
   }
@@ -186,7 +198,9 @@ export class JsonProvider implements ITaskProvider {
         .map(file => {
           try {
             const raw = fs.readFileSync(path.join(this.tasksDir, file), 'utf-8');
-            return this.mapEntry(JSON.parse(raw) as JsonTaskEntry);
+            const entry = JSON.parse(raw) as JsonTaskEntry;
+            if (entry.hidden) { return null; }
+            return this.mapEntry(entry);
           } catch {
             return null;
           }
@@ -231,7 +245,7 @@ export class JsonProvider implements ITaskProvider {
   }
 
   private toEntry(task: KanbanTask): JsonTaskEntry {
-    return {
+    const entry: JsonTaskEntry = {
       id: task.id.replace(`${this.id}:`, ''),
       title: task.title,
       body: task.body,
@@ -242,6 +256,10 @@ export class JsonProvider implements ITaskProvider {
       agent: task.agent,
       createdAt: task.createdAt?.toISOString(),
     };
+    if ((task.meta as Record<string, unknown>)?.hidden) {
+      entry.hidden = true;
+    }
+    return entry;
   }
 
   private normalizeStatus(raw?: string): ColumnId {

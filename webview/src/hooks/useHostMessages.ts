@@ -75,6 +75,12 @@ export function useHostMessages(): void {
         case 'mcpStatus':
           dispatch({ type: 'MCP_STATUS', enabled: msg.enabled ?? false });
           break;
+        case 'mobileStatus':
+          dispatch({ type: 'MOBILE_STATUS', running: msg.running ?? false, url: msg.url ?? '', devices: msg.devices ?? [], qrSvg: msg.qrSvg });
+          break;
+        case 'mobileDialog':
+          dispatch({ type: msg.open ? 'OPEN_MOBILE_DIALOG' : 'CLOSE_MOBILE_DIALOG' });
+          break;
         case 'showTaskForm':
           dispatch({ type: 'SHOW_TASK_FORM', columns: msg.columns ?? [] });
           break;

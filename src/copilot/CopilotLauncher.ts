@@ -332,7 +332,7 @@ export class CopilotLauncher {
     }
   }
 
-  private isWorktreeEnabled(providerId?: string): boolean {
+  private isWorktreeEnabled(_providerId?: string): boolean {
     const projectCfg = ProjectConfig.getProjectConfig();
     const fileValue = projectCfg?.worktree?.enabled;
     if (fileValue !== undefined) {
