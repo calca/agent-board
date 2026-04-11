@@ -9,7 +9,7 @@ const logSourceIcons: Record<string, string> = { board: '☰', agent: '◆', too
 
 export function FullView() {
   const { state, dispatch, imp } = useBoard();
-  const { fullViewTaskId, tasks, columns, editingTask, editableProviderIds, genAiProviders, logExpanded, repoIsGit, repoIsGitHub, repoIsAzureDevOps, workspaceRoot } = state;
+  const { fullViewTaskId, tasks, columns, genAiProviders, logExpanded, repoIsGit, repoIsGitHub, repoIsAzureDevOps, workspaceRoot } = state;
   const logScrollRef = useRef<HTMLDivElement>(null);
 
   const task = tasks.find(t => t.id === fullViewTaskId);
@@ -40,7 +40,6 @@ export function FullView() {
   const logs = imp.current.taskEventLogs.get(task.id) ?? [];
   const files = imp.current.fileChangeLists.get(task.id) ?? [];
   const statusCol = columns.find(c => c.id === task.status);
-  const isEditable = editableProviderIds.includes(task.providerId);
   const activeProviderId = isRunning ? sessionInfo?.providerId : undefined;
   const isMerged = imp.current.mergedSessions.has(task.id);
   const hasWorktree = !!sessionInfo?.worktreePath;
@@ -76,16 +75,9 @@ export function FullView() {
           <div className="fv-panel fv-panel--fill" style={statusCol?.color ? { background: `${statusCol.color}0D` } : undefined}>
             <div className="fv-panel__header fv-panel__header--static" style={statusCol?.color ? { background: `${statusCol.color}1A` } : undefined}>
               <span className="fv-panel__header-text">☰ Issue Details</span>
-              {isEditable && !isRunning && (
-                editingTask?.id === task.id
-                  ? <button className="fv-panel__header-btn" onClick={() => dispatch({ type: 'SET_EDITING_TASK', task: null })} title="Cancel edit">✕ Cancel</button>
-                  : <button className="fv-panel__header-btn" onClick={() => dispatch({ type: 'SET_EDITING_TASK', task })} title="Edit task">✎ Edit</button>
-              )}
             </div>
             <div className="fv-panel__body fv-panel__body--scroll">
-              {editingTask?.id === task.id
-                ? <FvEditableDetails task={task} columns={columns} />
-                : <FvReadOnlyDetails task={task} statusCol={statusCol} columns={columns} />}
+              <FvReadOnlyDetails task={task} statusCol={statusCol} columns={columns} />
             </div>
           </div>
         </div>
@@ -237,60 +229,6 @@ function FvReadOnlyDetails({ task, statusCol, columns }: { task: KanbanTask; sta
         />
       )}
     </>
-  );
-}
-
-function FvEditableDetails({ task, columns }: { task: KanbanTask; columns: Column[] }) {
-  const { dispatch } = useBoard();
-
-  const handleSubmit = useCallback((e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    const form = e.currentTarget;
-    const title = (form.querySelector('#fv-edit-title') as HTMLInputElement)?.value.trim();
-    if (!title) { return; }
-    const body = (form.querySelector('#fv-edit-body') as HTMLTextAreaElement)?.value.trim() ?? '';
-    const status = (form.querySelector('#fv-edit-status') as HTMLSelectElement)?.value ?? '';
-    const labels = (form.querySelector('#fv-edit-labels') as HTMLInputElement)?.value.trim() ?? '';
-    const assignee = (form.querySelector('#fv-edit-assignee') as HTMLInputElement)?.value.trim() ?? '';
-    postMessage({ type: 'editTask', taskId: task.id, data: { title, body, status, labels, assignee } });
-    dispatch({ type: 'SET_EDITING_TASK', task: null });
-  }, [task.id, dispatch]);
-
-  return (
-    <form id="fv-edit-form" className="fv-edit-form" onSubmit={handleSubmit}>
-      <div className="fv-detail-grid">
-        <div className="fv-detail-row">
-          <label className="fv-detail-label" htmlFor="fv-edit-title">Title</label>
-          <input className="task-form__input" id="fv-edit-title" type="text" defaultValue={task.title} required />
-        </div>
-        <div className="fv-detail-row">
-          <label className="fv-detail-label" htmlFor="fv-edit-status">Status</label>
-          <select className="task-form__select" id="fv-edit-status" defaultValue={task.status}
-            onChange={e => postMessage({ type: 'taskMoved', taskId: task.id, toCol: e.target.value, index: 0 })}>
-            {columns.map(c => <option key={c.id} value={c.id}>{c.label}</option>)}
-          </select>
-        </div>
-        <div className="fv-detail-row">
-          <label className="fv-detail-label" htmlFor="fv-edit-labels">Labels</label>
-          <input className="task-form__input" id="fv-edit-labels" type="text" defaultValue={task.labels.join(', ')} placeholder="bug, feature" />
-        </div>
-        <div className="fv-detail-row">
-          <label className="fv-detail-label" htmlFor="fv-edit-assignee">Assignee</label>
-          <input className="task-form__input" id="fv-edit-assignee" type="text" defaultValue={task.assignee ?? ''} placeholder="Username" />
-        </div>
-        {task.agent && (
-          <div className="fv-detail-row">
-            <span className="fv-detail-label">Agent</span>
-            <span>◆ {task.agent}</span>
-          </div>
-        )}
-      </div>
-      <div className="fv-edit-body-group">
-        <label className="fv-detail-label" htmlFor="fv-edit-body">Description</label>
-        <textarea className="task-form__textarea" id="fv-edit-body" rows={3} defaultValue={task.body} />
-      </div>
-      <button type="submit" className="toolbar__btn toolbar__btn--primary fv-save-btn">Save Changes</button>
-    </form>
   );
 }
 

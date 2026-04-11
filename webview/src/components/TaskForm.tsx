@@ -1,48 +1,13 @@
 import React, { useCallback, useRef } from 'react';
-import {
-  MDXEditor,
-  headingsPlugin,
-  listsPlugin,
-  quotePlugin,
-  thematicBreakPlugin,
-  linkPlugin,
-  linkDialogPlugin,
-  markdownShortcutPlugin,
-  toolbarPlugin,
-  BoldItalicUnderlineToggles,
-  UndoRedo,
-  CreateLink,
-  InsertThematicBreak,
-  ListsToggle,
-  BlockTypeSelect,
-  codeBlockPlugin,
-  CodeToggle,
-  type MDXEditorMethods,
-} from '@mdxeditor/editor';
-// @ts-ignore — esbuild loader:text returns a string at runtime
-import editorStylesRaw from '@mdxeditor/editor/style.css';
 import { useBoard } from '../context/BoardContext';
 import { postMessage } from '../hooks/useVsCodeApi';
 import { sanitizeHtml } from '../utils';
-
-let editorStylesInjected = false;
-function injectEditorStyles(): void {
-  if (editorStylesInjected) { return; }
-  const style = document.createElement('style');
-  style.id = 'mdxeditor-styles';
-  style.textContent = editorStylesRaw as string;
-  document.head.appendChild(style);
-  editorStylesInjected = true;
-}
+import { MarkdownEditor, type MDXEditorMethods } from './MarkdownEditor';
 
 export function TaskForm() {
   const { state, dispatch } = useBoard();
   const { showTaskForm, editingTask, columns, formColumns, editableProviderIds, genAiProviders } = state;
   const bodyRef = useRef<MDXEditorMethods>(null);
-
-  injectEditorStyles();
-
-  if (!showTaskForm && !editingTask) { return null; }
 
   const isEdit = !!editingTask;
   const task = editingTask;
@@ -93,6 +58,8 @@ export function TaskForm() {
     dispatch({ type: 'CLOSE_TASK_FORM' });
   }, [task, cols, isRemote, dispatch]);
 
+  if (!showTaskForm && !editingTask) { return null; }
+
   return (
     <div className="task-form-overlay" id="task-form-overlay" onClick={handleOverlayClick}>
       <div className="task-form-panel">
@@ -111,37 +78,12 @@ export function TaskForm() {
           <label className="task-form__label">Description</label>
           {isEdit && isRemote
             ? <div className="task-form__readonly-body" dangerouslySetInnerHTML={{ __html: isBodyHtml ? sanitizeHtml(task!.body) : (task!.body || '') }} />
-            : <div className="md-editor-container">
-                <MDXEditor
-                  ref={bodyRef}
-                  key={task?.id ?? 'new'}
-                  markdown={task?.body ?? ''}
-                  placeholder="Describe the task in detail — the agent will use this as instructions…"
-                  plugins={[
-                    headingsPlugin(),
-                    listsPlugin(),
-                    quotePlugin(),
-                    thematicBreakPlugin(),
-                    linkPlugin(),
-                    linkDialogPlugin(),
-                    codeBlockPlugin({ defaultCodeBlockLanguage: '' }),
-                    markdownShortcutPlugin(),
-                    toolbarPlugin({
-                      toolbarContents: () => (
-                        <>
-                          <UndoRedo />
-                          <BlockTypeSelect />
-                          <BoldItalicUnderlineToggles />
-                          <CodeToggle />
-                          <ListsToggle />
-                          <CreateLink />
-                          <InsertThematicBreak />
-                        </>
-                      ),
-                    }),
-                  ]}
-                />
-              </div>}
+            : <MarkdownEditor
+                ref={bodyRef}
+                editorKey={task?.id ?? 'new'}
+                markdown={task?.body ?? ''}
+                placeholder="Describe the task in detail — the agent will use this as instructions…"
+              />}
 
           <div className="task-form__row">
             <div className="task-form__field">
@@ -184,25 +126,6 @@ export function TaskForm() {
             )}
           </div>
         </form>
-
-        {/* GenAI provider action buttons in edit mode */}
-        {isEdit && (
-          <div className="task-form__provider-actions">
-            {genAiProviders.filter(p => !p.disabled).map(p => (
-              <button
-                key={p.id}
-                className="actions__provider-btn"
-                data-provider-id={p.id}
-                onClick={() => {
-                  postMessage({ type: 'launchProvider', taskId: task!.id, genAiProviderId: p.id });
-                  dispatch({ type: 'CLOSE_TASK_FORM' });
-                }}
-              >
-                {p.displayName}
-              </button>
-            ))}
-          </div>
-        )}
       </div>
     </div>
   );

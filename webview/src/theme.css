@@ -2470,3 +2470,11 @@ body.vscode-dark .md-editor-container,
 body.vscode-high-contrast .md-editor-container {
   border-color: var(--vscode-input-border, rgba(255, 255, 255, 0.15));
 }
+
+/* Compact variant (used in FullView inline edit) */
+.md-editor-container--compact {
+  min-height: 100px;
+}
+.md-editor-container--compact .mdxeditor-root-contenteditable {
+  min-height: 60px;
+}

@@ -358,6 +358,7 @@
     "mcp": "node out/mcp/mcpServer.js"
   },
   "devDependencies": {
+    "@mdxeditor/editor": "^3.54.0",
     "@types/mocha": "^10.0.6",
     "@types/node": "18.x",
     "@types/react": "^19.2.14",
@@ -374,7 +375,6 @@
     "typescript-eslint": "^8.58.1"
   },
   "dependencies": {
-    "@mdxeditor/editor": "^3.54.0",
     "react": "^19.2.5",
     "react-dom": "^19.2.5"
   }
