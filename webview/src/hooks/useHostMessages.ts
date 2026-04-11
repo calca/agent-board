@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { useBoard } from '../context/BoardContext';
-import type { Column, FileChangeInfo, KanbanTask, TaskLogEntry } from '../types';
 import { DataProvider } from '../DataProvider';
+import type { Column, FileChangeInfo, KanbanTask, TaskLogEntry } from '../types';
 import { getVsCodeApi, postMessage } from './useVsCodeApi';
 
 /**

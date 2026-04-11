@@ -1,8 +1,8 @@
 import { exec } from 'child_process';
 import * as fs from 'fs';
+import type * as LocalTunnelNS from 'localtunnel';
 import * as os from 'os';
 import * as path from 'path';
-import type * as LocalTunnelNS from 'localtunnel';
 import * as QRCode from 'qrcode';
 import * as vscode from 'vscode';
 import { AgentManager } from './agentManager';

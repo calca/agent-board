@@ -1092,142 +1092,417 @@ html, body, #root {
   font-size: 0.85em;
 }
 
-.mobile-dialog__overlay {
+/* ── Mobile Companion Dialog ───────────────────────────────────────── */
+
+.mc__overlay {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.45);
+  background: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(4px);
   z-index: 1200;
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 20px;
+  padding: 24px;
+  animation: mc-fadeIn 0.15s ease-out;
 }
 
-.mobile-dialog {
-  width: min(560px, 100%);
-  max-height: 92vh;
-  overflow: auto;
+@keyframes mc-fadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+@keyframes mc-slideUp {
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.mc {
+  width: min(480px, 100%);
+  max-height: 90vh;
+  overflow-y: auto;
   border: 1px solid var(--vscode-panel-border);
-  border-radius: 10px;
+  border-radius: 12px;
   background: var(--vscode-editor-background);
-  padding: 16px;
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.28), 0 0 0 1px rgba(255, 255, 255, 0.04);
+  animation: mc-slideUp 0.2s ease-out;
+  display: flex;
+  flex-direction: column;
 }
 
-.mobile-dialog__header {
+/* ── Header ── */
+.mc__header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 10px;
+  padding: 20px 24px 16px;
+  border-bottom: 1px solid var(--vscode-panel-border);
 }
 
-.mobile-dialog__header h3 {
+.mc__header-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.mc__icon {
+  font-size: 1.5em;
+  line-height: 1;
+}
+
+.mc__title {
+  font-size: 1em;
+  font-weight: 600;
   margin: 0;
-  font-size: 1.05em;
+  letter-spacing: -0.01em;
 }
 
-.mobile-dialog__close {
+.mc__subtitle {
+  display: block;
+  font-size: 0.78em;
+  opacity: 0.55;
+  margin-top: 2px;
+}
+
+.mc__close {
   border: none;
   background: transparent;
   color: var(--vscode-foreground);
   cursor: pointer;
-  font-size: 1.1em;
-}
-
-.mobile-dialog__status {
-  display: inline-flex;
-  gap: 8px;
-  align-items: center;
-  margin-bottom: 10px;
-}
-
-.mobile-dialog__dot {
-  width: 9px;
-  height: 9px;
-  border-radius: 50%;
-}
-
-.mobile-dialog__dot--on { background: #2ea043; }
-.mobile-dialog__dot--off { background: #d73a49; }
-
-.mobile-dialog__qr {
-  background: #fff;
-  padding: 10px;
-  border-radius: 8px;
-  display: inline-block;
-  margin-bottom: 10px;
-}
-
-.mobile-dialog__fallback {
-  margin-bottom: 10px;
-  opacity: 0.75;
-}
-
-.mobile-dialog__url {
-  font-family: var(--vscode-editor-font-family, monospace);
-  font-size: 0.9em;
-  margin-bottom: 12px;
-  word-break: break-all;
-}
-
-.mobile-dialog__actions {
-  display: flex;
-  gap: 8px;
-  margin-bottom: 12px;
-}
-
-.mobile-dialog__tunnel-toggle {
-  display: inline-flex;
-  gap: 8px;
-  align-items: center;
-  margin-bottom: 10px;
-  font-size: 0.88em;
-}
-
-.mobile-dialog__tunnel-toggle input[type="checkbox"] {
-  width: 16px;
-  height: 16px;
-  accent-color: var(--vscode-button-background);
-  appearance: auto;
-}
-
-.mobile-dialog__tunnel-toggle input[type="checkbox"]:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-}
-
-.mobile-dialog__hint {
-  margin: -2px 0 10px;
-  font-size: 0.8em;
-  opacity: 0.7;
-}
-
-.mobile-dialog__tunnel-url {
-  margin-bottom: 10px;
-  font-size: 0.85em;
-  font-family: var(--vscode-editor-font-family, monospace);
-  word-break: break-all;
-}
-
-.mobile-dialog__devices-title {
-  font-weight: 600;
-  margin-bottom: 8px;
-}
-
-.mobile-dialog__empty {
-  opacity: 0.75;
-}
-
-.mobile-dialog__device {
-  border: 1px solid var(--vscode-panel-border);
+  font-size: 1em;
+  width: 28px;
+  height: 28px;
   border-radius: 6px;
-  padding: 8px;
-  margin-bottom: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0.5;
+  transition: opacity 0.12s, background 0.12s;
+}
+
+.mc__close:hover {
+  opacity: 1;
+  background: var(--vscode-toolbar-hoverBackground);
+}
+
+/* ── Body ── */
+.mc__body {
+  padding: 20px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+/* ── QR Section ── */
+.mc__qr-section {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+}
+
+.mc__qr {
+  background: #fff;
+  padding: 16px;
+  border-radius: 12px;
+  display: inline-flex;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
+}
+
+.mc__qr svg {
+  display: block;
+  width: 180px;
+  height: 180px;
+}
+
+.mc__qr-placeholder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 32px 24px;
+  border: 2px dashed var(--vscode-panel-border);
+  border-radius: 12px;
+  opacity: 0.5;
+  font-size: 0.85em;
+  width: 100%;
+  text-align: center;
+}
+
+.mc__qr-placeholder-icon {
+  font-size: 1.6em;
+}
+
+.mc__url-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  max-width: 100%;
+  padding: 6px 14px;
+  border-radius: 20px;
+  background: var(--vscode-input-background);
+  border: 1px solid var(--vscode-panel-border);
+}
+
+.mc__url-text {
+  font-family: var(--vscode-editor-font-family, monospace);
+  font-size: 0.8em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 360px;
+  user-select: all;
+}
+
+/* ── Controls Section ── */
+.mc__controls {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.mc__status-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.mc__label {
+  font-size: 0.85em;
+  font-weight: 600;
+  opacity: 0.85;
+}
+
+.mc__badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 10px;
+  border-radius: 12px;
+  font-size: 0.78em;
+  font-weight: 500;
+}
+
+.mc__badge--on {
+  background: rgba(46, 160, 67, 0.15);
+  color: #3fb950;
+}
+
+.mc__badge--off {
+  background: rgba(215, 58, 73, 0.12);
+  color: #f85149;
+}
+
+.mc__badge-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+/* ── Toggle Switch ── */
+.mc__setting-row {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  font-size: 0.86em;
 }
+
+.mc__setting-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1;
+  min-width: 0;
+}
+
+.mc__setting-desc {
+  font-size: 0.75em;
+  opacity: 0.5;
+}
+
+.mc__switch {
+  position: relative;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.mc__switch input {
+  position: absolute;
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.mc__switch-track {
+  display: block;
+  width: 36px;
+  height: 20px;
+  border-radius: 10px;
+  background: var(--vscode-input-background);
+  border: 1px solid var(--vscode-panel-border);
+  transition: background 0.2s, border-color 0.2s;
+  position: relative;
+}
+
+.mc__switch-thumb {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--vscode-foreground);
+  opacity: 0.5;
+  transition: transform 0.2s, opacity 0.2s;
+}
+
+.mc__switch input:checked + .mc__switch-track {
+  background: var(--vscode-button-background);
+  border-color: var(--vscode-button-background);
+}
+
+.mc__switch input:checked + .mc__switch-track .mc__switch-thumb {
+  transform: translateX(16px);
+  background: #fff;
+  opacity: 1;
+}
+
+.mc__switch input:disabled + .mc__switch-track {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.mc__switch:has(input:disabled) {
+  cursor: not-allowed;
+}
+
+.mc__setting-hint {
+  font-size: 0.75em;
+  opacity: 0.45;
+  font-style: italic;
+  margin-top: -6px;
+}
+
+.mc__tunnel-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.8em;
+  padding: 5px 12px;
+  border-radius: 8px;
+  background: rgba(46, 160, 67, 0.1);
+  color: #3fb950;
+  align-self: flex-start;
+}
+
+/* ── Action Buttons ── */
+.mc__actions {
+  display: flex;
+  gap: 8px;
+  padding-top: 4px;
+}
+
+.mc__btn {
+  cursor: pointer;
+  border: none;
+  border-radius: 8px;
+  font-size: 0.82em;
+  font-weight: 500;
+  padding: 8px 16px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  transition: background 0.15s, opacity 0.15s;
+  white-space: nowrap;
+}
+
+.mc__btn--primary {
+  background: var(--vscode-button-background);
+  color: var(--vscode-button-foreground);
+}
+
+.mc__btn--primary:hover {
+  background: var(--vscode-button-hoverBackground);
+}
+
+.mc__btn--danger {
+  background: rgba(215, 58, 73, 0.15);
+  color: #f85149;
+}
+
+.mc__btn--danger:hover {
+  background: rgba(215, 58, 73, 0.25);
+}
+
+.mc__btn--ghost {
+  background: transparent;
+  color: var(--vscode-foreground);
+  opacity: 0.65;
+}
+
+.mc__btn--ghost:hover {
+  background: var(--vscode-toolbar-hoverBackground);
+  opacity: 1;
+}
+
+/* ── Devices footer ── */
+.mc__devices {
+  padding: 16px 24px 20px;
+  border-top: 1px solid var(--vscode-panel-border);
+}
+
+.mc__devices-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.mc__devices-count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: var(--vscode-input-background);
+  font-size: 0.72em;
+  font-weight: 600;
+}
+
+.mc__devices-empty {
+  font-size: 0.82em;
+  opacity: 0.4;
+}
+
+.mc__devices-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.mc__device-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 10px;
+  border-radius: 6px;
+  background: var(--vscode-input-background);
+  font-size: 0.82em;
+}
+
+.mc__device-ip {
+  font-family: var(--vscode-editor-font-family, monospace);
+  font-weight: 500;
+}
+
+.mc__device-time {
+  opacity: 0.5;
+  font-size: 0.9em;
+}
+
 /* ── Task Form Panel ───────────────────────────────────────────────── */
 
 .task-form-overlay {
