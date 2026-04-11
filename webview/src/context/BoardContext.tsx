@@ -31,6 +31,7 @@ export interface BoardState {
   showNotificationCenter: boolean;
   showCleanConfirm: boolean;
   logExpanded: boolean;
+  syncing: boolean;
 }
 
 export const initialState: BoardState = {
@@ -60,6 +61,7 @@ export const initialState: BoardState = {
   showNotificationCenter: false,
   showCleanConfirm: false,
   logExpanded: false,
+  syncing: false,
 };
 
 // ── Actions ──────────────────────────────────────────────────────────────
@@ -86,6 +88,7 @@ export type BoardAction =
   | { type: 'SET_SELECTED_SQUAD_PROVIDER'; id: string }
   | { type: 'SHOW_CLEAN_CONFIRM' }
   | { type: 'HIDE_CLEAN_CONFIRM' }
+  | { type: 'START_SYNC' }
   | { type: 'SETTLE' };
 
 // ── Reducer ──────────────────────────────────────────────────────────────
@@ -106,6 +109,7 @@ export function boardReducer(state: BoardState, action: BoardAction): BoardState
       return {
         ...state,
         loaded: true,
+        syncing: false,
         tasks: action.tasks,
         columns: action.columns,
         editableProviderIds: action.editableProviderIds,
@@ -168,6 +172,8 @@ export function boardReducer(state: BoardState, action: BoardAction): BoardState
       return { ...state, selectedAgentSlug: action.slug };
     case 'SET_SELECTED_SQUAD_PROVIDER':
       return { ...state, selectedSquadProviderId: action.id };
+    case 'START_SYNC':
+      return { ...state, syncing: true };
     case 'SHOW_CLEAN_CONFIRM':
       return { ...state, showCleanConfirm: true };
     case 'HIDE_CLEAN_CONFIRM':

@@ -2,27 +2,7 @@ import React, { useCallback } from 'react';
 import { useBoard } from '../context/BoardContext';
 import { postMessage } from '../hooks/useVsCodeApi';
 import type { KanbanTask } from '../types';
-
-/** Convert inline markdown (bold, italic, code, strikethrough) to React nodes. */
-function inlineMarkdown(text: string): React.ReactNode[] {
-  const nodes: React.ReactNode[] = [];
-  // Order matters: code first (literal), then bold, strikethrough, italic
-  const re = /(`[^`]+`)|(?:\*\*(.+?)\*\*)|(?:~~(.+?)~~)|(?:\*(.+?)\*)|(?:_(.+?)_)/g;
-  let last = 0;
-  let m: RegExpExecArray | null;
-  let key = 0;
-  while ((m = re.exec(text)) !== null) {
-    if (m.index > last) { nodes.push(text.slice(last, m.index)); }
-    if (m[1] != null) { nodes.push(<code key={key++}>{m[1].slice(1, -1)}</code>); }
-    else if (m[2] != null) { nodes.push(<strong key={key++}>{m[2]}</strong>); }
-    else if (m[3] != null) { nodes.push(<del key={key++}>{m[3]}</del>); }
-    else if (m[4] != null) { nodes.push(<em key={key++}>{m[4]}</em>); }
-    else if (m[5] != null) { nodes.push(<em key={key++}>{m[5]}</em>); }
-    last = m.index + m[0].length;
-  }
-  if (last < text.length) { nodes.push(text.slice(last)); }
-  return nodes;
-}
+import { MarkdownBody } from './MarkdownBody';
 
 const SESSION_LABELS: Record<string, string> = {
   idle: 'Idle', starting: 'Starting', running: 'Running',
@@ -50,10 +30,7 @@ export function TaskCard({ task }: { task: KanbanTask }) {
   const shortId = task.id.includes(':') ? task.id.replace(':', '-').toUpperCase() : task.id;
 
   // Body snippet
-  const isBodyHtml = task.body ? /<[a-z][\s\S]*>/i.test(task.body) : false;
-  const plainBody = isBodyHtml ? task.body.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim() : task.body;
-  const bodySnippet = plainBody ? plainBody.slice(0, 80).replace(/\n/g, ' ') + (plainBody.length > 80 ? '…' : '') : '';
-  const bodyNodes = bodySnippet ? inlineMarkdown(bodySnippet) : null;
+  const hasBody = !!task.body;
 
   // Priority + visible labels
   let priorityHtml: React.ReactNode = null;
@@ -126,7 +103,7 @@ export function TaskCard({ task }: { task: KanbanTask }) {
         </div>
       </div>
       <div className="task-card__title">{task.title}</div>
-      {bodyNodes && <div className="task-card__body">{bodyNodes}</div>}
+      {hasBody && <MarkdownBody body={task.body} className="task-card__body" snippet />}
       {toolCallBadge}
       <div className="task-card__footer">
         <div className="task-card__footer-left">

@@ -6,7 +6,7 @@ export function Toolbar() {
   const {
     workspaceName, mcpEnabled, squadStatus, repoIsGit,
     genAiProviders, availableAgents, selectedSquadProviderId,
-    selectedAgentSlug, searchText, showSearchInput,
+    selectedAgentSlug, searchText, showSearchInput, syncing,
   } = state;
 
   const filtered = getFilteredCount();
@@ -27,9 +27,11 @@ export function Toolbar() {
     <header className="toolbar">
       <div className="project-bar">
         <span className="project-bar__name" title={workspaceName}>
-          <svg className="project-bar__icon" width="14" height="14" viewBox="0 0 16 16" fill="currentColor">
-            <path d="M1.5 1h5l1 2H14.5a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1h-13a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1z"/>
-          </svg>
+          {syncing
+            ? <span className="project-bar__spinner" />
+            : <svg className="project-bar__icon" width="14" height="14" viewBox="0 0 16 16" fill="currentColor">
+                <path d="M1.5 1h5l1 2H14.5a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1h-13a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1z"/>
+              </svg>}
           {workspaceName || 'Workspace'}
         </span>
         <div className="project-bar__actions">
@@ -121,7 +123,7 @@ export function Toolbar() {
               }}
             />
           )}
-          <button className="toolbar__btn toolbar__btn--secondary" onClick={() => postMessage({ type: 'refreshRequest' })}>Sync</button>
+          <button className={`toolbar__btn toolbar__btn--secondary${syncing ? ' toolbar__btn--syncing' : ''}`} onClick={() => { dispatch({ type: 'START_SYNC' }); postMessage({ type: 'refreshRequest' }); }}>{syncing ? 'Syncing…' : 'Sync'}</button>
           <button className="toolbar__btn toolbar__btn--secondary" onClick={() => dispatch({ type: 'OPEN_TASK_FORM' })}>+ New Issue</button>
         </div>
       </div>

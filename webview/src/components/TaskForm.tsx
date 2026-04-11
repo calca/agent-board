@@ -1,8 +1,8 @@
 import React, { useCallback, useRef } from 'react';
 import { useBoard } from '../context/BoardContext';
 import { postMessage } from '../hooks/useVsCodeApi';
-import { sanitizeHtml } from '../utils';
 import { MarkdownEditor, type MDXEditorMethods } from './MarkdownEditor';
+import { MarkdownBody } from './MarkdownBody';
 
 export function TaskForm() {
   const { state, dispatch } = useBoard();
@@ -14,7 +14,6 @@ export function TaskForm() {
   const cols = formColumns.length > 0 ? formColumns : columns;
   const remoteProviders = ['github', 'azure-devops', 'beads'];
   const isRemote = task ? remoteProviders.includes(task.providerId) : false;
-  const isBodyHtml = task?.body ? /<[a-z][\s\S]*>/i.test(task.body) : false;
 
   const handleClose = useCallback(() => dispatch({ type: 'CLOSE_TASK_FORM' }), [dispatch]);
   const handleOverlayClick = useCallback((e: React.MouseEvent) => {
@@ -76,14 +75,16 @@ export function TaskForm() {
             : <input className="task-form__input" id="tf-title" type="text" defaultValue={task?.title ?? ''} required autoFocus={!isEdit} placeholder={isEdit ? undefined : 'What needs to be done?'} />}
 
           <label className="task-form__label">Description</label>
-          {isEdit && isRemote
-            ? <div className="task-form__readonly-body" dangerouslySetInnerHTML={{ __html: isBodyHtml ? sanitizeHtml(task!.body) : (task!.body || '') }} />
-            : <MarkdownEditor
-                ref={bodyRef}
-                editorKey={task?.id ?? 'new'}
-                markdown={task?.body ?? ''}
-                placeholder="Describe the task in detail — the agent will use this as instructions…"
-              />}
+          <div className="task-form__desc-group">
+            {isEdit && isRemote
+              ? <MarkdownBody body={task!.body || ''} className="task-form__readonly-body" />
+              : <MarkdownEditor
+                  ref={bodyRef}
+                  editorKey={task?.id ?? 'new'}
+                  markdown={task?.body ?? ''}
+                  placeholder="Describe the task in detail — the agent will use this as instructions…"
+                />}
+          </div>
 
           <div className="task-form__row">
             <div className="task-form__field">

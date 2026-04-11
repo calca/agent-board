@@ -2,7 +2,8 @@ import React, { useCallback, useEffect, useRef } from 'react';
 import { useBoard } from '../context/BoardContext';
 import { postMessage } from '../hooks/useVsCodeApi';
 import type { Column, KanbanTask } from '../types';
-import { escapeHtml, relativeWorktreePath, sanitizeHtml } from '../utils';
+import { relativeWorktreePath } from '../utils';
+import { MarkdownBody } from './MarkdownBody';
 
 const statusIcons: Record<string, string> = { added: '＋', modified: '✎', deleted: '✕' };
 const logSourceIcons: Record<string, string> = { board: '☰', agent: '◆', tool: '⚙', system: 'ⓘ' };
@@ -75,6 +76,7 @@ export function FullView() {
           <div className="fv-panel fv-panel--fill" style={statusCol?.color ? { background: `${statusCol.color}0D` } : undefined}>
             <div className="fv-panel__header fv-panel__header--static" style={statusCol?.color ? { background: `${statusCol.color}1A` } : undefined}>
               <span className="fv-panel__header-text">☰ Issue Details</span>
+              <button className="fv-panel__header-btn" title="Edit" onClick={() => dispatch({ type: 'SET_EDITING_TASK', task })}>✎</button>
             </div>
             <div className="fv-panel__body fv-panel__body--scroll">
               <FvReadOnlyDetails task={task} statusCol={statusCol} columns={columns} />
@@ -185,7 +187,6 @@ export function FullView() {
 
 function FvReadOnlyDetails({ task, statusCol, columns }: { task: KanbanTask; statusCol: Column | undefined; columns: Column[] }) {
   const statusColor = statusCol?.color ?? '';
-  const isBodyHtml = task.body ? /<[a-z][\s\S]*>/i.test(task.body) : false;
 
   return (
     <>
@@ -223,10 +224,7 @@ function FvReadOnlyDetails({ task, statusCol, columns }: { task: KanbanTask; sta
         )}
       </div>
       {task.body && (
-        <div
-          className="fv-description"
-          dangerouslySetInnerHTML={{ __html: isBodyHtml ? sanitizeHtml(task.body) : escapeHtml(task.body) }}
-        />
+        <MarkdownBody body={task.body} className="fv-description" />
       )}
     </>
   );
