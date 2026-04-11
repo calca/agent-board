@@ -6,7 +6,7 @@ import { MarkdownEditor, type MDXEditorMethods } from './MarkdownEditor';
 
 export function TaskForm() {
   const { state, dispatch } = useBoard();
-  const { showTaskForm, editingTask, columns, formColumns, editableProviderIds, genAiProviders } = state;
+  const { showTaskForm, editingTask, columns, formColumns, editableProviderIds, genAiProviders, currentUser } = state;
   const bodyRef = useRef<MDXEditorMethods>(null);
 
   const isEdit = !!editingTask;
@@ -62,28 +62,32 @@ export function TaskForm() {
   return (
     <div className="task-form-overlay" id="task-form-overlay" onClick={handleOverlayClick}>
       <div className="task-form-panel">
-        <button className="task-form-panel__close" onClick={handleClose}>✕</button>
+        <button className="task-form-panel__close" onClick={handleClose} title="Close">✕</button>
         <div className="task-form-panel__heading">
           {isEdit
-            ? <>Edit Issue{isRemote && <span style={{ opacity: 0.5, fontSize: '0.8em' }}> (remote — read-only fields)</span>}</>
+            ? <>Edit Issue{isRemote && <span style={{ opacity: 0.45, fontSize: '0.75em', fontWeight: 400, marginLeft: 8 }}>(remote — read-only fields)</span>}</>
             : 'New Issue'}
         </div>
         <form id="task-form" className="task-form" onSubmit={handleSubmit}>
-          <label className="task-form__label">{isRemote ? 'Title' : 'Title *'}</label>
-          {isEdit && isRemote
-            ? <span className="task-form__readonly-value">{task!.title}</span>
-            : <input className="task-form__input" id="tf-title" type="text" defaultValue={task?.title ?? ''} required autoFocus={!isEdit} placeholder={isEdit ? undefined : 'What needs to be done?'} />}
-
-          <label className="task-form__label">Description</label>
-          <div className="task-form__desc-group">
+          <div className="task-form__section">
+            <label className="task-form__label">{isRemote ? 'Title' : 'Title *'}</label>
             {isEdit && isRemote
-              ? <MarkdownBody body={task!.body || ''} className="task-form__readonly-body" />
-              : <MarkdownEditor
-                  ref={bodyRef}
-                  editorKey={task?.id ?? 'new'}
-                  markdown={task?.body ?? ''}
-                  placeholder="Describe the task in detail — the agent will use this as instructions…"
-                />}
+              ? <span className="task-form__readonly-value">{task!.title}</span>
+              : <input className="task-form__input" id="tf-title" type="text" defaultValue={task?.title ?? ''} required autoFocus={!isEdit} placeholder={isEdit ? undefined : 'What needs to be done?'} />}
+          </div>
+
+          <div className="task-form__section task-form__section--grow">
+            <label className="task-form__label">Description</label>
+            <div className="task-form__desc-group">
+              {isEdit && isRemote
+                ? <MarkdownBody body={task!.body || ''} className="task-form__readonly-body" />
+                : <MarkdownEditor
+                    ref={bodyRef}
+                    editorKey={task?.id ?? 'new'}
+                    markdown={task?.body ?? ''}
+                    placeholder="Describe the task in detail — the agent will use this as instructions…"
+                  />}
+            </div>
           </div>
 
           <div className="task-form__row">
@@ -111,7 +115,9 @@ export function TaskForm() {
               <label className="task-form__label" htmlFor={isRemote ? undefined : 'tf-assignee'}>Assignee</label>
               {isEdit && isRemote
                 ? <span className="task-form__readonly-value">{task!.assignee ?? '—'}</span>
-                : <input className="task-form__input" id="tf-assignee" type="text" defaultValue={task?.assignee ?? ''} placeholder="Username" />}
+                : currentUser && !isEdit
+                  ? <input className="task-form__input" id="tf-assignee" type="text" value={currentUser} readOnly />
+                  : <input className="task-form__input" id="tf-assignee" type="text" defaultValue={task?.assignee ?? currentUser} placeholder="Username" />}
             </div>
           </div>
 

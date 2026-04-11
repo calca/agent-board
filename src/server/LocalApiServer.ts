@@ -30,6 +30,7 @@ export interface MobileStatusSnapshot {
   squadStatus: { activeCount: number; maxSessions: number; autoSquadEnabled: boolean };
   providers: { id: string; displayName: string; disabled?: boolean }[];
   agents: { slug: string; displayName: string; canSquad?: boolean }[];
+  columns: { id: string; label: string; color?: string }[];
   repoIsGit: boolean;
   repoIsGitHub: boolean;
   hiddenTaskIds: string[];
@@ -43,6 +44,7 @@ export class LocalApiServer {
   private readonly connectedDevices = new Map<string, MobileDeviceInfo>();
   private statusProvider?: () => MobileStatusSnapshot;
   private squadActionHandler?: (action: 'startSquad' | 'toggleAutoSquad', agentSlug?: string, genAiProviderId?: string) => Promise<void>;
+  private refreshHandler?: () => Promise<void>;
 
   constructor(
     private readonly registry: ProviderRegistry,
@@ -61,6 +63,11 @@ export class LocalApiServer {
   /** Register a handler for squad actions from mobile. */
   setSquadActionHandler(fn: (action: 'startSquad' | 'toggleAutoSquad', agentSlug?: string, genAiProviderId?: string) => Promise<void>): void {
     this.squadActionHandler = fn;
+  }
+
+  /** Register a handler for refresh/sync requests from mobile. */
+  setRefreshHandler(fn: () => Promise<void>): void {
+    this.refreshHandler = fn;
   }
 
   /**
@@ -165,6 +172,11 @@ export class LocalApiServer {
 
       if ((pathname === '/squad/toggle-auto' || pathname === '/api/squad/toggle-auto') && req.method === 'POST') {
         await this.handleSquadAction('toggleAutoSquad', req, res);
+        return;
+      }
+
+      if ((pathname === '/sync' || pathname === '/api/sync') && req.method === 'POST') {
+        await this.handleSync(res);
         return;
       }
 
@@ -337,12 +349,30 @@ export class LocalApiServer {
         squadStatus: status.squadStatus,
         providers: status.providers,
         agents: status.agents,
+        columns: status.columns,
         repoIsGit: status.repoIsGit,
         repoIsGitHub: status.repoIsGitHub,
       } : {}),
     };
     res.writeHead(200, { 'Content-Type': 'application/json' });
     res.end(JSON.stringify(payload));
+  }
+
+  private async handleSync(res: http.ServerResponse): Promise<void> {
+    if (!this.refreshHandler) {
+      res.writeHead(503, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: 'Refresh handler not available' }));
+      return;
+    }
+    try {
+      await this.refreshHandler();
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ ok: true }));
+    } catch (error) {
+      this.logger.error(`Sync error: ${error}`);
+      res.writeHead(500, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: error instanceof Error ? error.message : String(error) }));
+    }
   }
 
   private async handleGetTasks(res: http.ServerResponse): Promise<void> {

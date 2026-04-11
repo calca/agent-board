@@ -228,10 +228,17 @@ export function activate(context: vscode.ExtensionContext): void {
       }
       return entry;
     }).filter(p => !p.disabled);
+    const columnOrder = ProjectConfig.getProjectConfig()?.kanban?.columns ?? [...COLUMN_IDS];
+    const cols = columnOrder.map((id: string) => ({
+      id,
+      label: COLUMN_LABELS[id] ?? id,
+      color: DEFAULT_COLUMN_COLORS[id],
+    }));
     return {
       squadStatus: squadManager.getStatus(),
       providers,
       agents: agentOptions(),
+      columns: cols,
       repoIsGit: isGit,
       repoIsGitHub: isGH,
       hiddenTaskIds: ProjectConfig.getProjectConfig()?.hiddenTaskIds ?? [],
@@ -245,6 +252,13 @@ export function activate(context: vscode.ExtensionContext): void {
     } else if (action === 'toggleAutoSquad') {
       handleToggleAutoSquad(squadManager, agentSlug, genAiProviderId);
     }
+  });
+
+  // Handle sync/refresh requests from mobile browser
+  mobileServer.setRefreshHandler(async () => {
+    try {
+      await refreshTasksCommand(providerRegistry);
+    } catch { /* logged in refreshTasksCommand */ }
   });
 
   // Register @taskai chat participant (gracefully skipped if API unavailable)
@@ -564,7 +578,12 @@ export function activate(context: vscode.ExtensionContext): void {
         }
         case 'addTask': {
           const columns = COLUMN_IDS.map(id => ({ id, label: COLUMN_LABELS[id], color: DEFAULT_COLUMN_COLORS[id] }));
-          panel.postMessage({ type: 'showTaskForm', columns });
+          let currentUser = '';
+          try {
+            const ghSession = await vscode.authentication.getSession('github', ['repo'], { createIfNone: false });
+            if (ghSession) { currentUser = ghSession.account.label; }
+          } catch { /* no session */ }
+          panel.postMessage({ type: 'showTaskForm', columns, currentUser });
           break;
         }
         case 'saveTask': {

@@ -33,6 +33,7 @@ export interface BoardState {
   showSearchInput: boolean;
   showTaskForm: boolean;
   formColumns: Column[];
+  currentUser: string;
   editingTask: KanbanTask | null;
   selectedTask: KanbanTask | null;
   fullViewTaskId: string | null;
@@ -73,6 +74,7 @@ export const initialState: BoardState = {
   showSearchInput: false,
   showTaskForm: false,
   formColumns: [],
+  currentUser: '',
   editingTask: null,
   selectedTask: null,
   fullViewTaskId: null,
@@ -95,7 +97,7 @@ export type BoardAction =
   | { type: 'OPEN_MOBILE_DIALOG' }
   | { type: 'CLOSE_MOBILE_DIALOG' }
   | { type: 'START_MOBILE_REFRESH' }
-  | { type: 'SHOW_TASK_FORM'; columns: Column[] }
+  | { type: 'SHOW_TASK_FORM'; columns: Column[]; currentUser?: string }
   | { type: 'REPO_STATUS'; isGit: boolean; isGitHub: boolean; isAzureDevOps: boolean; workspaceRoot: string; workspaceName: string }
   | { type: 'SET_SEARCH_TEXT'; text: string }
   | { type: 'TOGGLE_SEARCH' }
@@ -177,7 +179,7 @@ export function boardReducer(state: BoardState, action: BoardAction): BoardState
     case 'START_MOBILE_REFRESH':
       return { ...state, mobileRefreshing: true };
     case 'SHOW_TASK_FORM':
-      return { ...state, showTaskForm: true, formColumns: action.columns, selectedTask: null };
+      return { ...state, showTaskForm: true, formColumns: action.columns, currentUser: action.currentUser ?? state.currentUser, selectedTask: null };
     case 'REPO_STATUS':
       return {
         ...state,

@@ -159,7 +159,7 @@ export function Toolbar() {
               }}
             />
           )}
-          <button className={`toolbar__btn toolbar__btn--secondary toolbar__btn--sync${syncing ? ' toolbar__btn--syncing' : ''}`} onClick={() => { dispatch({ type: 'START_SYNC' }); postMessage({ type: 'refreshRequest' }); }}>{syncing ? 'Syncing…' : 'Sync'}</button>
+          <button className={`toolbar__btn toolbar__btn--secondary toolbar__btn--sync${syncing ? ' toolbar__btn--syncing' : ''}`} onClick={() => { dispatch({ type: 'START_SYNC' }); if (isVsCodeWebview) { postMessage({ type: 'refreshRequest' }); } else { (window as any).__agentBoardMobileSync?.(); } }}>{syncing ? 'Syncing…' : 'Sync'}</button>
           <button className="toolbar__btn toolbar__btn--secondary" onClick={() => dispatch({ type: 'OPEN_TASK_FORM' })}>+ New Issue</button>
         </div>
       </div>

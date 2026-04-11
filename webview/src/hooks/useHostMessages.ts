@@ -93,7 +93,7 @@ export function useHostMessages(): void {
           dispatch({ type: msg.open ? 'OPEN_MOBILE_DIALOG' : 'CLOSE_MOBILE_DIALOG' });
           break;
         case 'showTaskForm':
-          dispatch({ type: 'SHOW_TASK_FORM', columns: msg.columns ?? [] });
+          dispatch({ type: 'SHOW_TASK_FORM', columns: msg.columns ?? [], currentUser: msg.currentUser });
           break;
         case 'repoStatus':
           dispatch({
@@ -263,6 +263,9 @@ export function useHostMessages(): void {
           // Merge into next TASKS_UPDATE as genAiProviders
           latestProviders = info.providers;
         }
+        if (info.columns) {
+          latestColumns = info.columns;
+        }
       } catch {
         if (!disposed) {
           dispatch({ type: 'SET_CONNECTION_ERROR', error: true });
@@ -271,6 +274,7 @@ export function useHostMessages(): void {
     };
 
     let latestProviders: { id: string; displayName: string }[] = [];
+    let latestColumns: { id: string; label: string; color?: string }[] = [];
 
     const pullTasks = async () => {
       try {
@@ -281,10 +285,19 @@ export function useHostMessages(): void {
 
         dispatch({ type: 'SET_CONNECTION_ERROR', error: false });
 
-        const statusOrder = ['todo', 'inprogress', 'review', 'done'];
-        const extraStatuses = [...new Set(tasks.map(t => t.status))].filter(s => !statusOrder.includes(s));
-        const ordered = [...statusOrder, ...extraStatuses];
-        const columns = ordered.map(id => ({ id, label: id }));
+        let columns: { id: string; label: string; color?: string }[];
+        if (latestColumns.length > 0) {
+          // Use columns from /info (includes labels + colors from project config)
+          const colIds = new Set(latestColumns.map(c => c.id));
+          const extraStatuses = [...new Set(tasks.map(t => t.status))].filter(s => !colIds.has(s));
+          columns = [...latestColumns, ...extraStatuses.map(id => ({ id, label: id }))];
+        } else {
+          // Fallback: guess columns from task statuses
+          const statusOrder = ['todo', 'inprogress', 'review', 'done'];
+          const extraStatuses = [...new Set(tasks.map(t => t.status))].filter(s => !statusOrder.includes(s));
+          const ordered = [...statusOrder, ...extraStatuses];
+          columns = ordered.map(id => ({ id, label: id }));
+        }
 
         dispatch({
           type: 'TASKS_UPDATE',
@@ -307,9 +320,18 @@ export function useHostMessages(): void {
       void pullTasks();
     }, 3000);
 
+    // Expose manual sync trigger for browser mode (used by Sync button)
+    (window as any).__agentBoardMobileSync = async () => {
+      // Ask the VS Code extension to refresh its providers first
+      try { await fetch('/sync', { method: 'POST' }); } catch { /* ignore */ }
+      void pullInfo();
+      void pullTasks();
+    };
+
     return () => {
       disposed = true;
       clearInterval(interval);
+      delete (window as any).__agentBoardMobileSync;
     };
   }, [dispatch]);
 }

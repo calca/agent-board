@@ -59,7 +59,7 @@ export type HostToWebView =
   | { type: 'squadStatus'; status: SquadStatus }
   | { type: 'agentsAvailable'; agents: AgentOption[] }
   | { type: 'mcpStatus'; enabled: boolean }
-  | { type: 'showTaskForm'; columns: Column[] }
+  | { type: 'showTaskForm'; columns: Column[]; currentUser?: string }
   | { type: 'streamOutput'; sessionId: string; text: string; ts: string; role?: 'user' | 'assistant' | 'tool' }
   | { type: 'streamResume'; sessionId: string; log: string }
   | { type: 'toolCall'; sessionId: string; status: string }
