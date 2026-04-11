@@ -189,14 +189,47 @@ export class LocalApiServer {
                  connect-src 'self';
                  font-src 'self' https:;
                  img-src 'self' https:;">
+  <style>
+    /* VS Code variable fallbacks — dark theme for mobile browsers */
+    :root {
+      --vscode-font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      --vscode-font-size: 13px;
+      --vscode-foreground: #cccccc;
+      --vscode-descriptionForeground: #888;
+      --vscode-editor-background: #1e1e1e;
+      --vscode-editor-foreground: #cccccc;
+      --vscode-editor-font-family: 'SF Mono', Menlo, Monaco, 'Courier New', monospace;
+      --vscode-sideBar-background: #252526;
+      --vscode-panel-border: #3c3c3c;
+      --vscode-focusBorder: #007fd4;
+      --vscode-input-background: #3c3c3c;
+      --vscode-input-foreground: #cccccc;
+      --vscode-input-border: #3c3c3c;
+      --vscode-input-placeholderForeground: #888;
+      --vscode-button-background: #0e639c;
+      --vscode-button-foreground: #ffffff;
+      --vscode-button-hoverBackground: #1177bb;
+      --vscode-button-secondaryBackground: #3a3d41;
+      --vscode-button-secondaryForeground: #cccccc;
+      --vscode-button-secondaryHoverBackground: #4a4d51;
+      --vscode-toolbar-hoverBackground: rgba(90, 93, 94, 0.31);
+      --vscode-badge-background: #4d4d4d;
+      --vscode-badge-foreground: #ffffff;
+      --vscode-dropdown-background: #3c3c3c;
+      --vscode-dropdown-foreground: #cccccc;
+      --vscode-dropdown-border: #3c3c3c;
+      --vscode-progressBar-background: #0e70c0;
+      --vscode-errorForeground: #f48771;
+      --vscode-terminal-ansiRed: #f44747;
+      --vscode-terminal-ansiGreen: #16825d;
+      --vscode-terminal-ansiYellow: #d9a500;
+      --vscode-terminal-ansiCyan: #11a8cd;
+      --vscode-charts-orange: #d18616;
+      --vscode-textLink-foreground: #3794ff;
+    }
+  </style>
   ${hasCss ? '<link rel="stylesheet" href="/assets/webview.css">' : ''}
   <title>Agent Board - Mobile</title>
-  <style>
-    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; padding: 20px; }
-    .loader { text-align: center; }
-    .loader__spinner { display: inline-block; width: 40px; height: 40px; border: 4px solid #ddd; border-top-color: #0078d4; border-radius: 50%; animation: spin 0.6s linear infinite; }
-    @keyframes spin { to { transform: rotate(360deg); } }
-  </style>
 </head>
 <body>
   <div id="root"></div>
