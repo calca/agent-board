@@ -21,7 +21,7 @@ import { LmApiGenAiProvider } from './copilot/providers/LmApiGenAiProvider';
 import { SessionStateManager } from './copilot/SessionStateManager';
 import { SquadManager } from './copilot/SquadManager';
 import { removeWorktree } from './copilot/WorktreeManager';
-import { DiffWatcher, GIT_REF_SCHEME, GitRefContentProvider } from './diff/DiffWatcher';
+import { DiffWatcher, GIT_REF_SCHEME, GitRefContentProvider, gitRefUri } from './diff/DiffWatcher';
 import { GitHubIssueManager } from './github/GitHubIssueManager';
 import { PullRequestManager } from './github/PullRequestManager';
 import { KanbanPanel } from './kanban/KanbanPanel';
@@ -693,17 +693,16 @@ export function activate(context: vscode.ExtensionContext): void {
           if (dw) {
             await dw.openDiff(msg.filePath);
           } else {
-            // Fallback: try to open diff using session worktree path
+            // Fallback: use custom agent-board-git scheme to resolve git content
             const session = sessionStateManager.getSession(msg.sessionId);
             const wtPath = session?.worktreePath;
-            if (wtPath) {
-              const absPath = path.join(wtPath, msg.filePath);
-              const headUri = vscode.Uri.file(absPath).with({
-                scheme: 'git',
-                query: JSON.stringify({ path: absPath, ref: 'main' }),
-              });
+            const watchRoot = wtPath ?? vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
+            if (watchRoot) {
+              const baseRef = wtPath ? 'main' : 'HEAD';
+              const absPath = path.join(watchRoot, msg.filePath);
+              const headUri = gitRefUri(watchRoot, msg.filePath, baseRef);
               const workingUri = vscode.Uri.file(absPath);
-              await vscode.commands.executeCommand('vscode.diff', headUri, workingUri, `${msg.filePath} (main ↔ Working)`);
+              await vscode.commands.executeCommand('vscode.diff', headUri, workingUri, `${msg.filePath} (${baseRef} ↔ Working)`);
             }
           }
           break;
@@ -713,7 +712,23 @@ export function activate(context: vscode.ExtensionContext): void {
           if (dw) {
             await dw.openFullDiff(dw.getChanges());
           } else {
-            await vscode.commands.executeCommand('workbench.view.scm');
+            // Fallback: recreate a temporary DiffWatcher to gather changes
+            const fdSession = sessionStateManager.getSession(msg.sessionId);
+            const wtPath = fdSession?.worktreePath;
+            const watchRoot = wtPath ?? vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
+            if (watchRoot) {
+              const baseRef = wtPath ? 'main' : 'HEAD';
+              const tempDw = new DiffWatcher(watchRoot, baseRef);
+              const files = await tempDw.refresh();
+              if (files.length > 0) {
+                await tempDw.openFullDiff(files);
+              } else {
+                await vscode.commands.executeCommand('workbench.view.scm');
+              }
+              tempDw.dispose();
+            } else {
+              await vscode.commands.executeCommand('workbench.view.scm');
+            }
           }
           break;
         }
