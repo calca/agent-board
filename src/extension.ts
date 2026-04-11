@@ -164,11 +164,7 @@ export function activate(context: vscode.ExtensionContext): void {
 
   // Markdown-backed task provider — opt-in; reads .md files from a configurable inbox directory
   const markdownProvider = new MarkdownProvider();
-  if (markdownProvider.isEnabled()) {
-    providerRegistry.register(markdownProvider);
-  } else {
-    context.subscriptions.push({ dispose: () => markdownProvider.dispose() });
-  }
+  providerRegistry.register(markdownProvider);
 
   // Overview sidebar view
   const overviewProvider = new OverviewTreeProvider(providerRegistry, squadManager);

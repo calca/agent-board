@@ -16,8 +16,8 @@ import { ITaskProvider, ProviderConfigField, ProviderDiagnostic } from './ITaskP
  * file is moved to a configurable `donePath` directory.
  *
  * Default paths (workspace-relative):
- *  - inbox: `.agent-board/markdown-inbox`
- *  - done:  `.agent-board/markdown-done`
+ *  - inbox: `.agent-board/markdown/inbox`
+ *  - done:  `.agent-board/markdown/done`
  */
 export class MarkdownProvider implements ITaskProvider {
   readonly id = 'markdown';
@@ -91,14 +91,14 @@ export class MarkdownProvider implements ITaskProvider {
         key: 'inboxPath',
         label: 'Inbox directory',
         type: 'string',
-        placeholder: '.agent-board/markdown-inbox',
+        placeholder: '.agent-board/markdown/inbox',
         hint: 'Relative to workspace root — place .md files here to create tasks',
       },
       {
         key: 'donePath',
         label: 'Done directory',
         type: 'string',
-        placeholder: '.agent-board/markdown-done',
+        placeholder: '.agent-board/markdown/done',
         hint: 'Relative to workspace root — done .md files are moved here',
       },
     ];
@@ -131,12 +131,12 @@ export class MarkdownProvider implements ITaskProvider {
     this.inboxDir = this.resolvePath(
       projectCfg?.markdownProvider?.inboxPath,
       'markdownProvider.inboxPath',
-      '.agent-board/markdown-inbox',
+      '.agent-board/markdown/inbox',
     );
     this.doneDir = this.resolvePath(
       projectCfg?.markdownProvider?.donePath,
       'markdownProvider.donePath',
-      '.agent-board/markdown-done',
+      '.agent-board/markdown/done',
     );
   }
 

@@ -438,12 +438,18 @@ html, body, #root {
 }
 
 .kanban__column-count {
-  font-size: 0.85em;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 22px;
+  height: 22px;
+  font-size: 0.75em;
   font-weight: 600;
   background: var(--vscode-badge-background);
   color: var(--vscode-badge-foreground);
-  padding: 1px 7px;
-  border-radius: 10px;
+  padding: 0 5px;
+  border-radius: 11px;
+  box-sizing: border-box;
 }
 
 .kanban__column-body {

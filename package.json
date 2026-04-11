@@ -146,6 +146,16 @@
           "default": ".agent-board/tasks",
           "description": "Workspace-relative or absolute path to a JSON file containing tasks for the JSON provider. Overridable in .agent-board/config.json."
         },
+        "agentBoard.markdownProvider.inboxPath": {
+          "type": "string",
+          "default": ".agent-board/markdown/inbox",
+          "description": "Workspace-relative or absolute path to the inbox directory containing .md task files. Overridable in .agent-board/config.json."
+        },
+        "agentBoard.markdownProvider.donePath": {
+          "type": "string",
+          "default": ".agent-board/markdown/done",
+          "description": "Workspace-relative or absolute path to the directory where done .md files are moved. Overridable in .agent-board/config.json."
+        },
         "agentBoard.beadsProvider.executable": {
           "type": "string",
           "default": "beads",
@@ -358,6 +368,8 @@
     "eslint": "^9.39.4",
     "glob": "^10.3.10",
     "mocha": "^10.2.0",
+    "react": "^19.2.5",
+    "react-dom": "^19.2.5",
     "typescript": "^5.3.3",
     "typescript-eslint": "^8.58.1"
   },

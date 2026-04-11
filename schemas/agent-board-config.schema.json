@@ -45,6 +45,26 @@
       },
       "additionalProperties": false
     },
+    "markdownProvider": {
+      "type": "object",
+      "description": "Markdown task provider settings. Each .md file in the inbox directory becomes a task (filename = title, content = body). Done tasks are moved to a separate directory.",
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "default": false,
+          "description": "Whether the Markdown provider is enabled for this project. Disabled by default."
+        },
+        "inboxPath": {
+          "type": "string",
+          "description": "Workspace-relative or absolute path to the inbox directory containing .md task files. Default: .agent-board/markdown/inbox"
+        },
+        "donePath": {
+          "type": "string",
+          "description": "Workspace-relative or absolute path to the directory where done .md files are moved. Default: .agent-board/markdown/done"
+        }
+      },
+      "additionalProperties": false
+    },
     "beadsProvider": {
       "type": "object",
       "description": "Beads CLI provider settings.",
