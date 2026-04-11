@@ -40,8 +40,8 @@ Split-view streaming: agent output on the left, changed files on the right. Real
 ### Git Worktree Isolation
 Each agent session gets its own worktree and branch — no conflicts, no stashing, no context switching. Review, merge (squash/rebase/merge), or delete directly from the board.
 
-### Auto Pull Requests
-When a task completes, Agent Board automatically creates a GitHub PR from the worktree branch, posts an AI-generated summary comment on the issue, and updates the card with the PR link.
+### Pull Requests
+When a task completes, a **"Create Pull Request"** button appears on the card. One click creates a GitHub PR (via REST API) or opens the Azure DevOps PR creation page — with branch and changed-file list pre-filled. Auto-squad can also create PRs automatically. Agent Board posts an AI-generated summary comment on the GitHub issue and persists the PR link on the card.
 
 ### `@taskai` Chat Participant
 Use `/plan`, `/implement`, `/test`, or `/commit` from VS Code Chat. Agent Board resolves the active task and injects full context automatically.
@@ -203,7 +203,7 @@ All settings can also be configured globally through **File > Preferences > Sett
 Authentication uses VS Code's built-in GitHub SSO — sign in via the **Accounts** menu (no PAT required). Repository coordinates (`owner`/`repo`) are auto-detected from `gh repo view`, VS Code settings, or `.agent-board/config.json`. Supports Kanban label sync (`kanban:todo`, `kanban:in-progress`, etc.), conditional polling with ETag, and avatar caching.
 
 ### Azure DevOps
-Uses the `az boards` CLI. Maps Azure DevOps work item states to Kanban columns. Configurable polling interval and done-task cleanup.
+Uses the `az boards` CLI. Maps Azure DevOps work item states to Kanban columns. Configurable polling interval and done-task cleanup. Supports "Create Pull Request" button — opens the Azure DevOps PR creation page with source branch pre-filled.
 
 ### JSON File
 Tasks are stored at `.agent-board/tasks` by default (override via `jsonProvider.path`). File changes are auto-detected via `FileSystemWatcher`. Schema: [tasks.schema.json](schemas/tasks.schema.json)
@@ -237,7 +237,7 @@ registry?.register(myCustomProvider);
 
 Providers that declare `supportsWorktree` (e.g. **Copilot CLI**, **LM API**) automatically create an isolated git worktree before the session runs. Each task gets its own branch (`agent-board/<taskId>`) outside the repo root, so agents never conflict with each other or with your working tree.
 
-From the board you can: **open** the worktree in a new window, **review** changes (multi-file diff), **merge** (squash/merge/rebase), **align** from main, run **agent-merge**, or **delete** the worktree.
+From the board you can: **open** the worktree in a new window, **review** changes (multi-file diff), **create a PR** (GitHub or Azure DevOps), **merge** (squash/merge/rebase), **align** from main, run **agent-merge**, or **delete** the worktree.
 
 **Worktree creation is enabled by default.** To disable it:
 
