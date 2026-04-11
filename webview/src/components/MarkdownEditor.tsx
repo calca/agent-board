@@ -1,24 +1,24 @@
-import React, { forwardRef } from 'react';
 import {
-  MDXEditor,
-  headingsPlugin,
-  listsPlugin,
-  quotePlugin,
-  thematicBreakPlugin,
-  linkPlugin,
-  linkDialogPlugin,
-  markdownShortcutPlugin,
-  toolbarPlugin,
-  BoldItalicUnderlineToggles,
-  UndoRedo,
-  CreateLink,
-  InsertThematicBreak,
-  ListsToggle,
-  BlockTypeSelect,
-  codeBlockPlugin,
-  CodeToggle,
-  type MDXEditorMethods,
+    BlockTypeSelect,
+    BoldItalicUnderlineToggles,
+    codeBlockPlugin,
+    CodeToggle,
+    CreateLink,
+    headingsPlugin,
+    InsertThematicBreak,
+    linkDialogPlugin,
+    linkPlugin,
+    listsPlugin,
+    ListsToggle,
+    markdownShortcutPlugin,
+    MDXEditor,
+    quotePlugin,
+    thematicBreakPlugin,
+    toolbarPlugin,
+    UndoRedo,
+    type MDXEditorMethods,
 } from '@mdxeditor/editor';
+import { forwardRef } from 'react';
 // @ts-ignore — esbuild loader:text returns a string at runtime
 import editorStylesRaw from '@mdxeditor/editor/style.css';
 
