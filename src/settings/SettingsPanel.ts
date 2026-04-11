@@ -88,6 +88,7 @@ export class SettingsPanel {
   private static readonly PROVIDER_CONFIG_SECTION: Record<string, string> = {
     'github': 'github',
     'json': 'jsonProvider',
+    'markdown': 'markdownProvider',
     'beads': 'beadsProvider',
     'azure-devops': 'azureDevOps',
   };

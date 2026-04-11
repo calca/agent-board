@@ -50,7 +50,7 @@ Use `/plan`, `/implement`, `/test`, or `/commit` from VS Code Chat. Agent Board 
 Stdio-based Model Context Protocol server for full CRUD: `list_tasks`, `get_task`, `create_task`, `update_task`, `delete_task`. Any MCP-compatible agent can manage your board.
 
 ### Extensible Providers
-GitHub Issues (SSO, no PAT), Azure DevOps, local JSON, Beads CLI — or register your own via the extension API. GenAI providers: VS Code Chat, Cloud (vscode.lm), Copilot CLI, LM API with tool-calling, Ollama, Mistral — or register your own.
+GitHub Issues (SSO, no PAT), Azure DevOps, Markdown files, local JSON, Beads CLI — or register your own via the extension API. GenAI providers: VS Code Chat, Cloud (vscode.lm), Copilot CLI, LM API with tool-calling, Ollama, Mistral — or register your own.
 
 ---
 
@@ -89,6 +89,11 @@ Create a `.agent-board/config.json` file in the workspace root to override any V
   },
   "jsonProvider": {
     "path": ".agent-board/tasks"
+  },
+  "markdownProvider": {
+    "enabled": true,
+    "inboxPath": ".agent-board/markdown/inbox",
+    "donePath": ".agent-board/markdown/done"
   },
   "beadsProvider": {
     "executable": "/usr/local/bin/beads"
@@ -152,6 +157,8 @@ All settings can also be configured globally through **File > Preferences > Sett
 | Setting | Default | Description |
 |---------|---------|-------------|
 | `agentBoard.jsonProvider.path` | `".agent-board/tasks"` | Path to JSON tasks file |
+| `agentBoard.markdownProvider.inboxPath` | `".agent-board/markdown/inbox"` | Inbox directory for `.md` task files |
+| `agentBoard.markdownProvider.donePath` | `".agent-board/markdown/done"` | Directory where done `.md` files are moved |
 | `agentBoard.beadsProvider.executable` | `"beads"` | Path to Beads CLI |
 | `agentBoard.worktree.enabled` | `true` | Create an isolated git worktree for providers that support it |
 | `agentBoard.copilotCli.yolo` | `true` | Enable `/yolo` mode — auto-approve all changes without confirmation |
@@ -219,6 +226,19 @@ Tasks are stored at `.agent-board/tasks` by default (override via `jsonProvider.
     "assignee": "alice"
   }
 ]
+```
+
+### Markdown Files
+Each `.md` file in an inbox directory becomes a task — the filename is the title, the content is the body. Done tasks are automatically moved to a separate directory. Enable via `.agent-board/config.json`:
+
+```jsonc
+{
+  "markdownProvider": {
+    "enabled": true,
+    "inboxPath": ".agent-board/markdown/inbox",
+    "donePath": ".agent-board/markdown/done"
+  }
+}
 ```
 
 ### Beads CLI
@@ -470,6 +490,7 @@ Extension Host (Node.js)
 ├── ProviderRegistry        → ITaskProvider implementations
 │   ├── GitHubProvider         (REST API + VSCode SSO + ETag cache)
 │   ├── AzureDevOpsProvider    (az boards CLI)
+│   ├── MarkdownProvider       (FileSystemWatcher, .md inbox → done)
 │   ├── JsonProvider           (FileSystemWatcher, default: .agent-board/tasks)
 │   ├── BeadsProvider          (CLI + polling)
 │   ├── TaskStoreProvider      (in-memory store)
