@@ -46,7 +46,7 @@ function KanbanColumn({ column, tasks }: { column: Column; tasks: KanbanTask[] }
         <span>{column.label}</span>
         <span className="kanban__column-header-right">
           {isDone && tasks.length > 0 && (
-            <span className="kanban__column-actions">
+            <span className="kanban__column-actions" style={column.color ? { '--col-btn-color': column.color } as React.CSSProperties : undefined}>
               <button className="kanban__col-btn" title="Export to Markdown" onClick={() => postMessage({ type: 'exportDoneMd' })}>
                 <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M2 3.5A1.5 1.5 0 0 1 3.5 2h5.586a1.5 1.5 0 0 1 1.06.44l3.415 3.414A1.5 1.5 0 0 1 14 6.914V12.5a1.5 1.5 0 0 1-1.5 1.5h-9A1.5 1.5 0 0 1 2 12.5v-9Zm1.5-.5a.5.5 0 0 0-.5.5v9a.5.5 0 0 0 .5.5h9a.5.5 0 0 0 .5-.5V7H9.5A1.5 1.5 0 0 1 8 5.5V3H3.5ZM9 3.207V5.5a.5.5 0 0 0 .5.5h2.293L9 3.207ZM6 8.5a.5.5 0 0 1 .5-.5h3a.5.5 0 0 1 0 1h-3a.5.5 0 0 1-.5-.5Zm.5 1.5a.5.5 0 0 0 0 1h2a.5.5 0 0 0 0-1h-2Z"/></svg>
               </button>
