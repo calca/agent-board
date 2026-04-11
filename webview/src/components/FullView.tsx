@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useRef } from 'react';
 import { useBoard } from '../context/BoardContext';
 import { postMessage } from '../hooks/useVsCodeApi';
 import type { Column, KanbanTask } from '../types';
-import { escapeHtml, relativeWorktreePath, sanitizeHtml } from '../utils';
+import { relativeWorktreePath } from '../utils';
 import { MarkdownViewer } from './MarkdownViewer';
 
 const statusIcons: Record<string, string> = { added: '＋', modified: '✎', deleted: '✕' };

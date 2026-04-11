@@ -1,14 +1,13 @@
 import {
-  MDXEditor,
-  headingsPlugin,
-  listsPlugin,
-  quotePlugin,
-  thematicBreakPlugin,
-  linkPlugin,
-  codeBlockPlugin,
-  markdownShortcutPlugin,
+    MDXEditor,
+    codeBlockPlugin,
+    headingsPlugin,
+    linkPlugin,
+    listsPlugin,
+    markdownShortcutPlugin,
+    quotePlugin,
+    thematicBreakPlugin,
 } from '@mdxeditor/editor';
-import React from 'react';
 // @ts-ignore — esbuild loader:text returns a string at runtime
 import editorStylesRaw from '@mdxeditor/editor/style.css';
 
