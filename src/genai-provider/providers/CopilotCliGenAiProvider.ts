@@ -3,8 +3,6 @@ import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
 import * as vscode from 'vscode';
-import { AsyncQueue } from '../../cli/AsyncQueue';
-import type { ICliProvider } from '../../cli/ICliProvider';
 import { KanbanTask } from '../../types/KanbanTask';
 import { formatError } from '../../utils/errorUtils';
 import { Logger } from '../../utils/logger';
@@ -15,9 +13,8 @@ import { GenAiProviderConfig, GenAiProviderScope, IGenAiProvider } from '../IGen
 const CLI_SESSION_STATE_DIR = path.join(os.homedir(), '.copilot', 'session-state');
 
 /** GenAI provider that invokes the `copilot` CLI (`npm i -g @github/copilot`) as a background subprocess. */
-export class CopilotCliGenAiProvider implements IGenAiProvider, ICliProvider {
+export class CopilotCliGenAiProvider implements IGenAiProvider {
   readonly id = 'copilot-cli';
-  readonly name = 'copilot-cli';
   readonly displayName = 'Copilot - cli';
   readonly icon = 'terminal';
   readonly scope: GenAiProviderScope = 'global';
@@ -79,31 +76,6 @@ export class CopilotCliGenAiProvider implements IGenAiProvider, ICliProvider {
   }
 
   dispose(): void { this.cancel(); this._onDidStreamEmitter.dispose(); }
-
-  /**
-   * ICliProvider.stream — returns an AsyncIterable that yields chunks
-   * by subscribing to the internal onDidStream event.
-   */
-  stream(prompt: string, signal?: AbortSignal): AsyncIterable<string> {
-    const queue = new AsyncQueue<string>();
-    const subscription = this.onDidStream((text) => queue.push(text));
-
-    if (signal) {
-      const onAbort = () => { this.cancel(); queue.end(); };
-      if (signal.aborted) { onAbort(); return queue; }
-      signal.addEventListener('abort', onAbort, { once: true });
-    }
-
-    this.run(prompt).then(() => {
-      subscription.dispose();
-      queue.end();
-    }).catch((err) => {
-      subscription.dispose();
-      queue.throw(err instanceof Error ? err : new Error(String(err)));
-    });
-
-    return queue;
-  }
 
   private _emit(text: string): void { this._onDidStreamEmitter.fire(text); }
 

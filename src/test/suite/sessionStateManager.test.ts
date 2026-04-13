@@ -8,7 +8,7 @@ import {
     PersistedSession,
     SessionState,
     toCopilotSessionInfo,
-} from '../../copilot/sessionStateUtils';
+} from '../../genai-provider/sessionStateUtils';
 
 suite('SessionStateManager (pure utils)', () => {
 

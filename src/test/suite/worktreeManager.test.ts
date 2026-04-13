@@ -4,7 +4,7 @@ import {
     sanitiseBranchName,
     worktreeBranch,
     worktreePath,
-} from '../../copilot/WorktreeManager';
+} from '../../genai-provider/WorktreeManager';
 
 suite('WorktreeManager — sanitiseBranchName', () => {
   test('passes through simple alphanumeric ids', () => {

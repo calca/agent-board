@@ -1,9 +1,11 @@
 import React, { useCallback, useEffect, useRef } from 'react';
 import { useBoard } from '../context/BoardContext';
 import { DataProvider } from '../DataProvider';
+import { useAgentChat } from '../hooks/useAgentChat';
 import { postMessage } from '../hooks/useVsCodeApi';
 import type { Column, KanbanTask } from '../types';
 import { relativeWorktreePath } from '../utils';
+import { AgentChatLog } from './AgentChatLog';
 import { MarkdownBody } from './MarkdownBody';
 
 const statusIcons: Record<string, string> = { added: '＋', modified: '✎', deleted: '✕' };
@@ -15,6 +17,8 @@ export function FullView() {
   const logScrollRef = useRef<HTMLDivElement>(null);
 
   const task = tasks.find(t => t.id === fullViewTaskId);
+
+  const { messages: chatMessages, isRunning: chatIsRunning } = useAgentChat(fullViewTaskId ?? undefined);
 
   useEffect(() => {
     if (imp.current.fullViewAutoScroll && logScrollRef.current) {
@@ -154,29 +158,33 @@ export function FullView() {
         </div>
       </div>
 
-      {/* ROW 2: Activity Log */}
+      {/* ROW 2: Agent Chat Log */}
       <div className={`fv-row fv-row--bottom${logExpanded ? ' fv-row--expanded' : ''}`}>
         <div className="fv-panel fv-panel--fill" style={{ background: '#8888880D' }}>
           <div className="fv-panel__header fv-panel__header--static fv-log-panel-header" style={{ background: '#8888881A' }}>
-            <span className="fv-panel__header-text">≡ Activity Log</span>
-            <span className="fv-panel__badge">{logs.length}</span>
+            <span className="fv-panel__header-text">≡ Agent Chat</span>
+            <span className="fv-panel__badge">{chatMessages.length || logs.length}</span>
             <button className="fv-panel__header-btn" title={logExpanded ? 'Collapse' : 'Expand'} onClick={() => dispatch({ type: 'TOGGLE_LOG_EXPANDED' })}>
               {logExpanded ? '⊖' : '⊕'}
             </button>
           </div>
           <div className="fv-panel__body fv-panel__body--log">
-            <div className="fv-log-scroll" ref={logScrollRef} onScroll={handleLogScroll}>
-              <div className="fv-log-entries">
-                {logs.map((e, i) => (
-                  <div key={i} className={`fv-log__entry fv-log__entry--${e.source}`}>
-                    <span className="fv-log__ts">[{e.ts}]</span>{' '}
-                    <span className="fv-log__icon">{logSourceIcons[e.source] ?? '●'}</span>{' '}
-                    <span className="fv-log__text">{e.text}</span>
-                  </div>
-                ))}
-                {logs.length === 0 && <div className="fv-log__empty">No activity yet. Events will appear here in real time.</div>}
+            {chatMessages.length > 0 ? (
+              <AgentChatLog messages={chatMessages} isRunning={chatIsRunning} />
+            ) : (
+              <div className="fv-log-scroll" ref={logScrollRef} onScroll={handleLogScroll}>
+                <div className="fv-log-entries">
+                  {logs.map((e, i) => (
+                    <div key={i} className={`fv-log__entry fv-log__entry--${e.source}`}>
+                      <span className="fv-log__ts">[{e.ts}]</span>{' '}
+                      <span className="fv-log__icon">{logSourceIcons[e.source] ?? '●'}</span>{' '}
+                      <span className="fv-log__text">{e.text}</span>
+                    </div>
+                  ))}
+                  {logs.length === 0 && <div className="fv-log__empty">No activity yet. Events will appear here in real time.</div>}
+                </div>
               </div>
-            </div>
+            )}
           </div>
         </div>
       </div>

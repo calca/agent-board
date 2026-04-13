@@ -15,7 +15,7 @@ import {
     resolveSquadConfig,
     shouldExclude,
     sortByPriority,
-} from '../../copilot/squadUtils';
+} from '../../genai-provider/squadUtils';
 import { KanbanTask } from '../../types/KanbanTask';
 
 suite('SquadManager (computeAvailableSlots)', () => {

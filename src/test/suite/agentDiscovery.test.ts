@@ -8,7 +8,7 @@ import {
     discoverAgents,
     readAgentInstructions,
     titleCase,
-} from '../../copilot/agentDiscovery';
+} from '../../genai-provider/agentDiscovery';
 
 suite('agentDiscovery — titleCase', () => {
   test('converts hyphenated slug', () => {

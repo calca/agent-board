@@ -1,5 +1,5 @@
 import * as vscode from 'vscode';
-import { SquadManager } from './copilot/SquadManager';
+import { SquadManager } from './genai-provider/SquadManager';
 import { ProviderRegistry } from './providers/ProviderRegistry';
 import { COLUMN_LABELS } from './types/ColumnId';
 import { KanbanTask } from './types/KanbanTask';

@@ -1,13 +1,14 @@
 /**
  * DataProvider — abstraction layer over transport medium.
- * 
+ *
  * In VSCode WebView: uses postMessage (acquireVsCodeApi)
  * In browser mobile: uses fetch (HTTP REST API)
- * 
+ *
  * This allows the same React components to work in both environments.
  */
 
 import { getVsCodeApi } from './hooks/useVsCodeApi';
+import { transport } from './transport';
 
 type ColumnId = string;
 
@@ -34,7 +35,6 @@ type Environment = 'vscode' | 'browser';
  * Returns 'vscode' if acquireVsCodeApi is available, 'browser' otherwise.
  */
 function detectEnvironment(): Environment {
-  // In VSCode WebView, acquireVsCodeApi is injected at runtime
   return typeof (globalThis as any).acquireVsCodeApi !== 'undefined' ? 'vscode' : 'browser';
 }
 
@@ -46,23 +46,10 @@ function getApiBaseUrl(): string {
   return typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3333';
 }
 
-/**
- * Message sent from WebView to VSCode host to request task update.
- */
-interface RequestTasksMessage {
-  type: 'requestTasks';
+let nextRequestId = 0;
+function makeRequestId(): string {
+  return `req-${Date.now()}-${nextRequestId++}`;
 }
-
-/**
- * Message sent from VSCode host to WebView with task data.
- */
-interface TasksResponseMessage {
-  type: 'tasksResponse';
-  tasks: Task[];
-}
-
-/** Global promise resolvers for awaiting responses. */
-const responseResolvers = new Map<string, (value: any) => void>();
 
 class DataProviderImpl {
   private environment: Environment;
@@ -71,17 +58,6 @@ class DataProviderImpl {
   constructor() {
     this.environment = detectEnvironment();
     this.vsCodeApi = getVsCodeApi();
-
-    // In VSCode, listen for responses from the host
-    if (this.environment === 'vscode' && this.vsCodeApi) {
-      window.addEventListener('message', (event) => {
-        const msg = event.data as TasksResponseMessage;
-        if (msg.type === 'tasksResponse' && responseResolvers.has('tasks')) {
-          responseResolvers.get('tasks')?.(msg.tasks);
-          responseResolvers.delete('tasks');
-        }
-      });
-    }
   }
 
   /**
@@ -99,16 +75,12 @@ class DataProviderImpl {
    * Update task status (move between columns).
    */
   async updateTaskStatus(id: string, status: ColumnId): Promise<void> {
-    if (this.environment === 'vscode' && this.vsCodeApi) {
-      this.vsCodeApi.postMessage({
-        type: 'taskMoved',
-        taskId: id,
-        toCol: status,
-        index: 0, // Simplified for now
-      });
-    } else {
-      await this.updateTaskStatusViaApi(id, status);
-    }
+    transport.send({
+      type: 'taskMoved',
+      taskId: id,
+      toCol: status,
+      index: 0,
+    });
   }
 
   /**
@@ -122,39 +94,67 @@ class DataProviderImpl {
     }
   }
 
-  // ── VSCode Communication ────────────────────────────────────────────
+  // ── Agent communication ────────────────────────────────────────────
 
-  private async getTasksFromVsCode(): Promise<Task[]> {
-    if (!this.vsCodeApi) {
-      return [];
-    }
-    const api = this.vsCodeApi;
+  /** Start an agent run for a task. */
+  startAgent(taskId: string, provider: string, prompt: string): void {
+    transport.send({ type: 'startAgent', taskId, provider, prompt });
+  }
 
-    return new Promise((resolve) => {
-      const timeoutId = setTimeout(() => {
-        responseResolvers.delete('tasks');
-        resolve([]); // Timeout fallback
-      }, 5000);
+  /** Cancel a running agent. */
+  cancelAgent(taskId: string): void {
+    transport.send({ type: 'cancelAgent', taskId });
+  }
 
-      responseResolvers.set('tasks', (tasks: Task[]) => {
-        clearTimeout(timeoutId);
-        resolve(tasks);
-      });
-
-      api.postMessage({ type: 'requestTasks' });
+  /**
+   * Subscribe to `agentLog` push events for a specific task.
+   * Returns an unsubscribe function.
+   */
+  onAgentLog(taskId: string, callback: (chunk: string, done: boolean) => void): () => void {
+    return transport.onPush((msg) => {
+      if (msg.type === 'agentLog' && msg.taskId === taskId) {
+        callback(msg.chunk, msg.done);
+      }
     });
   }
 
-  private createTaskViaVsCode(task: Omit<Task, 'id'>): Promise<Task> {
-    if (!this.vsCodeApi) {
-      return Promise.resolve({
-        ...task,
-        id: `${task.providerId}:pending-${Date.now()}`,
-      });
-    }
+  /**
+   * Subscribe to `agentError` push events for a specific task.
+   * Returns an unsubscribe function.
+   */
+  onAgentError(taskId: string, callback: (error: string) => void): () => void {
+    return transport.onPush((msg) => {
+      if (msg.type === 'agentError' && msg.taskId === taskId) {
+        callback(msg.error);
+      }
+    });
+  }
 
-    // Send saveTask message to extension
-    this.vsCodeApi.postMessage({
+  /**
+   * Subscribe to `tasksUpdate` push events.
+   * Returns an unsubscribe function.
+   */
+  onTasksUpdate(callback: (msg: any) => void): () => void {
+    return transport.onPush((msg) => {
+      if (msg.type === 'tasksUpdate') {
+        callback(msg);
+      }
+    });
+  }
+
+  // ── VSCode Communication ────────────────────────────────────────────
+
+  private getTasksFromVsCode(): Promise<Task[]> {
+    const requestId = makeRequestId();
+    return transport.request<{ tasks: Task[] }>(
+      { type: 'requestTasks', requestId },
+      'tasksResponse',
+      5000,
+    ).then(r => r.tasks).catch(() => []);
+  }
+
+  private createTaskViaVsCode(task: Omit<Task, 'id'>): Promise<Task> {
+    transport.send({
       type: 'saveTask',
       data: {
         title: task.title,
@@ -183,21 +183,6 @@ class DataProviderImpl {
       throw new Error(`Failed to fetch tasks: ${response.statusText}`);
     }
     return response.json();
-  }
-
-  private async updateTaskStatusViaApi(id: string, status: ColumnId): Promise<void> {
-    try {
-      const response = await fetch(`${getApiBaseUrl()}/tasks/${id}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status }),
-      });
-      if (!response.ok) {
-        console.error('Failed to update task:', response.statusText);
-      }
-    } catch (error) {
-      console.error('Error updating task:', error);
-    }
   }
 
   private async createTaskViaApi(task: Omit<Task, 'id'>): Promise<Task> {

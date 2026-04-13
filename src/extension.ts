@@ -9,19 +9,20 @@ import { AgentManager } from './agentManager';
 import { AgentsTreeProvider, AgentTreeItem } from './agentsTreeProvider';
 import { refreshTasksCommand } from './commands/refreshTasks';
 import { ProjectConfig } from './config/ProjectConfig';
-import { AgentInfo, discoverAgents } from './copilot/agentDiscovery';
-import { registerChatParticipant } from './copilot/ChatParticipant';
-import { CopilotLauncher } from './copilot/CopilotLauncher';
-import { GenAiProviderRegistry } from './copilot/GenAiProviderRegistry';
-import { ModelSelector } from './copilot/ModelSelector';
-import { ChatGenAiProvider } from './copilot/providers/ChatGenAiProvider';
-import { CloudGenAiProvider } from './copilot/providers/CloudGenAiProvider';
-import { CopilotCliGenAiProvider } from './copilot/providers/CopilotCliGenAiProvider';
-import { LmApiGenAiProvider } from './copilot/providers/LmApiGenAiProvider';
-import { SessionStateManager } from './copilot/SessionStateManager';
-import { SquadManager } from './copilot/SquadManager';
-import { removeWorktree } from './copilot/WorktreeManager';
 import { DiffWatcher, GIT_REF_SCHEME, GitRefContentProvider, gitRefUri } from './diff/DiffWatcher';
+import { AgentInfo, discoverAgents } from './genai-provider/agentDiscovery';
+import { cancelAgent as cancelCliAgent, runAgent as runCliAgent } from './genai-provider/AgentRunner';
+import { registerChatParticipant } from './genai-provider/ChatParticipant';
+import { CopilotLauncher } from './genai-provider/CopilotLauncher';
+import { GenAiProviderRegistry } from './genai-provider/GenAiProviderRegistry';
+import { ModelSelector } from './genai-provider/ModelSelector';
+import { ChatGenAiProvider } from './genai-provider/providers/ChatGenAiProvider';
+import { CloudGenAiProvider } from './genai-provider/providers/CloudGenAiProvider';
+import { CopilotCliGenAiProvider } from './genai-provider/providers/CopilotCliGenAiProvider';
+import { LmApiGenAiProvider } from './genai-provider/providers/LmApiGenAiProvider';
+import { SessionStateManager } from './genai-provider/SessionStateManager';
+import { SquadManager } from './genai-provider/SquadManager';
+import { removeWorktree } from './genai-provider/WorktreeManager';
 import { GitHubIssueManager } from './github/GitHubIssueManager';
 import { PullRequestManager } from './github/PullRequestManager';
 import { KanbanPanel } from './kanban/KanbanPanel';
@@ -50,6 +51,7 @@ export function activate(context: vscode.ExtensionContext): void {
 
   const providerRegistry = new ProviderRegistry();
   const providerPicker = new ProviderPicker(providerRegistry, context);
+
   const mobileServerPort = 3333;
   const mobileServer = new LocalApiServer(providerRegistry, context.extensionUri.fsPath, vscode.workspace.name ?? vscode.workspace.workspaceFolders?.[0]?.name ?? '');
   let mobileTunnelEnabled = false;
@@ -155,7 +157,8 @@ export function activate(context: vscode.ExtensionContext): void {
     yolo: copilotCliCfg?.yolo ?? vscode.workspace.getConfiguration('agentBoard').get<boolean>('copilotCli.yolo', true),
     fleet: copilotCliCfg?.fleet ?? vscode.workspace.getConfiguration('agentBoard').get<boolean>('copilotCli.fleet', false),
   };
-  genAiRegistry.register(new CopilotCliGenAiProvider(copilotCliConfig));
+  const copilotCliGenAi = new CopilotCliGenAiProvider(copilotCliConfig);
+  genAiRegistry.register(copilotCliGenAi);
 
   // ── Copilot infrastructure ─────────────────────────────────────────────
 
@@ -583,6 +586,7 @@ export function activate(context: vscode.ExtensionContext): void {
             const ghSession = await vscode.authentication.getSession('github', ['repo'], { createIfNone: false });
             if (ghSession) { currentUser = ghSession.account.label; }
           } catch { /* no session */ }
+          if (!currentUser) { currentUser = os.userInfo().username || 'me'; }
           panel.postMessage({ type: 'showTaskForm', columns, currentUser });
           break;
         }
@@ -670,6 +674,14 @@ export function activate(context: vscode.ExtensionContext): void {
           const md = lines.join('\n');
           await vscode.env.clipboard.writeText(md);
           vscode.window.showInformationMessage(`Copied ${doneTasks.length} done task(s) to clipboard as Markdown.`);
+          break;
+        }
+        case 'startAgent': {
+          runCliAgent(panel, msg.taskId, msg.provider, msg.prompt, genAiRegistry);
+          break;
+        }
+        case 'cancelAgent': {
+          cancelCliAgent(msg.taskId);
           break;
         }
         case 'cleanDone': {
@@ -1324,7 +1336,7 @@ const EDITABLE_PROVIDER_IDS = ['json', 'github'];
 /**
  * Gather tasks from all providers and push them to the Kanban panel.
  */
-async function sendTasksToPanel(panel: KanbanPanel, registry: ProviderRegistry, genAiRegistry?: import('./copilot/GenAiProviderRegistry').GenAiProviderRegistry, squadMgr?: SquadManager, sessionStateMgr?: SessionStateManager): Promise<void> {
+async function sendTasksToPanel(panel: KanbanPanel, registry: ProviderRegistry, genAiRegistry?: import('./genai-provider/GenAiProviderRegistry').GenAiProviderRegistry, squadMgr?: SquadManager, sessionStateMgr?: SessionStateManager): Promise<void> {
   const providers = registry.getAll();
   const hiddenIds = new Set(ProjectConfig.getProjectConfig()?.hiddenTaskIds ?? []);
   const allTasks = (
@@ -1384,7 +1396,7 @@ function handleToggleAutoSquad(squadManager: SquadManager, agentSlug?: string, g
  * Returns `undefined` if the user cancels.
  */
 async function pickGenAiProvider(
-  registry: import('./copilot/GenAiProviderRegistry').GenAiProviderRegistry,
+  registry: import('./genai-provider/GenAiProviderRegistry').GenAiProviderRegistry,
   isGit: boolean,
   isGitHub: boolean,
 ): Promise<string | undefined> {

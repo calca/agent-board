@@ -74,3 +74,21 @@ export interface ChatMessage {
   text: string;
   ts: string;
 }
+
+export type AgentChatRole = 'user' | 'agent' | 'system';
+
+export interface AgentChatMessage {
+  id: string;
+  role: AgentChatRole;
+  text: string;
+  done: boolean;
+  providerId?: string;
+  ts: string;
+}
+
+export interface LogEntry {
+  ts: string;
+  source: 'board' | 'agent' | 'tool' | 'system' | 'raw';
+  text: string;
+  providerId?: string;
+}

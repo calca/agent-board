@@ -189,6 +189,19 @@ export function useHostMessages(): void {
             msg.success ? `⤴ Pull Request created: ${msg.prUrl ?? ''}` : `✗ Create PR failed: ${msg.message ?? ''}`);
           forceUpdate();
           break;
+        case 'agentLog': {
+          const tid = msg.taskId as string;
+          if (!msg.done) {
+            addLog(tid, 'agent', msg.chunk);
+          }
+          forceUpdate();
+          break;
+        }
+        case 'agentError': {
+          addLog(msg.taskId as string, 'system', `✗ ${msg.error}`);
+          forceUpdate();
+          break;
+        }
         case 'themeChange':
           // Theme auto-applied via CSS variables
           break;

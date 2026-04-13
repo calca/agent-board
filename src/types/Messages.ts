@@ -68,7 +68,9 @@ export type HostToWebView =
   | { type: 'mobileStatus'; running: boolean; url: string; devices: MobileDeviceInfo[]; qrSvg?: string; tunnelEnabled?: boolean; tunnelActive?: boolean; tunnelUrl?: string; refreshing?: boolean }
   | { type: 'mobileDialog'; open: boolean }
   | { type: 'mergeResult'; sessionId: string; success: boolean; message: string }
-  | { type: 'deleteWorktreeResult'; sessionId: string; success: boolean; message?: string };
+  | { type: 'deleteWorktreeResult'; sessionId: string; success: boolean; message?: string }
+  | { type: 'agentLog'; taskId: string; chunk: string; done: boolean }
+  | { type: 'agentError'; taskId: string; error: string };
 
 // ── WebView → Host ──────────────────────────────────────────────────────────
 
@@ -116,4 +118,6 @@ export type WebViewToHost =
   | { type: 'deleteTask'; taskId: string }
   | { type: 'hideTask'; taskId: string }
   | { type: 'exportDoneMd' }
-  | { type: 'cleanDone' };
+  | { type: 'cleanDone' }
+  | { type: 'startAgent'; taskId: string; provider: string; prompt: string }
+  | { type: 'cancelAgent'; taskId: string };

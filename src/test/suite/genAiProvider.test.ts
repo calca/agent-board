@@ -1,7 +1,7 @@
 import * as assert from 'assert';
-import { GenAiProviderRegistry } from '../../copilot/GenAiProviderRegistry';
-import { IGenAiProvider, GenAiProviderScope } from '../../copilot/IGenAiProvider';
-import { buildOptimisationPrefix, YOLO_PREFIX, FLEET_PREFIX } from '../../copilot/copilotCliUtils';
+import { GenAiProviderRegistry } from '../../genai-provider/GenAiProviderRegistry';
+import { GenAiProviderScope, IGenAiProvider } from '../../genai-provider/IGenAiProvider';
+import { buildOptimisationPrefix, FLEET_PREFIX, YOLO_PREFIX } from '../../genai-provider/copilotCliUtils';
 
 /** Minimal stub GenAI provider for testing the registry. */
 function makeGenAiProvider(
