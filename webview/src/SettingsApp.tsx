@@ -49,7 +49,7 @@ export function SettingsApp() {
         </div>
         <SettingsPillNav />
       </header>
-      <main className="settings-content">
+      <main className={`settings-content${state.activeSection === 'logging' ? ' settings-content--fill' : ''}`}>
         <ActiveSection />
       </main>
     </>

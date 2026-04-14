@@ -77,7 +77,7 @@ export function LoggingSection() {
   const displayContent = filteredContent();
 
   return (
-    <div className="section">
+    <div className="section section--logging">
       <div className="section__title">Logging</div>
 
       <div className="cols-2">
