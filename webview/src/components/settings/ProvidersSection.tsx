@@ -1,4 +1,4 @@
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { postSettingsMessage, useSettings } from '../../context/SettingsContext';
 import type { ProviderInfo } from '../../settingsTypes';
 
@@ -122,6 +122,22 @@ export function ProvidersSection() {
   const active = effectiveProviders.filter(p => p.enabled);
   const available = effectiveProviders.filter(p => !p.enabled);
 
+  // Clear overrides once host data confirms the expected state
+  useEffect(() => {
+    setOverrides(prev => {
+      let changed = false;
+      const next = { ...prev };
+      for (const [id, enabled] of Object.entries(next)) {
+        const p = providers.find(pr => pr.id === id);
+        if (p && p.enabled === enabled) {
+          delete next[id];
+          changed = true;
+        }
+      }
+      return changed ? next : prev;
+    });
+  }, [providers]);
+
   const commitSave = useCallback((id: string) => {
     const pending = pendingSave.current.get(id);
     if (!pending) { return; }
@@ -133,9 +149,7 @@ export function ProvidersSection() {
       type: 'save',
       config: { ...state.config, [pending.section]: updated },
     });
-
-    // Clear override — host data will take over on next message
-    setOverrides(prev => { const n = { ...prev }; delete n[id]; return n; });
+    // Override stays until host confirms via providerDiagnostics
   }, [state.config, dispatch]);
 
   function handleEnable(p: ProviderInfo) {
