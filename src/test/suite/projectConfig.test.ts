@@ -1,5 +1,5 @@
 import * as assert from 'assert';
-import { extractGitHubConfig, resolveConfigValue, ProjectConfigData } from '../../config/configTypes';
+import { extractGitHubConfig, ProjectConfigData, resolveConfigValue } from '../../config/configTypes';
 
 suite('ProjectConfig (extractGitHubConfig)', () => {
   test('extracts owner and repo from file config', () => {
