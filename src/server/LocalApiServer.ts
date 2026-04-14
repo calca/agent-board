@@ -47,6 +47,7 @@ export class LocalApiServer {
   private squadActionHandler?: (action: 'startSquad' | 'toggleAutoSquad', agentSlug?: string, genAiProviderId?: string) => Promise<void>;
   private refreshHandler?: () => Promise<void>;
   private sessionToken: string = '';
+  private deviceChangeHandler?: () => void;
 
   constructor(
     private readonly registry: ProviderRegistry,
@@ -70,6 +71,11 @@ export class LocalApiServer {
   /** Register a handler for refresh/sync requests from mobile. */
   setRefreshHandler(fn: () => Promise<void>): void {
     this.refreshHandler = fn;
+  }
+
+  /** Register a callback invoked when the connected device list changes. */
+  onDeviceChange(fn: () => void): void {
+    this.deviceChangeHandler = fn;
   }
 
   /**
@@ -700,7 +706,11 @@ export class LocalApiServer {
       lastAccess: new Date().toISOString(),
       userAgent: typeof req.headers['user-agent'] === 'string' ? req.headers['user-agent'] : undefined,
     };
+    const isNew = !this.connectedDevices.has(ip);
     this.connectedDevices.set(ip, entry);
+    if (isNew && this.deviceChangeHandler) {
+      this.deviceChangeHandler();
+    }
   }
 
   private getMimeType(filePath: string): string {

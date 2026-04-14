@@ -265,6 +265,15 @@ export function activate(context: vscode.ExtensionContext): void {
     } catch { /* logged in refreshTasksCommand */ }
   });
 
+  // Refresh overview and mobile companion panel when a new mobile device connects
+  mobileServer.onDeviceChange(() => {
+    overviewProvider.refresh();
+    const activePanel = KanbanPanel.getInstance();
+    if (activePanel) {
+      void pushMobileStatus(activePanel);
+    }
+  });
+
   // Register @taskai chat participant (gracefully skipped if API unavailable)
   const chatParticipant = registerChatParticipant(context, providerRegistry);
 
@@ -298,7 +307,7 @@ export function activate(context: vscode.ExtensionContext): void {
   providerRegistry.register(beadsProvider);
 
   // Overview sidebar view
-  const overviewProvider = new OverviewTreeProvider(providerRegistry, squadManager);
+  const overviewProvider = new OverviewTreeProvider(providerRegistry, squadManager, mobileServer);
 
   const overviewView = vscode.window.createTreeView('agentBoardOverview', {
     treeDataProvider: overviewProvider,
@@ -557,6 +566,7 @@ export function activate(context: vscode.ExtensionContext): void {
             }
           }
           await pushMobileStatus(panel);
+          overviewProvider.refresh();
           break;
         }
         case 'setMobileTunnelEnabled': {

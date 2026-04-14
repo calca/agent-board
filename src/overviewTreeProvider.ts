@@ -2,6 +2,7 @@ import * as vscode from 'vscode';
 import { HiddenTasksStore } from './config/HiddenTasksStore';
 import { SquadManager } from './genai-provider/SquadManager';
 import { ProviderRegistry } from './providers/ProviderRegistry';
+import { LocalApiServer } from './server/LocalApiServer';
 import { DEFAULT_COLUMN_LABELS } from './types/ColumnId';
 import { KanbanTask } from './types/KanbanTask';
 
@@ -29,6 +30,7 @@ export class OverviewTreeProvider implements vscode.TreeDataProvider<OverviewIte
   constructor(
     private readonly providerRegistry: ProviderRegistry,
     private readonly squadManager?: SquadManager,
+    private readonly mobileServer?: LocalApiServer,
   ) {}
 
   refresh(): void {
@@ -93,6 +95,19 @@ export class OverviewTreeProvider implements vscode.TreeDataProvider<OverviewIte
         'Sessions',
         `${s.activeCount} active`,
         new vscode.ThemeIcon(s.activeCount > 0 ? 'vm-running' : 'vm-outline'),
+      ));
+    }
+
+    // ── Mobile devices ──────────────────────────────────────────────
+    if (this.mobileServer) {
+      const deviceCount = this.mobileServer.getConnectedDevices().length;
+      items.push(new OverviewItem(
+        'Mobile',
+        this.mobileServer.isRunning()
+          ? `${deviceCount} device${deviceCount !== 1 ? 's' : ''}`
+          : 'off',
+        new vscode.ThemeIcon(this.mobileServer.isRunning() ? 'device-mobile' : 'debug-disconnect'),
+        { command: 'agentBoard.openMobileCompanion', title: 'Open Mobile Companion' },
       ));
     }
 
