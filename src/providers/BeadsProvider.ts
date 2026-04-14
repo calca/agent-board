@@ -85,6 +85,7 @@ export class BeadsProvider implements ITaskProvider {
     return [
       { key: 'executable', label: 'Beads executable', type: 'string', placeholder: 'beads', hint: 'Path or command name' },
       { key: 'onlyAssignedToMe', label: 'Only items assigned to me', type: 'boolean' },
+      { key: 'pollInterval', label: 'Poll interval (ms)', type: 'number', placeholder: '30000', hint: 'How often to check for new items' },
     ];
   }
 
@@ -122,11 +123,7 @@ export class BeadsProvider implements ITaskProvider {
       'beadsProvider.executable',
       'beads',
     );
-    this.pollIntervalMs = ProjectConfig.resolve(
-      projectCfg?.pollInterval,
-      'pollInterval',
-      30_000,
-    );
+    this.pollIntervalMs = projectCfg?.beadsProvider?.pollInterval ?? 30_000;
     this.onlyAssignedToMe = projectCfg?.beadsProvider?.onlyAssignedToMe === true;
   }
 

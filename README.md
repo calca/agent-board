@@ -127,7 +127,6 @@ Create a `.agent-board/config.json` file in the workspace root to override any V
     "enabled": true,
     "tasksPath": ".agent-board/tasks"
   },
-  "pollInterval": 15000,
   "logLevel": "DEBUG"
 }
 ```
@@ -175,7 +174,6 @@ All settings can also be configured globally through **File > Preferences > Sett
 | `agentBoard.squad.cooldownMs` | `0` | Delay between consecutive launches (ms) |
 | `agentBoard.notifications.taskActive` | `true` | Notify when task moves to active column |
 | `agentBoard.notifications.taskDone` | `true` | Notify when task moves to done column |
-| `agentBoard.pollInterval` | `30000` | Polling interval (ms) for providers |
 | `agentBoard.logLevel` | `"INFO"` | Log level: `DEBUG`, `INFO`, `WARN`, `ERROR` |
 
 ## Commands

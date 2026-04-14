@@ -109,6 +109,7 @@ export class AzureDevOpsProvider implements ITaskProvider {
       { key: 'organization', label: 'Organization', type: 'string', placeholder: 'https://dev.azure.com/my-org', required: true, hint: 'Organization URL or name' },
       { key: 'project', label: 'Project', type: 'string', placeholder: 'e.g. MyProject', required: true },
       { key: 'onlyAssignedToMe', label: 'Only items assigned to me', type: 'boolean' },
+      { key: 'pollInterval', label: 'Poll interval (ms)', type: 'number', placeholder: '30000', hint: 'How often to check for new work items' },
     ];
   }
 
@@ -165,11 +166,7 @@ export class AzureDevOpsProvider implements ITaskProvider {
       'azureDevOps.project',
       '',
     );
-    this.pollIntervalMs = ProjectConfig.resolve(
-      projectCfg?.pollInterval,
-      'pollInterval',
-      30_000,
-    );
+    this.pollIntervalMs = projectCfg?.azureDevOps?.pollInterval ?? 30_000;
     this.onlyAssignedToMe = projectCfg?.azureDevOps?.onlyAssignedToMe === true;
   }
 

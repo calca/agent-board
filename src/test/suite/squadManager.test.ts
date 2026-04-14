@@ -253,7 +253,6 @@ suite('ProjectConfigData squad/notifications', () => {
       github: { owner: 'calca', repo: 'agent-board' },
       squad: { maxSessions: 8 },
       notifications: { taskActive: true, taskDone: true },
-      pollInterval: 10000,
     };
     assert.strictEqual(cfg.squad.maxSessions, 8);
     assert.strictEqual(cfg.notifications.taskActive, true);

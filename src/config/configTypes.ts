@@ -42,6 +42,8 @@ export interface ProjectConfigData {
     executable?: string;
     /** Only fetch items assigned to the current user. */
     onlyAssignedToMe?: boolean;
+    /** Polling interval in milliseconds (default 30000). */
+    pollInterval?: number;
   };
   azureDevOps?: {
     enabled?: boolean;
@@ -51,6 +53,8 @@ export interface ProjectConfigData {
     project?: string;
     /** Only fetch work items assigned to the current user. */
     onlyAssignedToMe?: boolean;
+    /** Polling interval in milliseconds (default 30000). */
+    pollInterval?: number;
   };
   /**
    * Git worktree settings.
@@ -126,7 +130,6 @@ export interface ProjectConfigData {
      */
     tasksPath?: string;
   };
-  pollInterval?: number;
   logLevel?: string;
   logging?: {
     /** Minimum log level written to file: trace | debug | info | warn | error (default "info"). */

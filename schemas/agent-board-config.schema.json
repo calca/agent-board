@@ -82,6 +82,12 @@
           "type": "boolean",
           "default": false,
           "description": "Only fetch items assigned to the current user."
+        },
+        "pollInterval": {
+          "type": "number",
+          "minimum": 5000,
+          "default": 30000,
+          "description": "Polling interval in milliseconds for checking new items."
         }
       },
       "additionalProperties": false
@@ -107,6 +113,12 @@
           "type": "boolean",
           "default": false,
           "description": "Only fetch work items assigned to the current user."
+        },
+        "pollInterval": {
+          "type": "number",
+          "minimum": 5000,
+          "default": 30000,
+          "description": "Polling interval in milliseconds for checking new work items."
         }
       },
       "additionalProperties": false
@@ -254,11 +266,7 @@
       },
       "additionalProperties": false
     },
-    "pollInterval": {
-      "type": "number",
-      "minimum": 5000,
-      "description": "Polling interval in milliseconds for providers that use polling."
-    },
+
     "logLevel": {
       "type": "string",
       "enum": ["DEBUG", "INFO", "WARN", "ERROR"],

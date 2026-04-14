@@ -207,12 +207,6 @@
           ],
           "description": "Ordered list of Kanban column identifiers. Overridable in .agent-board/config.json."
         },
-        "agentBoard.pollInterval": {
-          "type": "number",
-          "default": 30000,
-          "minimum": 5000,
-          "description": "Polling interval in milliseconds for providers that use polling (e.g. Beads). Overridable in .agent-board/config.json."
-        },
         "agentBoard.copilotModel": {
           "type": "string",
           "default": "",
