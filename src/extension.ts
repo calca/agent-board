@@ -941,7 +941,8 @@ export function activate(context: vscode.ExtensionContext): void {
             sessionStateManager.markMerged(msg.sessionId);
 
             // Refresh tasks to update the UI
-            vscode.commands.executeCommand('agentBoard.refreshTasks');
+            refresh();
+            await sendTasksToPanel(panel, providerRegistry, genAiRegistry, squadManager, sessionStateManager);
           } catch (err) {
             const errMsg = err instanceof Error ? err.message : String(err);
             logger.error('mergeWorktree failed:', errMsg);
@@ -1073,7 +1074,8 @@ export function activate(context: vscode.ExtensionContext): void {
             sessionStateManager.clearWorktree(msg.sessionId);
             panel.postMessage({ type: 'deleteWorktreeResult', sessionId: msg.sessionId, success: true });
             vscode.window.showInformationMessage('Worktree eliminato.');
-            vscode.commands.executeCommand('agentBoard.refreshTasks');
+            refresh();
+            await sendTasksToPanel(panel, providerRegistry, genAiRegistry, squadManager, sessionStateManager);
           } catch (err) {
             const errMsg = err instanceof Error ? err.message : String(err);
             logger.error('deleteWorktree failed:', errMsg);
