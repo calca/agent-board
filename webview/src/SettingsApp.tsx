@@ -1,7 +1,6 @@
 import { KanbanSection } from './components/settings/KanbanSection';
 import { LoggingSection } from './components/settings/LoggingSection';
 import { McpSection } from './components/settings/McpSection';
-import { MiscSection } from './components/settings/MiscSection';
 import { NotificationsSection } from './components/settings/NotificationsSection';
 import { ProvidersSection } from './components/settings/ProvidersSection';
 import { SettingsPillNav } from './components/settings/SettingsPillNav';
@@ -19,7 +18,6 @@ const SECTION_COMPONENTS: Record<SectionId, () => JSX.Element> = {
   mcp: McpSection,
   notifications: NotificationsSection,
   logging: LoggingSection,
-  misc: MiscSection,
 };
 
 export function SettingsApp() {
