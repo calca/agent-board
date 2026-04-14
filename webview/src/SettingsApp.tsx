@@ -1,3 +1,4 @@
+import { AboutSection } from './components/settings/AboutSection';
 import { KanbanSection } from './components/settings/KanbanSection';
 import { LoggingSection } from './components/settings/LoggingSection';
 import { McpSection } from './components/settings/McpSection';
@@ -18,6 +19,7 @@ const SECTION_COMPONENTS: Record<SectionId, () => React.JSX.Element> = {
   mcp: McpSection,
   notifications: NotificationsSection,
   logging: LoggingSection,
+  about: AboutSection,
 };
 
 export function SettingsApp() {

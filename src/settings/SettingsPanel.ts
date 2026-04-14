@@ -56,7 +56,10 @@ export class SettingsPanel {
       {
         enableScripts: true,
         retainContextWhenHidden: false,
-        localResourceRoots: [vscode.Uri.joinPath(extensionUri, 'dist')],
+        localResourceRoots: [
+          vscode.Uri.joinPath(extensionUri, 'dist'),
+          vscode.Uri.joinPath(extensionUri, 'media'),
+        ],
       },
     );
     SettingsPanel.instance = new SettingsPanel(panel, extensionUri, registry);
@@ -198,6 +201,9 @@ export class SettingsPanel {
     const styleUri = webview.asWebviewUri(
       vscode.Uri.joinPath(this.extensionUri, 'dist', 'settings.css'),
     );
+    const mascotUri = webview.asWebviewUri(
+      vscode.Uri.joinPath(this.extensionUri, 'media', 'mascotte.png'),
+    );
 
     return /* html */ `<!DOCTYPE html>
 <html lang="en">
@@ -214,7 +220,7 @@ export class SettingsPanel {
   <title>Agent Board - Settings</title>
 </head>
 <body>
-  <div id="root"></div>
+  <div id="root" data-mascot-uri="${mascotUri}"></div>
   <script nonce="${nonce}" src="${scriptUri}?v=${cacheBust}"></script>
 </body>
 </html>`;

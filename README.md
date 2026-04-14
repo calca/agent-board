@@ -1,6 +1,8 @@
 <!-- markdownlint-disable MD033 MD041 MD024 -->
 <div align="center">
 
+<img src="media/mascotte.png" alt="Agent Board mascot" width="140" />
+
 # Agent Board
 
 **Manage tasks. Run agents. Ship faster.**
@@ -47,7 +49,7 @@ Each agent session gets its own worktree and branch — no conflicts, no stashin
 
 ### Pull Requests
 
-When a task completes, a **"Create Pull Request"** button appears on the card. One click creates a GitHub PR (via REST API) or opens the Azure DevOps PR creation page — with branch and changed-file list pre-filled. Auto-squad can also create PRs automatically.
+When a task completes, a **"Create Pull Request"** button appears on the card. One click creates a GitHub PR (via `gh` CLI) or opens the Azure DevOps PR creation page — with branch and changed-file list pre-filled. Auto-squad can also create PRs automatically.
 
 ### `@taskai` Chat Participant
 
@@ -59,7 +61,7 @@ Stdio-based Model Context Protocol server for full CRUD: `list_tasks`, `get_task
 
 ### Extensible Providers
 
-GitHub Issues (SSO, no PAT), Azure DevOps, Markdown files, local JSON, Beads CLI — or register your own via the extension API. GenAI providers: VS Code Chat, Cloud (vscode.lm), Copilot CLI, LM API with tool-calling, Ollama, Mistral — or register your own.
+GitHub Issues (via `gh` CLI), Azure DevOps, Markdown files, local JSON, Beads CLI — or register your own via the extension API. GenAI providers: VS Code Chat, Cloud (vscode.lm), Copilot CLI, LM API with tool-calling, Ollama, Mistral — or register your own.
 
 ---
 
@@ -211,7 +213,7 @@ All settings can also be configured globally through **File > Preferences > Sett
 
 ### GitHub Issues
 
-Authentication uses VS Code's built-in GitHub SSO — sign in via the **Accounts** menu (no PAT required). Repository coordinates (`owner`/`repo`) are auto-detected from `gh repo view`, VS Code settings, or `.agent-board/config.json`. Supports Kanban label sync (`kanban:todo`, `kanban:in-progress`, etc.), conditional polling with ETag, and avatar caching.
+Requires the [GitHub CLI](https://cli.github.com) (`gh`). Install via `brew install gh` and authenticate with `gh auth login`. Repository coordinates (`owner`/`repo`) are auto-detected from `gh repo view`, VS Code settings, or `.agent-board/config.json`. Supports Kanban label sync (`kanban:todo`, `kanban:in-progress`, etc.), conditional polling with ETag, and avatar caching.
 
 ### Azure DevOps
 
@@ -491,7 +493,7 @@ echo '{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"create_tas
 Extension Host (Node.js)
 ├── ProjectConfig           → .agent-board/config.json (per-project overrides)
 ├── ProviderRegistry        → ITaskProvider implementations
-│   ├── GitHubProvider         (REST API + VSCode SSO + ETag cache)
+│   ├── GitHubProvider         (gh CLI + Kanban labels + polling + avatar cache)
 │   ├── AzureDevOpsProvider    (az boards CLI)
 │   ├── MarkdownProvider       (FileSystemWatcher, .md inbox → done)
 │   ├── JsonProvider           (FileSystemWatcher, default: .agent-board/tasks)
@@ -512,10 +514,9 @@ Extension Host (Node.js)
 ├── KanbanPanel             → WebView (vanilla TS/HTML/CSS)
 │   ├── MessageBridge          (typed postMessage)
 │   └── theme.css              (--vscode-* variables)
-├── SettingsPanel           → WebView for config editing + provider diagnostics
+├── SettingsPanel           → React WebView (config editing, provider diagnostics, About)
 ├── ChatParticipant         → @taskai (/plan, /implement, /test, /commit)
-├── PullRequestManager      → GitHub PR creation + state tracking
-├── GitHubIssueManager      → Kanban labels, polling, avatar cache, summary comments
+├── PullRequestManager      → GitHub PR creation (gh CLI) + state tracking
 ├── AgentTools              → read_file, write_file, run_command, get_diff, list_files
 ├── MCP Server              → stdio JSON-RPC 2.0 (5 tools)
 ├── formatError             → standardised error utility
@@ -529,7 +530,7 @@ npm run compile              # esbuild bundle
 npm run compile:tsc          # TypeScript type-check
 npm run watch                # Watch mode
 npm run lint                 # ESLint
-npm test                     # Mocha TDD (270+ tests across 17 suites)
+npm test                     # Mocha TDD (318 tests across 18 suites)
 npm run mcp                  # Start MCP server
 node esbuild.config.js       # Bundle for distribution
 ```
