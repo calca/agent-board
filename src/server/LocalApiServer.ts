@@ -646,14 +646,6 @@ export class LocalApiServer {
     }
 
     try {
-      const status = typeof body.status === 'string' ? body.status : undefined;
-
-      if (!status) {
-        res.writeHead(400, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({ error: 'Missing required field: status' }));
-        return;
-      }
-
       // Resolve provider and task from composite id
       const resolved = await this.registry.resolveTask(taskId);
 
@@ -665,14 +657,22 @@ export class LocalApiServer {
 
       const { provider, task } = resolved;
 
-      // Update task status
-      await provider.updateTask({
-        ...task,
-        status: status as ColumnId,
-      });
+      // Apply all provided fields
+      const updated = { ...task };
+      if (typeof body.status === 'string') { updated.status = body.status as ColumnId; }
+      if (typeof body.title === 'string') { updated.title = body.title; }
+      if (typeof body.body === 'string') { updated.body = body.body; }
+      if (typeof body.assignee === 'string') { updated.assignee = body.assignee || undefined; }
+      if (typeof body.labels === 'string') {
+        updated.labels = body.labels.split(',').map((l: string) => l.trim()).filter(Boolean);
+      } else if (Array.isArray(body.labels)) {
+        updated.labels = body.labels;
+      }
+
+      await provider.updateTask(updated);
 
       res.writeHead(200, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({ success: true, taskId, status }));
+      res.end(JSON.stringify({ success: true, taskId }));
     } catch (error) {
       this.logger.error(`Error updating task: ${error}`);
       res.writeHead(500, { 'Content-Type': 'application/json' });

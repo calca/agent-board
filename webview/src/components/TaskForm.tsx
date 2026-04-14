@@ -1,6 +1,6 @@
 import React, { useCallback, useRef } from 'react';
 import { useBoard } from '../context/BoardContext';
-import { postMessage } from '../hooks/useVsCodeApi';
+import { transport } from '../transport';
 import { MarkdownBody } from './MarkdownBody';
 import { MarkdownEditor, type MDXEditorMethods } from './MarkdownEditor';
 
@@ -22,7 +22,7 @@ export function TaskForm() {
 
   const handleDelete = useCallback(() => {
     if (task) {
-      postMessage({ type: 'deleteTask', taskId: task.id, providerId: task.providerId });
+      transport.send({ type: 'deleteTask', taskId: task.id, providerId: task.providerId });
       dispatch({ type: 'CLOSE_TASK_FORM' });
       dispatch({ type: 'CLOSE_FULL_VIEW' });
     }
@@ -47,12 +47,12 @@ export function TaskForm() {
 
     if (task) {
       if (isRemote) {
-        postMessage({ type: 'editTask', taskId: task.id, providerId: task.providerId, data: { title: task.title, body: task.body, status, labels: task.labels.join(', '), assignee: task.assignee ?? '' } });
+        transport.send({ type: 'editTask', taskId: task.id, providerId: task.providerId, data: { title: task.title, body: task.body, status, labels: task.labels.join(', '), assignee: task.assignee ?? '' } });
       } else {
-        postMessage({ type: 'editTask', taskId: task.id, providerId: task.providerId, data: { title, body, status, labels, assignee } });
+        transport.send({ type: 'editTask', taskId: task.id, providerId: task.providerId, data: { title, body, status, labels, assignee } });
       }
     } else {
-      postMessage({ type: 'saveTask', data: { title, body, status, labels, assignee } });
+      transport.send({ type: 'saveTask', data: { title, body, status, labels, assignee } });
     }
     dispatch({ type: 'CLOSE_TASK_FORM' });
   }, [task, cols, isRemote, dispatch]);

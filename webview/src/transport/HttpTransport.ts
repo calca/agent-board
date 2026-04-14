@@ -52,6 +52,10 @@ function toHttpRequest(msg: any): HttpMapping {
       return { method: 'POST', url: `${base}/agent/start`, body: { taskId: msg.taskId, provider: msg.provider, prompt: msg.prompt } };
     case 'cancelAgent':
       return { method: 'POST', url: `${base}/agent/cancel`, body: { taskId: msg.taskId } };
+    case 'editTask':
+      return { method: 'PATCH', url: `${base}/tasks/${msg.taskId}`, body: msg.data };
+    case 'deleteTask':
+      return { method: 'DELETE', url: `${base}/tasks/${msg.taskId}` };
     default:
       return { method: 'POST', url: `${base}/messages`, body: msg };
   }

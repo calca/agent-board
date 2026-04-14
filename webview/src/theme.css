@@ -4245,6 +4245,11 @@ body.vscode-high-contrast .md-editor-container {
     -webkit-overflow-scrolling: touch;
   }
 
+  /* ── Hide edit button in FullView on mobile ── */
+  .fv-panel__header-btn[title="Edit"] {
+    display: none;
+  }
+
   /* ── Actions: larger touch targets ── */
   .fv-action-btn {
     min-height: 44px;
