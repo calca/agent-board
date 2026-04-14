@@ -1,4 +1,5 @@
 import { KanbanTask } from '../types/KanbanTask';
+import { Logger } from '../utils/logger';
 import { ITaskProvider } from './ITaskProvider';
 import { DuplicateProviderError } from './ProviderError';
 
@@ -25,6 +26,7 @@ export class ProviderRegistry {
       throw new DuplicateProviderError(provider.id);
     }
     this.providers.set(provider.id, provider);
+    Logger.getInstance().debug('ProviderRegistry: registered provider %s', provider.id);
   }
 
   /** Remove a provider by id. Returns `true` if it existed. */
@@ -33,6 +35,7 @@ export class ProviderRegistry {
     if (provider) {
       provider.dispose();
       this.providers.delete(id);
+      Logger.getInstance().debug('ProviderRegistry: unregistered provider %s', id);
       return true;
     }
     return false;

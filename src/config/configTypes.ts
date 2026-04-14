@@ -153,6 +153,12 @@ export interface ProjectConfigData {
   };
   pollInterval?: number;
   logLevel?: string;
+  logging?: {
+    /** Minimum log level written to file: trace | debug | info | warn | error (default "info"). */
+    level?: string;
+    /** Number of days to retain daily log files (default 7). */
+    retentionDays?: number;
+  };
 }
 
 /**

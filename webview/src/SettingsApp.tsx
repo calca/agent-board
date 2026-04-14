@@ -1,11 +1,12 @@
-import { SettingsPillNav } from './components/settings/SettingsPillNav';
-import { ProvidersSection } from './components/settings/ProvidersSection';
 import { KanbanSection } from './components/settings/KanbanSection';
-import { WorktreeSection } from './components/settings/WorktreeSection';
-import { SquadSection } from './components/settings/SquadSection';
+import { LoggingSection } from './components/settings/LoggingSection';
 import { McpSection } from './components/settings/McpSection';
-import { NotificationsSection } from './components/settings/NotificationsSection';
 import { MiscSection } from './components/settings/MiscSection';
+import { NotificationsSection } from './components/settings/NotificationsSection';
+import { ProvidersSection } from './components/settings/ProvidersSection';
+import { SettingsPillNav } from './components/settings/SettingsPillNav';
+import { SquadSection } from './components/settings/SquadSection';
+import { WorktreeSection } from './components/settings/WorktreeSection';
 import { useSettings } from './context/SettingsContext';
 import { useSettingsMessages } from './hooks/useSettingsMessages';
 import type { SectionId } from './settingsTypes';
@@ -17,6 +18,7 @@ const SECTION_COMPONENTS: Record<SectionId, () => JSX.Element> = {
   squad: SquadSection,
   mcp: McpSection,
   notifications: NotificationsSection,
+  logging: LoggingSection,
   misc: MiscSection,
 };
 

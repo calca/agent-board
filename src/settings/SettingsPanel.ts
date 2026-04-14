@@ -2,6 +2,7 @@ import * as vscode from 'vscode';
 import { ProjectConfig, ProjectConfigData } from '../config/ProjectConfig';
 import { ProviderDiagnosticSeverity } from '../providers/ITaskProvider';
 import { ProviderRegistry } from '../providers/ProviderRegistry';
+import { Logger } from '../utils/logger';
 
 /** Serialisable provider info sent to the webview. */
 interface ProviderInfo {
@@ -65,7 +66,7 @@ export class SettingsPanel {
     this.disposables = [];
   }
 
-  private handleMessage(msg: { type: string; config?: ProjectConfigData }): void {
+  private handleMessage(msg: { type: string; config?: ProjectConfigData; fileName?: string }): void {
     switch (msg.type) {
       case 'ready':
         this.sendConfig();
@@ -75,6 +76,7 @@ export class SettingsPanel {
         if (msg.config) {
           ProjectConfig.updateConfig(msg.config);
           vscode.window.showInformationMessage('Agent Board settings saved.');
+          Logger.getInstance().refreshLevel();
           void this.sendProviderDiagnostics();
         }
         break;
@@ -85,12 +87,32 @@ export class SettingsPanel {
       case 'refreshDiagnostics':
         void this.sendProviderDiagnostics();
         break;
+      case 'requestLogs':
+        this.sendLogContent(msg.fileName);
+        break;
+      case 'requestLogFiles':
+        this.sendLogFiles();
+        break;
     }
   }
 
   private sendConfig(): void {
     const config = ProjectConfig.getProjectConfig() ?? {};
     this.panel.webview.postMessage({ type: 'configData', config });
+  }
+
+  private sendLogContent(fileName?: string): void {
+    const logger = Logger.getInstance();
+    const content = fileName
+      ? logger.readLogFile(fileName)
+      : logger.readLogContent();
+    this.panel.webview.postMessage({ type: 'logContent', content });
+  }
+
+  private sendLogFiles(): void {
+    const logger = Logger.getInstance();
+    const files = logger.listLogFiles();
+    this.panel.webview.postMessage({ type: 'logFiles', files });
   }
 
   /** Map provider id → config section key in ProjectConfigData. */

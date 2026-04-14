@@ -1,4 +1,4 @@
-import { useSettings, postSettingsMessage } from '../../context/SettingsContext';
+import { postSettingsMessage, useSettings } from '../../context/SettingsContext';
 import type { ProviderInfo } from '../../settingsTypes';
 
 function escHtml(val: string): string {

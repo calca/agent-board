@@ -41,7 +41,7 @@ import { SettingsPanel } from './settings/SettingsPanel';
 import { TaskTreeItem } from './tasksTreeProvider';
 import { DEFAULT_COLUMN_COLORS, DEFAULT_COLUMN_IDS, DEFAULT_COLUMN_LABELS } from './types/ColumnId';
 import { AgentOption, GenAiProviderOption } from './types/Messages';
-import { Logger } from './utils/logger';
+import { Logger, LogLevel } from './utils/logger';
 
 export function activate(context: vscode.ExtensionContext): void {
   const logger = Logger.getInstance();
@@ -282,6 +282,7 @@ export function activate(context: vscode.ExtensionContext): void {
     vscode.workspace.onDidChangeConfiguration(e => {
       if (e.affectsConfiguration('agentBoard.logLevel')) {
         logger.refreshLevel();
+        logger.info('Log level changed to %s', LogLevel[logger.getLevel()]);
       }
     }),
   );
@@ -1296,7 +1297,8 @@ export function activate(context: vscode.ExtensionContext): void {
 }
 
 export function deactivate(): void {
-  // Nothing to clean up
+  Logger.getInstance().info('Agent Board deactivating');
+  Logger.getInstance().dispose();
 }
 
 // ── Helpers ─────────────────────────────────────────────────────────────────

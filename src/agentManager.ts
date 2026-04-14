@@ -1,6 +1,7 @@
 import * as vscode from 'vscode';
 import { ProviderRegistry } from './providers/ProviderRegistry';
 import { Agent, AgentStatus } from './types';
+import { Logger } from './utils/logger';
 
 export class AgentManager {
   private static readonly STORAGE_KEY = 'agentBoard.agents';
@@ -35,6 +36,7 @@ export class AgentManager {
     };
     this.agents.push(agent);
     this.persist();
+    Logger.getInstance().info('AgentManager: created agent %s (%s)', agent.id, name);
     return agent;
   }
 
@@ -54,6 +56,7 @@ export class AgentManager {
       output: '',
     };
     this.persist();
+    Logger.getInstance().info('AgentManager: started agent %s', id);
     return this.agents[index];
   }
 
@@ -87,6 +90,7 @@ export class AgentManager {
       finishedAt: new Date().toISOString(),
       output,
     };
+    Logger.getInstance().info('AgentManager: completed agent %s', id);
     // Complete the associated task via the owning provider
     if (agent.taskId) {
       this.providerRegistry.resolveTask(agent.taskId).then(resolved => {

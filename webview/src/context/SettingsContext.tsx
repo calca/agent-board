@@ -9,6 +9,10 @@ export interface SettingsState {
   providers: ProviderInfo[];
   activeSection: SectionId;
   dirty: boolean;
+  /** Log content received from the host. */
+  logContent: string;
+  /** Available log file names (most recent first). */
+  logFiles: string[];
 }
 
 const initialState: SettingsState = {
@@ -17,6 +21,8 @@ const initialState: SettingsState = {
   providers: [],
   activeSection: 'providers',
   dirty: false,
+  logContent: '',
+  logFiles: [],
 };
 
 // ── Actions ────────────────────────────────────────────────────
@@ -26,7 +32,9 @@ type Action =
   | { type: 'setProviders'; providers: ProviderInfo[] }
   | { type: 'setActiveSection'; section: SectionId }
   | { type: 'updateConfig'; patch: SettingsConfig }
-  | { type: 'markClean' };
+  | { type: 'markClean' }
+  | { type: 'setLogContent'; content: string }
+  | { type: 'setLogFiles'; files: string[] };
 
 function reducer(state: SettingsState, action: Action): SettingsState {
   switch (action.type) {
@@ -40,6 +48,10 @@ function reducer(state: SettingsState, action: Action): SettingsState {
       return { ...state, config: { ...state.config, ...action.patch }, dirty: true };
     case 'markClean':
       return { ...state, dirty: false };
+    case 'setLogContent':
+      return { ...state, logContent: action.content };
+    case 'setLogFiles':
+      return { ...state, logFiles: action.files };
     default:
       return state;
   }

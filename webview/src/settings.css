@@ -151,3 +151,53 @@ input[type="checkbox"] { width: 16px; height: 16px; accent-color: var(--vscode-b
   display: flex; flex-direction: column; align-items: center;
   justify-content: center; height: 100vh; gap: 12px; opacity: 0.5;
 }
+
+/* ── Log console ───────────────────────────────────────────── */
+.log-console-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 8px;
+  flex-wrap: wrap;
+}
+.log-console-header__left,
+.log-console-header__right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.log-file-select {
+  max-width: 180px;
+}
+.log-filter-input {
+  max-width: 200px !important;
+  font-size: 0.82em !important;
+}
+.log-auto-scroll {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.8em;
+  opacity: 0.8;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.log-auto-scroll input { width: 14px; height: 14px; }
+.btn--sm { padding: 4px 10px; font-size: 0.78em; }
+.log-console {
+  background: var(--vscode-terminal-background, var(--vscode-editor-background));
+  color: var(--vscode-terminal-foreground, var(--vscode-editor-foreground));
+  border: 1px solid var(--vscode-panel-border);
+  border-radius: 4px;
+  padding: 10px 12px;
+  font-family: var(--vscode-editor-font-family, 'Menlo', 'Consolas', monospace);
+  font-size: 0.78em;
+  line-height: 1.45;
+  overflow: auto;
+  max-height: 420px;
+  min-height: 200px;
+  white-space: pre-wrap;
+  word-break: break-all;
+  margin: 0;
+}

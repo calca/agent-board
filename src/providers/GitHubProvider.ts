@@ -3,6 +3,7 @@ import { ProjectConfig } from '../config/ProjectConfig';
 import { GitHubIssueManager } from '../github/GitHubIssueManager';
 import { ColumnId } from '../types/ColumnId';
 import { KanbanTask } from '../types/KanbanTask';
+import { Logger } from '../utils/logger';
 import { execShell, execShellOk } from './execShell';
 import { ITaskProvider, ProviderConfigField, ProviderDiagnostic } from './ITaskProvider';
 
@@ -120,8 +121,10 @@ export class GitHubProvider implements ITaskProvider {
       this._onDidChangeTasks.fire(this.cache);
       return;
     }
+    Logger.getInstance().debug('GitHubProvider: refreshing %s/%s', this.owner, this.repo);
     this.cacheTimestamp = 0;
     const tasks = await this.fetchTasks();
+    Logger.getInstance().info('GitHubProvider: fetched %d issue(s)', tasks.length);
     this._onDidChangeTasks.fire(tasks);
   }
 

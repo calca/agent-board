@@ -2,6 +2,7 @@ import * as vscode from 'vscode';
 import { DEFAULT_COLUMN_COLORS, DEFAULT_COLUMN_IDS, DEFAULT_COLUMN_LABELS } from '../types/ColumnId';
 import { KanbanTask } from '../types/KanbanTask';
 import { AgentOption, Column, FileChangeInfo, GenAiProviderOption, HostToWebView, SquadStatus, WebViewToHost } from '../types/Messages';
+import { Logger } from '../utils/logger';
 
 /**
  * Manages the Kanban board WebView panel.
@@ -68,6 +69,7 @@ export class KanbanPanel {
     );
 
     KanbanPanel.instance = new KanbanPanel(panel, extensionUri, extensionMode);
+    Logger.getInstance().info('KanbanPanel: created');
     return KanbanPanel.instance;
   }
 

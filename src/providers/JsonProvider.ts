@@ -4,6 +4,7 @@ import * as vscode from 'vscode';
 import { ProjectConfig } from '../config/ProjectConfig';
 import { ColumnId, DEFAULT_COLUMN_IDS } from '../types/ColumnId';
 import { KanbanTask } from '../types/KanbanTask';
+import { Logger } from '../utils/logger';
 import { ITaskProvider, ProviderConfigField, ProviderDiagnostic } from './ITaskProvider';
 
 /** Shape of a single task file on disk. */
@@ -83,6 +84,7 @@ export class JsonProvider implements ITaskProvider {
     this.tasks.push(task);
     await this.writeTaskFile(task);
     this._onDidChangeTasks.fire(this.tasks);
+    Logger.getInstance().info('JsonProvider: created task %s', task.id);
     return task;
   }
 
@@ -92,6 +94,7 @@ export class JsonProvider implements ITaskProvider {
     const [task] = this.tasks.splice(index, 1);
     this.deleteTaskFile(task);
     this._onDidChangeTasks.fire(this.tasks);
+    Logger.getInstance().info('JsonProvider: deleted task %s', compositeId);
     return true;
   }
 
@@ -111,6 +114,7 @@ export class JsonProvider implements ITaskProvider {
     this.loaded = false;
     this.setupWatcher();
     await this.loadFromDisk();
+    Logger.getInstance().debug('JsonProvider: refreshed, %d task(s)', this.tasks.length);
     this._onDidChangeTasks.fire(this.tasks);
   }
 

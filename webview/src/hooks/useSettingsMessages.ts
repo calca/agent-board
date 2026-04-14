@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { useSettings, postSettingsMessage } from '../context/SettingsContext';
+import { postSettingsMessage, useSettings } from '../context/SettingsContext';
 
 /**
  * Listens for host → settings webview messages and dispatches
@@ -19,6 +19,12 @@ export function useSettingsMessages(): void {
           break;
         case 'providerDiagnostics':
           dispatch({ type: 'setProviders', providers: msg.providers ?? [] });
+          break;
+        case 'logContent':
+          dispatch({ type: 'setLogContent', content: msg.content ?? '' });
+          break;
+        case 'logFiles':
+          dispatch({ type: 'setLogFiles', files: msg.files ?? [] });
           break;
       }
     }

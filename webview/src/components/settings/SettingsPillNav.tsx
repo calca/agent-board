@@ -1,5 +1,5 @@
-import { SECTIONS, type SectionId } from '../../settingsTypes';
 import { useSettings } from '../../context/SettingsContext';
+import { SECTIONS, type SectionId } from '../../settingsTypes';
 
 export function SettingsPillNav() {
   const { state, dispatch } = useSettings();
