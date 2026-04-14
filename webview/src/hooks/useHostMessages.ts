@@ -325,6 +325,12 @@ export function useHostMessages(): void {
           editableProviderIds: ['json'],
           genAiProviders: latestProviders.map(p => ({ id: p.id, displayName: p.displayName, icon: '' })),
         });
+
+        // Sync mergedSessions from copilotSession.merged (same logic as VS Code handler)
+        imp.current.mergedSessions.clear();
+        for (const t of tasks as unknown as KanbanTask[]) {
+          if (t.copilotSession?.merged) { imp.current.mergedSessions.add(t.id); }
+        }
       } catch {
         if (!disposed) {
           dispatch({ type: 'SET_CONNECTION_ERROR', error: true });

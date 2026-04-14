@@ -542,6 +542,7 @@ export class LocalApiServer {
       // Convert KanbanTask to simplified Task format for mobile
       const simplifiedTasks = visibleTasks.map(t => ({
         id: t.id,
+        nativeId: t.nativeId,
         title: t.title,
         body: t.body,
         status: t.status,
@@ -552,6 +553,19 @@ export class LocalApiServer {
         createdAt: t.createdAt?.toISOString?.() ?? undefined,
         agent: t.agent,
         meta: t.meta,
+        copilotSession: t.copilotSession ? {
+          state: t.copilotSession.state,
+          providerId: t.copilotSession.providerId,
+          startedAt: t.copilotSession.startedAt,
+          finishedAt: t.copilotSession.finishedAt,
+          prUrl: t.copilotSession.prUrl,
+          prNumber: t.copilotSession.prNumber,
+          prState: t.copilotSession.prState,
+          changedFiles: t.copilotSession.changedFiles,
+          worktreePath: t.copilotSession.worktreePath,
+          errorMessage: t.copilotSession.errorMessage,
+          merged: t.copilotSession.merged,
+        } : undefined,
       }));
 
       res.writeHead(200, { 'Content-Type': 'application/json' });
