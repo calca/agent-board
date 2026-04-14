@@ -250,9 +250,82 @@ export class LocalApiServer {
     if (token === this.sessionToken) {
       return true;
     }
-    res.writeHead(401, { 'Content-Type': 'text/plain' });
-    res.end('Unauthorized — invalid or missing session token');
+    res.writeHead(401, { 'Content-Type': 'text/html; charset=utf-8' });
+    res.end(this.generate401Html());
     return false;
+  }
+
+  private generate401Html(): string {
+    return /* html */ `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Agent Board — Access Denied</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #1e1e1e;
+      color: #cccccc;
+    }
+    .card {
+      text-align: center;
+      max-width: 420px;
+      padding: 48px 32px;
+      border: 1px solid #3c3c3c;
+      border-radius: 16px;
+      background: #252526;
+    }
+    .icon {
+      font-size: 56px;
+      margin-bottom: 16px;
+      opacity: 0.8;
+    }
+    h1 {
+      font-size: 1.4rem;
+      font-weight: 700;
+      margin-bottom: 12px;
+      color: #f48771;
+    }
+    p {
+      line-height: 1.6;
+      opacity: 0.85;
+      margin-bottom: 8px;
+    }
+    .hint {
+      margin-top: 24px;
+      padding: 12px 16px;
+      border-radius: 8px;
+      background: #1a1a2e;
+      border: 1px solid #3c3c3c;
+      font-size: 0.85rem;
+      opacity: 0.7;
+    }
+    .hint code {
+      font-family: 'SF Mono', Menlo, Monaco, 'Courier New', monospace;
+      background: #333;
+      padding: 2px 6px;
+      border-radius: 4px;
+    }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="icon">\uD83D\uDD12</div>
+    <h1>Access Denied</h1>
+    <p>This session token is missing or no longer valid.</p>
+    <p>Each time the server starts, a new token is generated.</p>
+    <div class="hint">
+      Scan the QR code from <code>Agent Board Mobile</code> in VS Code to get a fresh link.
+    </div>
+  </div>
+</body>
+</html>`;
   }
 
   private async handleGetRoot(res: http.ServerResponse): Promise<void> {
