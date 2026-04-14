@@ -314,6 +314,9 @@ export function activate(context: vscode.ExtensionContext): void {
     showCollapseAll: false,
   });
 
+  // Ensure the overview refreshes once providers are ready
+  setTimeout(() => overviewProvider.refresh(), 2000);
+
   // Keep old providers for internal use (agents, task store)
   const agentsProvider = new AgentsTreeProvider(agentManager);
 
