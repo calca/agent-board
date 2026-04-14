@@ -4,7 +4,6 @@ import * as path from 'path';
 import * as vscode from 'vscode';
 import { ProjectConfig } from '../config/ProjectConfig';
 import { DiffWatcher } from '../diff/DiffWatcher';
-import { GitHubIssueManager } from '../github/GitHubIssueManager';
 import { ProviderRegistry } from '../providers/ProviderRegistry';
 import { StreamRegistry } from '../stream/StreamController';
 import { KanbanTask } from '../types/KanbanTask';
@@ -54,7 +53,6 @@ export class CopilotLauncher {
     private readonly context: vscode.ExtensionContext,
     private readonly genAiRegistry: GenAiProviderRegistry,
     private agents: AgentInfo[] = [],
-    private readonly ghIssueManager?: GitHubIssueManager,
     private sessionStateManager?: SessionStateManager,
   ) {}
 

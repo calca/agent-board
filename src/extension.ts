@@ -24,7 +24,6 @@ import { LmApiGenAiProvider } from './genai-provider/providers/LmApiGenAiProvide
 import { SessionStateManager } from './genai-provider/SessionStateManager';
 import { SquadManager } from './genai-provider/SquadManager';
 import { removeWorktree } from './genai-provider/WorktreeManager';
-import { GitHubIssueManager } from './github/GitHubIssueManager';
 import { PullRequestManager } from './github/PullRequestManager';
 import { KanbanPanel } from './kanban/KanbanPanel';
 import { OverviewTreeProvider } from './overviewTreeProvider';
@@ -124,18 +123,17 @@ export function activate(context: vscode.ExtensionContext): void {
     panel.postMessage({ type: 'mobileStatus', ...(await getMobileStatusPayload()) });
   };
 
-  // GitHub service layer (labels, polling, avatars, comments)
-  const ghIssueManager = new GitHubIssueManager();
+  // GitHub service layer
   const prManager = new PullRequestManager();
-  context.subscriptions.push(ghIssueManager);
 
   // Register the content provider for agent-board-git: URIs (used by diff views)
   context.subscriptions.push(
     vscode.workspace.registerTextDocumentContentProvider(GIT_REF_SCHEME, new GitRefContentProvider()),
   );
 
-  // Register the GitHub provider (uses VSCode SSO + .agent-board/config.json)
-  const githubProvider = new GitHubProvider(context, ghIssueManager);
+  // Register the GitHub provider (uses gh CLI)
+  const githubProvider = new GitHubProvider(context);
+  context.subscriptions.push(githubProvider);
   providerRegistry.register(githubProvider);
 
   // ── GenAI provider infrastructure ─────────────────────────────────────
@@ -168,7 +166,7 @@ export function activate(context: vscode.ExtensionContext): void {
   // and restore interrupted sessions before the kanban panel opens.
   const sessionStateManager = new SessionStateManager(context);
 
-  const copilotLauncher = new CopilotLauncher(providerRegistry, context, genAiRegistry, [], ghIssueManager, sessionStateManager);
+  const copilotLauncher = new CopilotLauncher(providerRegistry, context, genAiRegistry, [], sessionStateManager);
   const modelSelector = new ModelSelector(context, genAiRegistry);
   const squadManager = new SquadManager(
     providerRegistry,
@@ -1125,13 +1123,13 @@ export function activate(context: vscode.ExtensionContext): void {
     // GitHub 30-second polling: detect remote changes, refresh board
     const isGH = await isGitHubRepository();
     if (isGH) {
-      void ghIssueManager.ensureKanbanLabels();
-      ghIssueManager.startPolling(30_000);
-      const ghPollSub = ghIssueManager.onDidDetectRemoteChange(async () => {
+      void githubProvider.ensureKanbanLabels();
+      githubProvider.startPolling(30_000);
+      const ghPollSub = githubProvider.onDidDetectRemoteChange(async () => {
         await sendTasksToPanel(panel, providerRegistry, genAiRegistry, squadManager, sessionStateManager);
       });
       panel.onDispose(() => {
-        ghIssueManager.stopPolling();
+        githubProvider.stopPolling();
         ghPollSub.dispose();
       });
     }

@@ -1,6 +1,5 @@
 import * as vscode from 'vscode';
 import { ProjectConfig } from '../config/ProjectConfig';
-import { GitHubIssueManager } from '../github/GitHubIssueManager';
 import { ColumnId } from '../types/ColumnId';
 import { KanbanTask } from '../types/KanbanTask';
 import { Logger } from '../utils/logger';
@@ -19,17 +18,26 @@ export interface GitHubIssue {
   [key: string]: unknown;
 }
 
+// ── Kanban column → GitHub label mapping ──────────────────────────────────────
+
+const KANBAN_LABELS: Record<string, string> = {
+  todo:       'kanban:todo',
+  inprogress: 'kanban:in-progress',
+  review:     'kanban:review',
+  done:       'kanban:done',
+};
+
+const ALL_KANBAN_LABELS = Object.values(KANBAN_LABELS);
+
 /**
  * Task provider backed by GitHub Issues.
  *
- * Uses the **`gh` CLI** when available (preferred), falling back to the
- * GitHub REST API via VS Code's built-in SSO token.
+ * Requires the **`gh` CLI** (https://cli.github.com).
  *
  * Repository coordinates (`owner`/`repo`) are resolved in order:
  *   1. `.agent-board/config.json`
  *   2. VS Code settings (`agentBoard.github.owner` / `.repo`)
  *   3. `gh repo view --json owner,name` (auto-detect from working directory)
- *   4. For `owner` only: the GitHub SSO account login name
  */
 export class GitHubProvider implements ITaskProvider {
   readonly id = 'github';
@@ -39,21 +47,25 @@ export class GitHubProvider implements ITaskProvider {
   private readonly _onDidChangeTasks = new vscode.EventEmitter<KanbanTask[]>();
   readonly onDidChangeTasks = this._onDidChangeTasks.event;
 
+  /** Fires when remote changes are detected during polling. */
+  private readonly _onDidDetectRemoteChange = new vscode.EventEmitter<void>();
+  readonly onDidDetectRemoteChange: vscode.Event<void> = this._onDidDetectRemoteChange.event;
+
   private cache: KanbanTask[] = [];
   private cacheTimestamp = 0;
 
   private owner = '';
   private repo = '';
-  private token = '';
-  private perPage = 100;
   private cacheTtlMs = 60_000;
   private onlyAssignedToMe = false;
   /** `true` after we confirmed `gh` is available. */
   private ghCliAvailable: boolean | undefined;
+  private pollTimer: ReturnType<typeof setInterval> | undefined;
+  private lastEtag: string | undefined;
+  private readonly avatarCache = new Map<string, string>();
 
   constructor(
     private readonly context: vscode.ExtensionContext,
-    private readonly issueManager?: GitHubIssueManager,
   ) {
     this.readConfig();
   }
@@ -79,30 +91,16 @@ export class GitHubProvider implements ITaskProvider {
     const state = task.status === 'done' ? 'closed' : 'open';
 
     const syncRemote = async () => {
-      if (await this.hasGhCli()) {
-        const repoSlug = `${this.owner}/${this.repo}`;
-        if (state === 'closed') {
-          await this.execGh(['issue', 'close', task.nativeId, '--repo', repoSlug]);
-        } else {
-          await this.execGh(['issue', 'reopen', task.nativeId, '--repo', repoSlug]);
-        }
+      const repoSlug = `${this.owner}/${this.repo}`;
+      if (state === 'closed') {
+        await this.execGh(['issue', 'close', task.nativeId, '--repo', repoSlug]);
       } else {
-        await this.ensureToken();
-        if (!this.token) { return; }
-        const res = await fetch(
-          `https://api.github.com/repos/${this.owner}/${this.repo}/issues/${task.nativeId}`,
-          {
-            method: 'PATCH',
-            headers: this.apiHeaders(),
-            body: JSON.stringify({ state }),
-          },
-        );
-        if (!res.ok) { return; }
+        await this.execGh(['issue', 'reopen', task.nativeId, '--repo', repoSlug]);
       }
 
       // Sync kanban column label
-      if (!isNaN(issueNumber) && this.issueManager) {
-        await this.issueManager.syncIssueColumn(issueNumber, task.status).catch(() => { /* non-fatal */ });
+      if (!isNaN(issueNumber)) {
+        await this.syncIssueColumn(issueNumber, task.status);
       }
     };
     void syncRemote().catch(() => { /* non-fatal: local status already updated */ });
@@ -130,7 +128,9 @@ export class GitHubProvider implements ITaskProvider {
 
 
   dispose(): void {
+    this.stopPolling();
     this._onDidChangeTasks.dispose();
+    this._onDidDetectRemoteChange.dispose();
   }
 
   // ── Configuration & diagnostics ──────────────────────────────────────
@@ -145,40 +145,24 @@ export class GitHubProvider implements ITaskProvider {
 
   async diagnose(): Promise<ProviderDiagnostic> {
     this.readConfig();
-    // Check gh CLI first (preferred)
-    if (await this.hasGhCli()) {
-      // Verify auth status
-      const authOk = await execShellOk('gh', ['auth', 'status'], { timeout: 5_000 });
-      if (!authOk) {
-        return { severity: 'error', message: 'gh CLI found but not authenticated. Run: gh auth login' };
-      }
-
-      // Auto-detect repo if not configured
-      if (!this.owner || !this.repo) {
-        const detected = await this.detectRepoFromGh();
-        if (!detected) {
-          return { severity: 'warning', message: 'gh CLI authenticated, but owner/repo not configured and not inside a GitHub repo.' };
-        }
-      }
-
-      return { severity: 'ok', message: `gh CLI → ${this.owner}/${this.repo}` };
+    const ghOk = await this.hasGhCli();
+    if (!ghOk) {
+      return { severity: 'error', message: 'GitHub CLI (gh) not found. Install: brew install gh — https://cli.github.com' };
     }
 
-    // Fallback: VS Code SSO
-    try {
-      const session = await vscode.authentication.getSession('github', ['repo'], { createIfNone: false });
-      if (!session) {
-        return { severity: 'error', message: 'Neither gh CLI nor GitHub SSO available. Install gh (https://cli.github.com) or sign in via Accounts.' };
-      }
-    } catch {
-      return { severity: 'error', message: 'Neither gh CLI nor GitHub SSO available.' };
+    const authOk = await execShellOk('gh', ['auth', 'status'], { timeout: 5_000 });
+    if (!authOk) {
+      return { severity: 'error', message: 'gh CLI found but not authenticated. Run: gh auth login' };
     }
 
     if (!this.owner || !this.repo) {
-      return { severity: 'error', message: 'Owner / Repository not configured. Install gh CLI for auto-detection.' };
+      const detected = await this.detectRepoFromGh();
+      if (!detected) {
+        return { severity: 'warning', message: 'gh CLI authenticated, but owner/repo not configured and not inside a GitHub repo.' };
+      }
     }
 
-    return { severity: 'ok', message: `SSO → ${this.owner}/${this.repo}` };
+    return { severity: 'ok', message: `gh CLI → ${this.owner}/${this.repo}` };
   }
 
   isEnabled(): boolean {
@@ -234,7 +218,7 @@ export class GitHubProvider implements ITaskProvider {
     return false;
   }
 
-  // ── private — config & token ────────────────────────────────────────
+  // ── private — config ─────────────────────────────────────────────
 
   private readConfig(): void {
     const ghCfg = ProjectConfig.getGitHubConfig();
@@ -244,17 +228,6 @@ export class GitHubProvider implements ITaskProvider {
     this.onlyAssignedToMe = ProjectConfig.getProjectConfig()?.github?.onlyAssignedToMe === true;
   }
 
-  /** Obtain a token via VS Code's built-in GitHub SSO (REST API fallback). */
-  private async ensureToken(): Promise<void> {
-    if (this.token) { return; }
-    try {
-      const session = await vscode.authentication.getSession('github', ['repo'], { createIfNone: false });
-      if (session) { this.token = session.accessToken; }
-    } catch {
-      // SSO not available
-    }
-  }
-
   private isCacheValid(): boolean {
     return this.cache.length > 0 && Date.now() - this.cacheTimestamp < this.cacheTtlMs;
   }
@@ -262,12 +235,7 @@ export class GitHubProvider implements ITaskProvider {
   // ── private — fetching ──────────────────────────────────────────────
 
   private async fetchTasks(): Promise<KanbanTask[]> {
-    // Try gh CLI first
-    if (await this.hasGhCli()) {
-      return this.fetchTasksViaGh();
-    }
-    // Fallback to REST API
-    return this.fetchTasksViaApi();
+    return this.fetchTasksViaGh();
   }
 
   /** Fetch issues using `gh issue list --json …`. */
@@ -317,60 +285,6 @@ export class GitHubProvider implements ITaskProvider {
     }
   }
 
-  /** Fetch issues via REST API (SSO token). */
-  private async fetchTasksViaApi(): Promise<KanbanTask[]> {
-    await this.ensureToken();
-
-    if (!this.owner && this.token) {
-      await this.fillOwnerFromSso();
-    }
-
-    if (!this.token || !this.owner || !this.repo) { return []; }
-
-    const issues: GitHubIssue[] = [];
-    let page = 1;
-    const maxPages = 5;
-
-    while (page <= maxPages) {
-      let url = `https://api.github.com/repos/${this.owner}/${this.repo}/issues?state=all&per_page=${this.perPage}&page=${page}`;
-      if (this.onlyAssignedToMe && this.token) {
-        // GitHub REST API: filter by current authenticated user's login
-        try {
-          const userRes = await fetch('https://api.github.com/user', { headers: this.apiHeaders() });
-          if (userRes.ok) {
-            const user = await userRes.json() as { login: string };
-            url += `&assignee=${encodeURIComponent(user.login)}`;
-          }
-        } catch { /* ignore */ }
-      }
-      const res = await fetch(url, { headers: this.apiHeaders() });
-      if (!res.ok) {
-        throw new Error(`GitHub API error: ${res.status} ${res.statusText}`);
-      }
-      const batch = (await res.json()) as GitHubIssue[];
-      issues.push(...batch);
-      if (batch.length < this.perPage) { break; }
-      page++;
-    }
-
-    // Preserve local status overrides — but respect remote terminal states (done)
-    const oldStatusMap = new Map(this.cache.map(t => [t.id, t.status]));
-    const newCache = issues.map(issue => this.mapIssue(issue));
-    for (const t of newCache) {
-      if (t.status === 'done') { continue; } // remote terminal state wins
-      const oldStatus = oldStatusMap.get(t.id);
-      if (oldStatus && oldStatus !== t.status) { t.status = oldStatus; }
-    }
-    // Keep locally-tracked tasks beyond 'todo' that disappeared from remote
-    const newIds2 = new Set(newCache.map(t => t.id));
-    for (const old of this.cache) {
-      if (!newIds2.has(old.id) && old.status !== 'todo') { newCache.push(old); }
-    }
-    this.cache = newCache;
-    this.cacheTimestamp = Date.now();
-    return this.cache;
-  }
-
   // ── private — mapping ───────────────────────────────────────────────
 
   /** Map a `gh` CLI JSON issue to a `KanbanTask`. */
@@ -379,8 +293,8 @@ export class GitHubProvider implements ITaskProvider {
       typeof l === 'string' ? l : l.name,
     );
     const assignee = issue.assignees?.[0]?.login;
-    if (assignee && this.issueManager) {
-      void this.issueManager.getAvatarUrl(assignee);
+    if (assignee) {
+      void this.fetchAvatarUrl(assignee);
     }
     return {
       id: `${this.id}:${issue.number}`,
@@ -394,31 +308,6 @@ export class GitHubProvider implements ITaskProvider {
       providerId: this.id,
       createdAt: issue.createdAt ? new Date(issue.createdAt) : undefined,
       meta: { ...(issue as unknown as Record<string, unknown>), remoteStatus: issue.state === 'OPEN' || issue.state === 'open' ? 'Open' : 'Closed' },
-    };
-  }
-
-  /** Map a REST API issue to a `KanbanTask`. */
-  private mapIssue(issue: GitHubIssue): KanbanTask {
-    const assigneeLogin = issue.assignee?.login;
-    if (assigneeLogin && this.issueManager) {
-      void this.issueManager.getAvatarUrl(assigneeLogin);
-    }
-    return {
-      id: `${this.id}:${issue.number}`,
-      nativeId: String(issue.number),
-      title: issue.title,
-      body: issue.body ?? '',
-      status: this.mapStatus(issue.state, issue.labels),
-      labels: issue.labels.map(l => l.name),
-      assignee: assigneeLogin,
-      url: issue.html_url,
-      providerId: this.id,
-      createdAt: new Date(issue.created_at),
-      meta: {
-        ...(issue as unknown as Record<string, unknown>),
-        avatarUrl: (issue as unknown as { assignee?: { avatar_url?: string } }).assignee?.avatar_url,
-        remoteStatus: issue.state === 'open' ? 'Open' : 'Closed',
-      },
     };
   }
 
@@ -440,24 +329,116 @@ export class GitHubProvider implements ITaskProvider {
     return 'todo';
   }
 
-  /** Derive `owner` from the GitHub SSO session account name. */
-  private async fillOwnerFromSso(): Promise<void> {
-    try {
-      const session = await vscode.authentication.getSession('github', ['repo'], { createIfNone: false });
-      if (session?.account?.label) {
-        this.owner = session.account.label;
-      }
-    } catch {
-      // SSO not available
+  // ── Kanban label management ─────────────────────────────────────────
+
+  /**
+   * Ensure the required kanban labels exist on the repo (idempotent).
+   * Call once during extension activation when GitHub provider is active.
+   */
+  async ensureKanbanLabels(): Promise<void> {
+    if (!this.owner || !this.repo) { return; }
+    const repoSlug = `${this.owner}/${this.repo}`;
+    const colors: Record<string, string> = {
+      'kanban:todo':        'bfd4f2',
+      'kanban:in-progress': 'f9d0c4',
+      'kanban:review':      'e4e669',
+      'kanban:done':        'c2e0c6',
+    };
+    await Promise.all(
+      Object.entries(colors).map(async ([name, color]) => {
+        try {
+          await this.execGh([
+            'label', 'create', name,
+            '--color', color,
+            '--repo', repoSlug,
+            '--force',
+          ]);
+        } catch {
+          // label may already exist — non-fatal
+        }
+      }),
+    );
+  }
+
+  /**
+   * Sync the kanban label on an issue when a card is moved.
+   * Removes all existing `kanban:*` labels and adds the one for `columnId`.
+   */
+  private async syncIssueColumn(issueNumber: number, columnId: ColumnId): Promise<void> {
+    if (!this.owner || !this.repo) { return; }
+    const repoSlug = `${this.owner}/${this.repo}`;
+    const issueStr = String(issueNumber);
+
+    // Remove old kanban labels
+    await Promise.all(
+      ALL_KANBAN_LABELS.map(label =>
+        this.execGh(['issue', 'edit', issueStr, '--repo', repoSlug, '--remove-label', label])
+          .catch(() => { /* ignore if label not present */ }),
+      ),
+    );
+
+    const newLabel = KANBAN_LABELS[columnId];
+    if (!newLabel) { return; }
+
+    await this.execGh(['issue', 'edit', issueStr, '--repo', repoSlug, '--add-label', newLabel])
+      .catch(() => { /* non-fatal */ });
+  }
+
+  // ── Polling ─────────────────────────────────────────────────────────
+
+  /**
+   * Start polling for remote issue changes every `intervalMs` milliseconds.
+   * Fires `onDidDetectRemoteChange` when changes are detected.
+   */
+  startPolling(intervalMs = 30_000): void {
+    this.stopPolling();
+    this.pollTimer = setInterval(() => void this.poll(), intervalMs);
+    void this.poll();
+  }
+
+  stopPolling(): void {
+    if (this.pollTimer) {
+      clearInterval(this.pollTimer);
+      this.pollTimer = undefined;
     }
   }
 
-  private apiHeaders(): Record<string, string> {
-    return {
-      'Accept': 'application/vnd.github+json',
-      'Authorization': `Bearer ${this.token}`,
-      'X-GitHub-Api-Version': '2022-11-28',
-    };
+  private async poll(): Promise<void> {
+    if (!this.owner || !this.repo) { return; }
+    try {
+      const stdout = await this.execGh([
+        'api', `repos/${this.owner}/${this.repo}/issues`,
+        '-X', 'GET',
+        '-f', 'per_page=1',
+        '-f', 'state=all',
+        '--include',
+      ]);
+      // Extract ETag from response headers (first lines before JSON body)
+      const etagMatch = stdout.match(/etag:\s*"?([^"\r\n]+)"?/i);
+      const etag = etagMatch?.[1];
+      if (etag && etag !== this.lastEtag) {
+        if (this.lastEtag !== undefined) {
+          // Only fire after the first poll (skip initial)
+          this._onDidDetectRemoteChange.fire();
+        }
+        this.lastEtag = etag;
+      }
+    } catch {
+      // poll error — non-fatal
+    }
+  }
+
+  // ── Avatar ──────────────────────────────────────────────────────────
+
+  private async fetchAvatarUrl(login: string): Promise<void> {
+    if (this.avatarCache.has(login)) { return; }
+    try {
+      const stdout = await this.execGh(['api', `users/${login}`, '-q', '.avatar_url']);
+      const url = stdout.trim();
+      if (url) { this.avatarCache.set(login, url); }
+    } catch {
+      // non-fatal
+    }
   }
 }
 

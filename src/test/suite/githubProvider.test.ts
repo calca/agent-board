@@ -8,10 +8,14 @@ import type { GitHubIssue } from '../../providers/GitHubProvider';
 
 /** Pure re-implementation of GitHubProvider.mapStatus for unit testing. */
 function mapStatus(state: string, labels: Array<{ name: string }>): string {
-  if (state === 'closed') {
+  if (state === 'closed' || state === 'CLOSED') {
     return 'done';
   }
   const labelNames = labels.map(l => l.name.toLowerCase());
+  if (labelNames.includes('kanban:done'))        { return 'done'; }
+  if (labelNames.includes('kanban:review'))      { return 'review'; }
+  if (labelNames.includes('kanban:in-progress')) { return 'inprogress'; }
+  if (labelNames.includes('kanban:todo'))        { return 'todo'; }
   if (labelNames.includes('in progress') || labelNames.includes('wip')) {
     return 'inprogress';
   }
@@ -95,6 +99,40 @@ suite('GitHubProvider (mapping logic)', () => {
       mapStatus('open', [{ name: 'Needs Review' }]),
       'review',
     );
+  });
+
+  // ── kanban:* labels ────────────────────────────────────────────────
+
+  test('kanban:in-progress label maps to inprogress', () => {
+    assert.strictEqual(
+      mapStatus('open', [{ name: 'kanban:in-progress' }]),
+      'inprogress',
+    );
+  });
+
+  test('kanban:review label maps to review', () => {
+    assert.strictEqual(
+      mapStatus('open', [{ name: 'kanban:review' }]),
+      'review',
+    );
+  });
+
+  test('kanban:done label maps to done', () => {
+    assert.strictEqual(
+      mapStatus('open', [{ name: 'kanban:done' }]),
+      'done',
+    );
+  });
+
+  test('kanban:todo label maps to todo', () => {
+    assert.strictEqual(
+      mapStatus('open', [{ name: 'kanban:todo' }]),
+      'todo',
+    );
+  });
+
+  test('CLOSED state maps to done', () => {
+    assert.strictEqual(mapStatus('CLOSED', []), 'done');
   });
 
   // ── mapIssue ───────────────────────────────────────────────────────
