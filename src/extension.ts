@@ -656,9 +656,11 @@ export function activate(context: vscode.ExtensionContext): void {
           const configuredCols = ProjectConfig.getProjectConfig()?.kanban?.columns ?? [...DEFAULT_COLUMN_IDS];
           const doneColId = configuredCols[configuredCols.length - 1] ?? 'done';
           const allProviders = providerRegistry.getAll().filter(p => p.isEnabled());
-          const allTasks = (await Promise.allSettled(allProviders.map(p => p.getTasks())))
-            .filter((r): r is PromiseFulfilledResult<import('./types/KanbanTask').KanbanTask[]> => r.status === 'fulfilled')
-            .flatMap(r => r.value);
+          const allTasks = HiddenTasksStore.filterVisible(
+            (await Promise.allSettled(allProviders.map(p => p.getTasks())))
+              .filter((r): r is PromiseFulfilledResult<import('./types/KanbanTask').KanbanTask[]> => r.status === 'fulfilled')
+              .flatMap(r => r.value),
+          );
           const doneTasks = allTasks.filter(t => t.status === doneColId);
           const today = new Date().toISOString().slice(0, 10);
           const lines = [
