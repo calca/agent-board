@@ -1,3 +1,4 @@
+import { useRef } from 'react';
 import { useBoard } from '../context/BoardContext';
 import { getVsCodeApi, postMessage } from '../hooks/useVsCodeApi';
 
@@ -10,6 +11,7 @@ export function Toolbar() {
     mobileServerRunning, mobileDevices, mobileRefreshing,
   } = state;
   const isVsCodeWebview = Boolean(getVsCodeApi());
+  const squadSheetRef = useRef<HTMLDialogElement>(null);
 
   const filtered = getFilteredCount();
   const squadProviders = genAiProviders.filter(p => !p.disabled && p.id !== 'chat');
@@ -163,6 +165,95 @@ export function Toolbar() {
           <button className="toolbar__btn toolbar__btn--secondary" onClick={() => dispatch({ type: 'OPEN_TASK_FORM' })}>+ New Issue</button>
         </div>
       </div>
+
+      {/* ── Mobile: summary bar (hidden on desktop via CSS) ──────────── */}
+      <div className="toolbar__mobile-summary">
+        {squadStatus.activeCount > 0 ? (
+          <span className="toolbar__mobile-running">
+            <span className="toolbar__mobile-running-dot" />
+            {squadStatus.activeCount} running
+          </span>
+        ) : (
+          <span className="toolbar__mobile-idle">No agents running</span>
+        )}
+        <div className="toolbar__mobile-actions">
+          <button
+            className={`toolbar__btn toolbar__btn--secondary toolbar__btn--sync${syncing ? ' toolbar__btn--syncing' : ''}`}
+            onClick={() => { dispatch({ type: 'START_SYNC' }); if (isVsCodeWebview) { postMessage({ type: 'refreshRequest' }); } else { (window as any).__agentBoardMobileSync?.(); } }}
+          >
+            {syncing ? '↻' : '↻'}
+          </button>
+          <button
+            className="toolbar__btn toolbar__btn--primary toolbar__mobile-squad-btn"
+            onClick={() => squadSheetRef.current?.showModal()}
+          >
+            ▶ Squad
+          </button>
+        </div>
+      </div>
+
+      {/* ── Mobile: bottom sheet for squad launch ──────────────────── */}
+      <dialog
+        ref={squadSheetRef}
+        className="squad-sheet"
+        onClick={e => { if (e.target === squadSheetRef.current) { squadSheetRef.current?.close(); } }}
+      >
+        <div className="squad-sheet__content">
+          <div className="squad-sheet__handle" />
+          <h3 className="squad-sheet__title">Launch Squad</h3>
+
+          <label className="squad-sheet__label">Provider</label>
+          <select
+            className="squad-sheet__select"
+            value={selectedSquadProviderId || (squadProviders[0]?.id ?? '')}
+            onChange={e => dispatch({ type: 'SET_SELECTED_SQUAD_PROVIDER', id: e.target.value })}
+          >
+            {squadProviders.length === 0
+              ? <option value="">No providers</option>
+              : squadProviders.map(p => <option key={p.id} value={p.id}>{p.displayName}</option>)}
+          </select>
+
+          <label className="squad-sheet__label">Agent</label>
+          <select
+            className="squad-sheet__select"
+            disabled={!squadAgents.some(a => a.canSquad)}
+            value={selectedAgentSlug || (squadAgents[0]?.slug ?? '')}
+            onChange={e => dispatch({ type: 'SET_SELECTED_AGENT', slug: e.target.value })}
+          >
+            {squadAgents.length === 0
+              ? <option value="">No agents</option>
+              : squadAgents.map(a => <option key={a.slug} value={a.slug}>{a.displayName}</option>)}
+          </select>
+
+          <div className="squad-sheet__toggle-row">
+            <span>Auto-Squad</span>
+            <button
+              className={`mcp-toggle mcp-toggle--toolbar${squadStatus.autoSquadEnabled ? ' mcp-toggle--on' : ''}`}
+              onClick={() => squadAction('toggleAutoSquad')}
+            >
+              <span className="mcp-toggle__dot" />
+              <span className="mcp-toggle__label">{squadStatus.autoSquadEnabled ? 'On' : 'Off'}</span>
+            </button>
+          </div>
+
+          {squadStatus.activeCount > 0 && (
+            <div className="squad-sheet__status">
+              <span className="toolbar__mobile-running-dot" />
+              {squadStatus.activeCount}/{squadStatus.maxSessions} sessions active
+            </div>
+          )}
+
+          <button
+            className="toolbar__btn toolbar__btn--primary squad-sheet__start"
+            disabled={squadStatus.activeCount >= squadStatus.maxSessions}
+            onClick={() => { squadAction('startSquad'); squadSheetRef.current?.close(); }}
+          >
+            ▶ Start Squad
+          </button>
+
+          <button className="squad-sheet__close" onClick={() => squadSheetRef.current?.close()}>Cancel</button>
+        </div>
+      </dialog>
     </header>
   );
 }
