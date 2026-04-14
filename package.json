@@ -33,6 +33,12 @@
         }
       ]
     },
+    "viewsWelcome": [
+      {
+        "view": "agentBoardOverview",
+        "contents": "Loading task providers…\n\nIf this takes too long, check your [settings](command:agentBoard.openSettings)."
+      }
+    ],
     "commands": [
       {
         "command": "agentBoard.addTask",
