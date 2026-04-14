@@ -6,7 +6,7 @@ suite('StreamController', () => {
     const sc = new StreamController();
     sc.append('line1\nline2');
     assert.strictEqual(sc.lineCount, 2);
-    assert.strictEqual(sc.exportLog(), 'line1\nline2');
+    assert.match(sc.exportLog(), /^\[\d{2}:\d{2}:\d{2}\] line1\n\[\d{2}:\d{2}:\d{2}\] line2$/);
     sc.dispose();
   });
 
@@ -14,7 +14,7 @@ suite('StreamController', () => {
     const sc = new StreamController();
     sc.append('a');
     sc.append('b');
-    assert.strictEqual(sc.exportLog(), 'a\nb');
+    assert.match(sc.exportLog(), /^\[\d{2}:\d{2}:\d{2}\] a\n\[\d{2}:\d{2}:\d{2}\] b$/);
     sc.dispose();
   });
 
@@ -23,7 +23,7 @@ suite('StreamController', () => {
     sc.append('1\n2\n3\n4');
     // 4 lines but max is 3, oldest ("1") trimmed
     assert.strictEqual(sc.lineCount, 3);
-    assert.strictEqual(sc.exportLog(), '2\n3\n4');
+    assert.match(sc.exportLog(), /^\[\d{2}:\d{2}:\d{2}\] 2\n\[\d{2}:\d{2}:\d{2}\] 3\n\[\d{2}:\d{2}:\d{2}\] 4$/);
     sc.dispose();
   });
 
