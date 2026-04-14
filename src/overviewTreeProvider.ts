@@ -58,7 +58,7 @@ export class OverviewTreeProvider implements vscode.TreeDataProvider<OverviewIte
     items.push(new OverviewItem(
       'Open Kanban Board',
       '',
-      new vscode.ThemeIcon('layout', new vscode.ThemeColor('terminal.ansiCyan')),
+      new vscode.ThemeIcon('layout'),
       { command: 'agentBoard.openKanban', title: 'Open Kanban Board' },
     ));
 
@@ -66,7 +66,7 @@ export class OverviewTreeProvider implements vscode.TreeDataProvider<OverviewIte
     items.push(new OverviewItem(
       'Tasks',
       `${allTasks.length} total`,
-      new vscode.ThemeIcon('pulse', new vscode.ThemeColor('foreground')),
+      new vscode.ThemeIcon('pulse'),
     ));
 
     // ── Column counts ─────────────────────────────────────────────────
@@ -76,23 +76,13 @@ export class OverviewTreeProvider implements vscode.TreeDataProvider<OverviewIte
       review: 'eye',
       done: 'check',
     };
-    const colorMap: Record<string, string> = {
-      todo: 'charts.foreground',
-      inprogress: 'terminal.ansiBlue',
-      review: 'terminal.ansiYellow',
-      done: 'terminal.ansiGreen',
-    };
-
     for (const [colId, colLabel] of Object.entries(DEFAULT_COLUMN_LABELS)) {
       const count = counts.get(colId) ?? 0;
       const bar = count > 0 ? '\u2588'.repeat(Math.min(count, 12)) : '\u2500';
       items.push(new OverviewItem(
         `  ${colLabel}`,
         `${bar}  ${count}`,
-        new vscode.ThemeIcon(
-          iconMap[colId] ?? 'circle-large-outline',
-          new vscode.ThemeColor(colorMap[colId] ?? 'foreground'),
-        ),
+        new vscode.ThemeIcon(iconMap[colId] ?? 'circle-large-outline'),
       ));
     }
 
@@ -102,12 +92,7 @@ export class OverviewTreeProvider implements vscode.TreeDataProvider<OverviewIte
       items.push(new OverviewItem(
         'Sessions',
         `${s.activeCount} active`,
-        new vscode.ThemeIcon(
-          s.activeCount > 0 ? 'vm-running' : 'vm-outline',
-          s.activeCount > 0
-            ? new vscode.ThemeColor('terminal.ansiGreen')
-            : new vscode.ThemeColor('foreground'),
-        ),
+        new vscode.ThemeIcon(s.activeCount > 0 ? 'vm-running' : 'vm-outline'),
       ));
     }
 
@@ -115,7 +100,7 @@ export class OverviewTreeProvider implements vscode.TreeDataProvider<OverviewIte
     items.push(new OverviewItem(
       'Settings',
       '',
-      new vscode.ThemeIcon('gear', new vscode.ThemeColor('foreground')),
+      new vscode.ThemeIcon('gear'),
       { command: 'agentBoard.openSettings', title: 'Open Settings' },
     ));
 
