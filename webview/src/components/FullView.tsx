@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useRef } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useBoard } from '../context/BoardContext';
 import { DataProvider } from '../DataProvider';
 import { useAgentChat } from '../hooks/useAgentChat';
@@ -15,6 +15,7 @@ export function FullView() {
   const { state, dispatch, imp } = useBoard();
   const { fullViewTaskId, tasks, columns, genAiProviders, logExpanded, repoIsGit, repoIsGitHub, repoIsAzureDevOps, workspaceRoot } = state;
   const logScrollRef = useRef<HTMLDivElement>(null);
+  const [mobileTab, setMobileTab] = useState<'details' | 'session' | 'files' | 'actions' | 'chat'>('details');
 
   const task = tasks.find(t => t.id === fullViewTaskId);
 
@@ -74,10 +75,34 @@ export function FullView() {
 
       {isInterrupted && <div className="session-interrupted-banner">↯ Session interrupted. Log is read-only.</div>}
 
+      {/* Mobile tab selector — hidden on desktop via CSS */}
+      <div className="fv-tab-selector" role="tablist">
+        {([
+          { id: 'details' as const, label: '☰ Details', badge: undefined as number | undefined },
+          { id: 'session' as const, label: '⊙ Session', badge: undefined as number | undefined },
+          { id: 'files' as const, label: '⊞ Files', badge: files.length || undefined },
+          { id: 'actions' as const, label: '▸ Actions', badge: undefined as number | undefined },
+          { id: 'chat' as const, label: '≡ Chat', badge: chatMessages.length || logs.length || undefined },
+        ]).map(tab => (
+          <button
+            key={tab.id}
+            role="tab"
+            aria-selected={mobileTab === tab.id}
+            className={`fv-tab-selector__tab${mobileTab === tab.id ? ' fv-tab-selector__tab--active' : ''}`}
+            onClick={() => setMobileTab(tab.id)}
+          >
+            <span className="fv-tab-selector__label">{tab.label}</span>
+            {tab.badge !== undefined && tab.badge > 0 && (
+              <span className="fv-tab-selector__badge">{tab.badge}</span>
+            )}
+          </button>
+        ))}
+      </div>
+
       {/* ROW 1 */}
-      <div className={`fv-row fv-row--top${logExpanded ? ' fv-row--hidden' : ''}`}>
+      <div className={`fv-row fv-row--top${logExpanded ? ' fv-row--hidden' : ''}${mobileTab === 'chat' ? ' fv-row--hidden-mobile' : ''}`}>
         {/* Task Details */}
-        <div className="fv-col">
+        <div className="fv-col" data-fv-tab="details" data-active={mobileTab === 'details' || undefined}>
           <div className="fv-panel fv-panel--fill" style={statusCol?.color ? { background: `${statusCol.color}0D` } : undefined}>
             <div className="fv-panel__header fv-panel__header--static" style={statusCol?.color ? { background: `${statusCol.color}1A` } : undefined}>
               <span className="fv-panel__header-text">☰ Issue Details</span>
@@ -90,7 +115,7 @@ export function FullView() {
         </div>
 
         {/* Session */}
-        <div className="fv-col">
+        <div className="fv-col" data-fv-tab="session" data-active={mobileTab === 'session' || undefined}>
           <div className="fv-panel fv-panel--fill" style={{ background: '#9b59b60D' }}>
             <div className="fv-panel__header fv-panel__header--static" style={{ background: '#9b59b61A' }}>
               <span className="fv-panel__header-text">⊙ Session</span>
@@ -104,7 +129,7 @@ export function FullView() {
         </div>
 
         {/* Files */}
-        <div className="fv-col">
+        <div className="fv-col" data-fv-tab="files" data-active={mobileTab === 'files' || undefined}>
           <div className="fv-panel fv-panel--fill" style={{ background: '#3498db0D' }}>
             <div className="fv-panel__header fv-panel__header--static" style={{ background: '#3498db1A' }}>
               <span className="fv-panel__header-text">⊞ Files</span>
@@ -131,7 +156,7 @@ export function FullView() {
         </div>
 
         {/* Actions */}
-        <div className="fv-col">
+        <div className="fv-col" data-fv-tab="actions" data-active={mobileTab === 'actions' || undefined}>
           <div className="fv-panel fv-panel--fill" style={{ background: '#e67e220D' }}>
             <div className="fv-panel__header fv-panel__header--static" style={{ background: '#e67e221A' }}>
               <span className="fv-panel__header-text">
@@ -159,7 +184,7 @@ export function FullView() {
       </div>
 
       {/* ROW 2: Agent Chat Log */}
-      <div className={`fv-row fv-row--bottom${logExpanded ? ' fv-row--expanded' : ''}`}>
+      <div className={`fv-row fv-row--bottom${logExpanded ? ' fv-row--expanded' : ''}`} data-fv-tab="chat" data-active={mobileTab === 'chat' || undefined}>
         <div className="fv-panel fv-panel--fill" style={{ background: '#8888880D' }}>
           <div className="fv-panel__header fv-panel__header--static fv-log-panel-header" style={{ background: '#8888881A' }}>
             <span className="fv-panel__header-text">≡ Agent Chat</span>

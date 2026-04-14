@@ -2414,6 +2414,11 @@ html, body, #root {
 
 /* ── Full View ─────────────────────────────────────────────────────── */
 
+/* Mobile tab selector — hidden on desktop */
+.fv-tab-selector {
+  display: none;
+}
+
 .full-view {
   position: fixed;
   top: 0;
@@ -3846,6 +3851,240 @@ body.vscode-high-contrast .md-editor-container {
     width: calc(100vw - 20px);
     max-height: 70vh;
     margin: auto;
+  }
+
+  /* ── FullView mobile: tab-based single-panel layout ─────────────── */
+
+  .full-view {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    height: 100dvh; /* dynamic viewport for mobile browsers */
+  }
+
+  /* ── Topbar compact ── */
+  .fv-topbar {
+    padding: 8px 12px;
+    gap: 8px;
+  }
+
+  .fv-topbar__back {
+    min-width: 44px;
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.3em;
+  }
+
+  .fv-topbar__title {
+    font-size: 1em;
+  }
+
+  .fv-topbar__meta {
+    font-size: 0.75em;
+  }
+
+  /* ── Tab selector bar ── */
+  .fv-tab-selector {
+    display: flex;
+    gap: 2px;
+    padding: 6px 8px;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    border-bottom: 1px solid var(--vscode-panel-border);
+    background: var(--vscode-sideBar-background);
+    flex-shrink: 0;
+    scrollbar-width: none;
+  }
+
+  .fv-tab-selector::-webkit-scrollbar {
+    display: none;
+  }
+
+  .fv-tab-selector__tab {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 8px 12px;
+    border: none;
+    border-radius: 20px;
+    background: transparent;
+    color: var(--vscode-descriptionForeground, #888);
+    font-size: 0.82em;
+    font-weight: 500;
+    white-space: nowrap;
+    cursor: pointer;
+    transition: background 0.15s, color 0.15s;
+    min-height: 40px;
+    -webkit-tap-highlight-color: transparent;
+    flex-shrink: 0;
+  }
+
+  .fv-tab-selector__tab:hover {
+    background: var(--vscode-toolbar-hoverBackground);
+  }
+
+  .fv-tab-selector__tab--active {
+    background: var(--vscode-button-background);
+    color: var(--vscode-button-foreground, #fff);
+  }
+
+  .fv-tab-selector__tab--active:hover {
+    background: var(--vscode-button-hoverBackground);
+    opacity: 0.9;
+  }
+
+  .fv-tab-selector__badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 18px;
+    height: 18px;
+    border-radius: 9px;
+    font-size: 0.78em;
+    font-weight: 600;
+    background: rgba(255, 255, 255, 0.15);
+  }
+
+  .fv-tab-selector__tab:not(.fv-tab-selector__tab--active) .fv-tab-selector__badge {
+    background: var(--vscode-input-background);
+  }
+
+  /* ── Top row: vertical, show one panel at a time ── */
+  .fv-row--top {
+    flex-direction: column;
+    flex: 1;
+    gap: 0;
+    padding: 0;
+    overflow: hidden;
+  }
+
+  .fv-row--top .fv-col {
+    display: none;
+    flex: 1;
+    min-height: 0;
+    overflow: hidden;
+  }
+
+  .fv-row--top .fv-col[data-active] {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+  }
+
+  /* When chat tab is active, hide the entire top row on mobile */
+  .fv-row--hidden-mobile {
+    /* Desktop: no effect; overridden here for mobile */
+  }
+
+  /* ── Bottom row (chat): hidden unless chat tab is active ── */
+  .fv-row--bottom {
+    display: none;
+    border-top: none;
+    padding: 0;
+  }
+
+  .fv-row--bottom[data-active] {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    min-height: 0;
+  }
+
+  /* ── Panel header: hide expand/collapse on mobile (tabs do the job) ── */
+  .fv-row--bottom .fv-panel__header {
+    display: none;
+  }
+
+  .fv-row--bottom .fv-panel--fill {
+    border-radius: 0;
+    border: none;
+  }
+
+  /* ── Panels: fill available space, no border-radius on mobile ── */
+  .fv-row--top .fv-panel--fill {
+    border-radius: 0;
+    border-left: none;
+    border-right: none;
+  }
+
+  .fv-panel__body--scroll {
+    padding: 14px 12px;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* ── Actions: larger touch targets ── */
+  .fv-action-btn {
+    min-height: 44px;
+    padding: 10px 14px;
+    font-size: 0.92em;
+    border-radius: 8px;
+  }
+
+  .fv-actions {
+    gap: 8px;
+  }
+
+  .fv-actions__providers {
+    gap: 6px;
+  }
+
+  .fv-merge-select {
+    min-height: 44px;
+    padding: 10px 12px;
+    font-size: 0.95em;
+  }
+
+  /* ── Files list: touch-friendly rows ── */
+  .fv-file-item {
+    min-height: 44px;
+    padding: 10px 12px;
+    font-size: 0.92em;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  /* ── Detail rows: stack on mobile ── */
+  .fv-detail-grid,
+  .fv-session-grid {
+    gap: 6px;
+  }
+
+  /* ── Agent Chat: full-height scrollable chat ── */
+  .fv-row--bottom[data-active] .fv-panel__body--log {
+    flex: 1;
+    min-height: 0;
+  }
+
+  .acl {
+    padding: 10px 12px;
+    gap: 10px;
+  }
+
+  .acl__bubble {
+    max-width: 92%;
+  }
+
+  .acl__bubble-content {
+    padding: 8px 12px;
+    font-size: 14px;
+    line-height: 1.5;
+  }
+
+  /* ── Log entries (fallback when no chat) ── */
+  .fv-log-entries {
+    font-size: 12px;
+    padding: 10px 12px;
+  }
+
+  /* ── Interrupted banner ── */
+  .session-interrupted-banner {
+    font-size: 0.9em;
+    padding: 8px 12px;
   }
 
   /* ── Reduce animation if reduced-motion is preferred ─────────────── */

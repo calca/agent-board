@@ -1,0 +1,6 @@
+
+> agent-board@0.1.0 compile
+> node esbuild.config.js
+
+[esbuild] copied webview CSS
+[esbuild] build complete
