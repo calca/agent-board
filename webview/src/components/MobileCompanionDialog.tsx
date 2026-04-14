@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from 'react';
+import { useCallback, useState } from 'react';
 import { useBoard } from '../context/BoardContext';
 import { getVsCodeApi, postMessage } from '../hooks/useVsCodeApi';
 
