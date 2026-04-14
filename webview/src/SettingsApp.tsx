@@ -10,7 +10,7 @@ import { useSettings } from './context/SettingsContext';
 import { useSettingsMessages } from './hooks/useSettingsMessages';
 import type { SectionId } from './settingsTypes';
 
-const SECTION_COMPONENTS: Record<SectionId, () => JSX.Element> = {
+const SECTION_COMPONENTS: Record<SectionId, () => React.JSX.Element> = {
   providers: ProvidersSection,
   kanban: KanbanSection,
   worktree: WorktreeSection,

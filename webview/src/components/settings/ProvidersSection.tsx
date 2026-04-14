@@ -1,3 +1,4 @@
+import { useCallback, useRef, useState } from 'react';
 import { postSettingsMessage, useSettings } from '../../context/SettingsContext';
 import type { ProviderInfo } from '../../settingsTypes';
 
@@ -15,7 +16,7 @@ function DiagBadge({ diagnostic }: { diagnostic: ProviderInfo['diagnostic'] }) {
   );
 }
 
-function ProviderCard({ provider }: { provider: ProviderInfo }) {
+function ProviderCard({ provider, onRemove }: { provider: ProviderInfo; onRemove?: () => void }) {
   const { state, dispatch } = useSettings();
   const sectionCfg = state.config[provider.configSection] ?? {};
 
@@ -32,21 +33,11 @@ function ProviderCard({ provider }: { provider: ProviderInfo }) {
     });
   }
 
-  function handleRemove() {
-    const updated = { ...state.config[provider.configSection], enabled: false };
-    dispatch({ type: 'updateConfig', patch: { [provider.configSection]: updated } });
-    // Save immediately so provider deactivates
-    postSettingsMessage({
-      type: 'save',
-      config: { ...state.config, [provider.configSection]: updated },
-    });
-  }
-
   return (
-    <div className="provider-card">
+    <>
       <div className="provider-header">
         <h3>{provider.displayName}</h3>
-        <button className="btn--remove" onClick={handleRemove}>Remove</button>
+        <button className="btn--remove" onClick={onRemove}>Remove</button>
       </div>
       {provider.fields.length > 0 && (
         <div className="cols-2">
@@ -98,23 +89,76 @@ function ProviderCard({ provider }: { provider: ProviderInfo }) {
         </div>
       )}
       <DiagBadge diagnostic={provider.diagnostic} />
-    </div>
+    </>
   );
 }
 
+/**
+ * Manages enable/disable provider transitions with smooth animations.
+ *
+ * Uses a local override map so we control the visual state independently
+ * of host re-renders (which arrive when the config file watcher fires).
+ *
+ *   Enable:  available-item fades out → appears as card with fade-in → persist
+ *   Remove:  card fades out → reappears as available item → persist
+ */
 export function ProvidersSection() {
   const { state, dispatch, refreshDiagnostics } = useSettings();
   const providers = state.providers;
-  const active = providers.filter(p => p.enabled);
-  const available = providers.filter(p => !p.enabled);
 
-  function handleEnable(p: ProviderInfo) {
-    const updated = { ...state.config[p.configSection], enabled: true };
-    dispatch({ type: 'updateConfig', patch: { [p.configSection]: updated } });
+  // Local override: id → true (force active) | false (force available)
+  const [overrides, setOverrides] = useState<Record<string, boolean>>({});
+  // Animation phase: id → 'fade-out' | 'fade-in'
+  const [anims, setAnims] = useState<Record<string, 'fade-out' | 'fade-in'>>({});
+  const pendingSave = useRef<Map<string, { section: string; enabled: boolean }>>(new Map());
+
+  const effectiveProviders = providers.map(p => {
+    if (p.id in overrides) {
+      return { ...p, enabled: overrides[p.id] };
+    }
+    return p;
+  });
+
+  const active = effectiveProviders.filter(p => p.enabled);
+  const available = effectiveProviders.filter(p => !p.enabled);
+
+  const commitSave = useCallback((id: string) => {
+    const pending = pendingSave.current.get(id);
+    if (!pending) { return; }
+    pendingSave.current.delete(id);
+
+    const updated = { ...state.config[pending.section], enabled: pending.enabled };
+    dispatch({ type: 'updateConfig', patch: { [pending.section]: updated } });
     postSettingsMessage({
       type: 'save',
-      config: { ...state.config, [p.configSection]: updated },
+      config: { ...state.config, [pending.section]: updated },
     });
+
+    // Clear override — host data will take over on next message
+    setOverrides(prev => { const n = { ...prev }; delete n[id]; return n; });
+  }, [state.config, dispatch]);
+
+  function handleEnable(p: ProviderInfo) {
+    pendingSave.current.set(p.id, { section: p.configSection, enabled: true });
+    setAnims(prev => ({ ...prev, [p.id]: 'fade-out' }));
+  }
+
+  function handleDisable(p: ProviderInfo) {
+    pendingSave.current.set(p.id, { section: p.configSection, enabled: false });
+    setAnims(prev => ({ ...prev, [p.id]: 'fade-out' }));
+  }
+
+  function onAnimEnd(id: string, wasEnabled: boolean) {
+    const phase = anims[id];
+    if (phase === 'fade-out') {
+      // Flip the override and start fade-in in the new position
+      setOverrides(prev => ({ ...prev, [id]: !wasEnabled }));
+      setAnims(prev => ({ ...prev, [id]: 'fade-in' }));
+    } else if (phase === 'fade-in') {
+      // Animation complete — persist and clean up
+      setAnims(prev => { const n = { ...prev }; delete n[id]; return n; });
+      commitSave(id);
+    }
   }
 
   return (
@@ -129,7 +173,20 @@ export function ProvidersSection() {
         <p style={{ opacity: 0.5, fontSize: '0.85em', marginBottom: 14 }}>No providers enabled. Add one below.</p>
       )}
 
-      {active.map(p => <ProviderCard key={p.id} provider={p} />)}
+      {active.map(p => {
+        const anim = anims[p.id];
+        const cls = anim === 'fade-out' ? ' provider-card--fade-out'
+          : anim === 'fade-in' ? ' provider-card--fade-in' : '';
+        return (
+          <div
+            key={p.id}
+            className={`provider-card${cls}`}
+            onAnimationEnd={() => onAnimEnd(p.id, true)}
+          >
+            <ProviderCard provider={p} onRemove={() => handleDisable(p)} />
+          </div>
+        );
+      })}
 
       {available.length > 0 && (
         <>
@@ -137,13 +194,22 @@ export function ProvidersSection() {
             + Add Provider
           </div>
           <div className="available-list">
-            {available.map(p => (
-              <div className="available-item" key={p.id}>
-                <h4>{p.displayName}</h4>
-                <DiagBadge diagnostic={p.diagnostic} />
-                <button className="btn--add" onClick={() => handleEnable(p)}>Enable</button>
-              </div>
-            ))}
+            {available.map(p => {
+              const anim = anims[p.id];
+              const cls = anim === 'fade-out' ? ' available-item--fade-out'
+                : anim === 'fade-in' ? ' available-item--fade-in' : '';
+              return (
+                <div
+                  className={`available-item${cls}`}
+                  key={p.id}
+                  onAnimationEnd={() => onAnimEnd(p.id, false)}
+                >
+                  <h4>{p.displayName}</h4>
+                  <DiagBadge diagnostic={p.diagnostic} />
+                  <button className="btn--add" onClick={() => handleEnable(p)}>Enable</button>
+                </div>
+              );
+            })}
           </div>
         </>
       )}

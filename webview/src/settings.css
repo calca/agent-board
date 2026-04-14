@@ -115,6 +115,21 @@ input[type="checkbox"] { width: 16px; height: 16px; accent-color: var(--vscode-b
   border-radius: 6px; padding: 14px 16px; margin-bottom: 14px;
 }
 .provider-card.disabled { opacity: 0.55; }
+.provider-card--fade-in {
+  animation: providerFadeIn 0.35s ease-out both;
+}
+.provider-card--fade-out {
+  animation: providerFadeOut 0.25s ease-in both;
+  pointer-events: none;
+}
+@keyframes providerFadeIn {
+  from { opacity: 0; transform: translateY(-8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes providerFadeOut {
+  from { opacity: 1; transform: translateY(0); }
+  to   { opacity: 0; transform: translateY(8px); }
+}
 .provider-header { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
 .provider-header h3 { margin: 0; font-size: 0.95em; flex: 1; }
 
@@ -130,6 +145,13 @@ input[type="checkbox"] { width: 16px; height: 16px; accent-color: var(--vscode-b
   padding: 10px 14px; opacity: 0.7; transition: opacity 0.15s;
 }
 .available-item:hover { opacity: 1; }
+.available-item--fade-out {
+  animation: providerFadeOut 0.25s ease-in both;
+  pointer-events: none;
+}
+.available-item--fade-in {
+  animation: providerFadeIn 0.35s ease-out both;
+}
 .available-item h4 { margin: 0; font-size: 0.9em; flex: 1; }
 .available-item .diag { margin-top: 0; margin-left: auto; }
 

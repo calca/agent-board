@@ -1,3 +1,4 @@
+<!-- markdownlint-disable MD033 MD041 MD024 -->
 <div align="center">
 
 # Agent Board
@@ -29,27 +30,35 @@ Modern AI coding assistants are powerful — but managing **multiple tasks acros
 ## Key Features
 
 ### Kanban Board
+
 Drag-and-drop task management with fully configurable columns, search/filter, live session badges, and native VS Code theming (Dark+, Light+, High Contrast).
 
 ### Agent Squad
+
 Launch up to 50 parallel AI sessions. **Auto-squad** mode continuously polls for new tasks and fills available slots as sessions complete — with retry, priority, cooldown, timeout, label exclusion, and assignee filtering.
 
 ### Live Session Panel
+
 Split-view streaming: agent output on the left, changed files on the right. Real-time tool-call status, auto-scroll, follow-up input, and one-click full diff.
 
 ### Git Worktree Isolation
+
 Each agent session gets its own worktree and branch — no conflicts, no stashing, no context switching. Review, merge (squash/rebase/merge), or delete directly from the board.
 
 ### Pull Requests
+
 When a task completes, a **"Create Pull Request"** button appears on the card. One click creates a GitHub PR (via REST API) or opens the Azure DevOps PR creation page — with branch and changed-file list pre-filled. Auto-squad can also create PRs automatically.
 
 ### `@taskai` Chat Participant
+
 Use `/plan`, `/implement`, `/test`, or `/commit` from VS Code Chat. Agent Board resolves the active task and injects full context automatically.
 
 ### MCP Server
+
 Stdio-based Model Context Protocol server for full CRUD: `list_tasks`, `get_task`, `create_task`, `update_task`, `delete_task`. Any MCP-compatible agent can manage your board.
 
 ### Extensible Providers
+
 GitHub Issues (SSO, no PAT), Azure DevOps, Markdown files, local JSON, Beads CLI — or register your own via the extension API. GenAI providers: VS Code Chat, Cloud (vscode.lm), Copilot CLI, LM API with tool-calling, Ollama, Mistral — or register your own.
 
 ---
@@ -57,13 +66,16 @@ GitHub Issues (SSO, no PAT), Azure DevOps, Markdown files, local JSON, Beads CLI
 ## Installation
 
 ### From Marketplace
+
 Search for **"Agent Board"** in the Extensions panel.
 
 ### From VSIX
+
 1. Download the `.vsix` from the [Releases](https://github.com/calca/agent-board/releases) page
 2. Run `code --install-extension agent-board-x.x.x.vsix`
 
 ### Development
+
 ```bash
 git clone https://github.com/calca/agent-board.git
 cd agent-board
@@ -151,7 +163,7 @@ Column identifiers are arbitrary strings. The built-in defaults are `todo`, `inp
 All settings can also be configured globally through **File > Preferences > Settings** (search for `agentBoard`). Per-project values in `.agent-board/config.json` take priority.
 
 | Setting | Default | Description |
-|---------|---------|-------------|
+| --------- | --------- | ------------- |
 | `agentBoard.jsonProvider.path` | `".agent-board/tasks"` | Path to JSON tasks file |
 | `agentBoard.markdownProvider.inboxPath` | `".agent-board/markdown/inbox"` | Inbox directory for `.md` task files |
 | `agentBoard.markdownProvider.donePath` | `".agent-board/markdown/done"` | Directory where done `.md` files are moved |
@@ -179,7 +191,7 @@ All settings can also be configured globally through **File > Preferences > Sett
 ## Commands
 
 | Command | Shortcut | Description |
-|---------|----------|-------------|
+| --------- | ---------- | ------------- |
 | `Agent Board: Open Kanban Board` | `Ctrl+Shift+K` / `Cmd+Shift+K` | Open the Kanban board |
 | `Agent Board: Refresh Tasks` | — | Refresh all task providers |
 | `Agent Board: Select Task Provider` | — | Choose active provider |
@@ -198,12 +210,15 @@ All settings can also be configured globally through **File > Preferences > Sett
 ## Task Providers
 
 ### GitHub Issues
+
 Authentication uses VS Code's built-in GitHub SSO — sign in via the **Accounts** menu (no PAT required). Repository coordinates (`owner`/`repo`) are auto-detected from `gh repo view`, VS Code settings, or `.agent-board/config.json`. Supports Kanban label sync (`kanban:todo`, `kanban:in-progress`, etc.), conditional polling with ETag, and avatar caching.
 
 ### Azure DevOps
+
 Uses the `az boards` CLI. Maps Azure DevOps work item states to Kanban columns. Configurable polling interval and done-task cleanup. Supports "Create Pull Request" button — opens the Azure DevOps PR creation page with source branch pre-filled.
 
 ### JSON File
+
 Tasks are stored at `.agent-board/tasks` by default (override via `jsonProvider.path`). File changes are auto-detected via `FileSystemWatcher`. Schema: [tasks.schema.json](schemas/tasks.schema.json)
 
 ```json
@@ -220,6 +235,7 @@ Tasks are stored at `.agent-board/tasks` by default (override via `jsonProvider.
 ```
 
 ### Markdown Files
+
 Each `.md` file in an inbox directory becomes a task — the filename is the title, the content is the body. Done tasks are automatically moved to a separate directory. Enable via `.agent-board/config.json`:
 
 ```jsonc
@@ -233,9 +249,11 @@ Each `.md` file in an inbox directory becomes a task — the filename is the tit
 ```
 
 ### Beads CLI
+
 Configure `beadsProvider.executable` in `.agent-board/config.json` or VS Code settings.
 
 ### Custom Providers
+
 Register third-party providers via the extension API:
 
 ```typescript
@@ -274,7 +292,7 @@ The Copilot integration uses an extensible provider architecture (`IGenAiProvide
 ### Global Providers (VS Code integrated)
 
 | Provider | Description | Worktree | Tool Calling |
-|----------|-------------|:--------:|:------------:|
+| ---------- | ------------- | :--------: | :------------: |
 | **Chat** (`chat`) | Opens VS Code native chat with task context pre-filled | — | Yes |
 | **Cloud** (`cloud`) | Autopilot mode via VS Code agent chat (auto-submits) | — | — |
 | **Copilot CLI** (`copilot-cli`) | Background subprocess, streams output, saves to `.kanban-notes/` | Yes | — |
@@ -283,7 +301,7 @@ The Copilot integration uses an extensible provider architecture (`IGenAiProvide
 #### Copilot CLI Optimisations
 
 | Flag | Config Key | Default | Description |
-|------|-----------|---------|-------------|
+| ------ | ----------- | --------- | ------------- |
 | `/yolo` | `genAiProviders.copilot-cli.yolo` | `true` | Auto-approve all changes — the model applies changes autonomously |
 | `/fleet` | `genAiProviders.copilot-cli.fleet` | `false` | Optimise for parallel execution — focus on assigned task, avoid conflicts |
 
@@ -300,7 +318,7 @@ The Copilot integration uses an extensible provider architecture (`IGenAiProvide
 Enabled per project in `.agent-board/config.json` under `genAiProviders`:
 
 | Provider | Description |
-|----------|-------------|
+| ---------- | ------------- |
 | **Ollama** (`ollama`) | Local model (default: `llama3`, endpoint: `localhost:11434`) |
 | **Mistral** (`mistral`) | Mistral API (default: `mistral-small-latest`, key via `MISTRAL_API_KEY`) |
 
@@ -326,7 +344,7 @@ genAiRegistry?.register(myCustomGenAiProvider);
 The LM API and Chat providers expose five tools to the model via `vscode.lm` tool-calling:
 
 | Tool | Description | Security |
-|------|-------------|----------|
+| ------ | ------------- | ---------- |
 | `read_file` | Read file content | Path traversal guard |
 | `write_file` | Write file (creates directories) | Path traversal guard |
 | `run_command` | Shell command (30s timeout) | User confirmation (unless yolo) |
@@ -345,7 +363,7 @@ When `.github/agents/` contains Markdown files, Agent Board automatically discov
 
 Each `.md` file in `.github/agents/` defines an agent. The filename (without extension) becomes the **slug**. The first `# Heading` is the display name; no heading → auto title-cased. Supports `canSquad: true` frontmatter.
 
-```
+```text
 .github/agents/
 ├── code-reviewer.md     → slug: "code-reviewer", name: "Code Reviewer"
 ├── test-writer.md       → slug: "test-writer",   name: "Test Writer"
@@ -364,7 +382,7 @@ Tasks flow: **Source** → **Active** → **Done** (all three columns are config
 ### Squad Autonomy Features
 
 | Feature | Config Key | Default | Description |
-|---------|-----------|---------|-------------|
+| --------- | ----------- | --------- | ------------- |
 | **Poll interval** | `squad.autoSquadInterval` | `15000` | Auto-squad check frequency (ms) |
 | **Retry** | `squad.maxRetries` | `0` | Max retries for failed sessions |
 | **Timeout** | `squad.sessionTimeout` | `300000` | Max session duration (ms) |
@@ -388,7 +406,7 @@ Tasks flow: **Source** → **Active** → **Done** (all three columns are config
 ### Notifications
 
 | Config Key | Default | Description |
-|-----------|---------|-------------|
+| ----------- | --------- | ------------- |
 | `notifications.taskActive` | `true` | Notify on task → active column |
 | `notifications.taskDone` | `true` | Notify on task → done column |
 
@@ -399,7 +417,7 @@ Failure notifications are always shown.
 Use Agent Board directly from VS Code Chat:
 
 | Slash Command | Persona | Description |
-|---------------|---------|-------------|
+| --------------- | --------- | ------------- |
 | `/plan` | Architect | Generate a structured implementation plan |
 | `/implement` | Developer | Generate production-ready code |
 | `/test` | Test Engineer | Generate test cases |
@@ -432,7 +450,7 @@ Stdio-based [Model Context Protocol](https://modelcontextprotocol.io) server (JS
 ### Tools
 
 | Tool | Required | Optional | Description |
-|------|----------|----------|-------------|
+| ------ | ---------- | ---------- | ------------- |
 | `list_tasks` | — | `column` | List tasks, optionally filtered by column |
 | `get_task` | `taskId` | — | Get full task details |
 | `update_task` | `taskId` | `column`, `title`, `body`, `labels`, `assignee` | Update or move a task |
@@ -469,7 +487,7 @@ echo '{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"create_tas
 
 ## Architecture
 
-```
+```text
 Extension Host (Node.js)
 ├── ProjectConfig           → .agent-board/config.json (per-project overrides)
 ├── ProviderRegistry        → ITaskProvider implementations
