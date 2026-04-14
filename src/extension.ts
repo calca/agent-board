@@ -1183,7 +1183,7 @@ export function activate(context: vscode.ExtensionContext): void {
   });
 
   const openSettings = vscode.commands.registerCommand('agentBoard.openSettings', () => {
-    SettingsPanel.createOrShow(providerRegistry);
+    SettingsPanel.createOrShow(context.extensionUri, providerRegistry);
   });
 
   const openMobileCompanion = vscode.commands.registerCommand('agentBoard.openMobileCompanion', async () => {
