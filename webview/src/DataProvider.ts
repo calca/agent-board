@@ -175,10 +175,19 @@ class DataProviderImpl {
 
   // ── HTTP API Communication ────────────────────────────────────────────
 
+  private buildApiHeaders(hasBody: boolean): Record<string, string> {
+    const h: Record<string, string> = {};
+    if (hasBody) { h['Content-Type'] = 'application/json'; }
+    const params = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : null;
+    const token = params?.get('token') || (typeof window !== 'undefined' && (window as any).__BOARD_SESSION_TOKEN);
+    if (token) { h['X-Board-Token'] = token; }
+    return h;
+  }
+
   private async getTasksFromApi(): Promise<Task[]> {
     const response = await fetch(`${getApiBaseUrl()}/tasks`, {
       method: 'GET',
-      headers: { 'Content-Type': 'application/json' },
+      headers: this.buildApiHeaders(false),
     });
     if (!response.ok) {
       throw new Error(`Failed to fetch tasks: ${response.statusText}`);
@@ -190,7 +199,7 @@ class DataProviderImpl {
     try {
       const response = await fetch(`${getApiBaseUrl()}/tasks`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: this.buildApiHeaders(true),
         body: JSON.stringify(task),
       });
       if (!response.ok) {

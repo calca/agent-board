@@ -11,6 +11,7 @@
  * - POST   /api/tasks       → create new task
  */
 
+import * as crypto from 'crypto';
 import * as fs from 'fs';
 import * as http from 'http';
 import * as path from 'path';
@@ -45,6 +46,7 @@ export class LocalApiServer {
   private statusProvider?: () => MobileStatusSnapshot;
   private squadActionHandler?: (action: 'startSquad' | 'toggleAutoSquad', agentSlug?: string, genAiProviderId?: string) => Promise<void>;
   private refreshHandler?: () => Promise<void>;
+  private sessionToken: string = '';
 
   constructor(
     private readonly registry: ProviderRegistry,
@@ -73,11 +75,17 @@ export class LocalApiServer {
   /**
    * Start the HTTP server on the specified port.
    */
+  /** Get the session OTP token (generated on each start). */
+  getSessionToken(): string {
+    return this.sessionToken;
+  }
+
   start(port: number = 3333): void {
     if (this.server) {
       return;
     }
     this.port = port;
+    this.sessionToken = crypto.randomUUID();
     this.server = http.createServer((req, res) => this.handleRequest(req, res));
 
     this.server.listen(port, '0.0.0.0', () => {
@@ -99,6 +107,7 @@ export class LocalApiServer {
       });
       this.server = undefined;
       this.connectedDevices.clear();
+      this.sessionToken = '';
     }
   }
 
@@ -123,7 +132,7 @@ export class LocalApiServer {
     this.trackDevice(req);
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PATCH, OPTIONS');
-    res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, X-Board-Token');
 
     // Handle CORS preflight requests
     if (req.method === 'OPTIONS') {
@@ -136,15 +145,23 @@ export class LocalApiServer {
       const requestUrl = new URL(req.url ?? '/', `http://localhost:${this.port}`);
       const pathname = requestUrl.pathname;
 
-      // Root — serve WebView HTML
+      // Root — serve WebView HTML (token required in query string)
       if (pathname === '/' && req.method === 'GET') {
+        if (!this.validateSessionTokenFromQuery(requestUrl, res)) {
+          return;
+        }
         await this.handleGetRoot(res);
         return;
       }
 
-      // Static assets
+      // Static assets (no token needed — assets are inert without the token)
       if (pathname.startsWith('/assets/') && req.method === 'GET') {
         await this.handleGetAsset(pathname, res);
+        return;
+      }
+
+      // ── OTP token check for all API routes ──────────────────────────
+      if (!this.validateSessionToken(req, res)) {
         return;
       }
 
@@ -203,6 +220,41 @@ export class LocalApiServer {
 
   // ── Handler: GET / ──────────────────────────────────────────────────
 
+  /**
+   * Validate the X-Board-Token header against the current session token.
+   * Returns true if valid, false (and sends 401) if invalid.
+   */
+  private validateSessionToken(req: http.IncomingMessage, res: http.ServerResponse): boolean {
+    if (!this.sessionToken) {
+      return true; // No token generated yet (should not happen)
+    }
+    const headerToken = req.headers['x-board-token'];
+    const token = Array.isArray(headerToken) ? headerToken[0] : headerToken;
+    if (token === this.sessionToken) {
+      return true;
+    }
+    res.writeHead(401, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ error: 'Unauthorized — invalid or missing session token' }));
+    return false;
+  }
+
+  /**
+   * Validate the `token` query-string parameter.
+   * Used for `GET /` so the HTML page itself is protected.
+   */
+  private validateSessionTokenFromQuery(requestUrl: URL, res: http.ServerResponse): boolean {
+    if (!this.sessionToken) {
+      return true;
+    }
+    const token = requestUrl.searchParams.get('token');
+    if (token === this.sessionToken) {
+      return true;
+    }
+    res.writeHead(401, { 'Content-Type': 'text/plain' });
+    res.end('Unauthorized — invalid or missing session token');
+    return false;
+  }
+
   private async handleGetRoot(res: http.ServerResponse): Promise<void> {
     // Read webview.html from dist/ (if it exists), otherwise serve a minimal HTML
     const htmlPath = path.join(this.distPath, 'webview.html');
@@ -214,8 +266,9 @@ export class LocalApiServer {
     const hasCss = fs.existsSync(cssPath);
 
     if (hasWebviewHtml) {
-      // Use pre-built HTML
-      const html = fs.readFileSync(htmlPath, 'utf-8');
+      // Use pre-built HTML — inject session token
+      let html = fs.readFileSync(htmlPath, 'utf-8');
+      html = this.injectSessionToken(html);
       res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
       res.end(html);
     } else {
@@ -224,6 +277,22 @@ export class LocalApiServer {
       res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
       res.end(html);
     }
+  }
+
+  /**
+   * Inject a small inline script that exposes the session token
+   * so the client-side JS can read it and send it as a header.
+   */
+  private injectSessionToken(html: string): string {
+    const script = `<script>window.__BOARD_SESSION_TOKEN=${JSON.stringify(this.sessionToken)};<\/script>`;
+    // Insert right before </head> if present, otherwise before </body>
+    if (html.includes('</head>')) {
+      return html.replace('</head>', `${script}\n</head>`);
+    }
+    if (html.includes('</body>')) {
+      return html.replace('</body>', `${script}\n</body>`);
+    }
+    return script + html;
   }
 
   private generateMinimalHtml(hasJs: boolean, hasCss: boolean): string {
@@ -235,7 +304,7 @@ export class LocalApiServer {
   <meta http-equiv="Content-Security-Policy"
         content="default-src 'none';
                  style-src 'self' 'unsafe-inline' https:;
-                 script-src 'self';
+                 script-src 'self' 'unsafe-inline';
                  connect-src 'self';
                  font-src 'self' https:;
                  img-src 'self' https:;">
@@ -280,6 +349,7 @@ export class LocalApiServer {
   </style>
   ${hasCss ? '<link rel="stylesheet" href="/assets/webview.css">' : ''}
   <title>Agent Board - Mobile</title>
+  <script>window.__BOARD_SESSION_TOKEN=${JSON.stringify(this.sessionToken)};<\/script>
 </head>
 <body>
   <div id="root"></div>

@@ -12,6 +12,26 @@ function getApiBaseUrl(): string {
   return typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3333';
 }
 
+/** Read the session OTP token from URL query param or injected global. */
+function getSessionToken(): string {
+  if (typeof window === 'undefined') { return ''; }
+  // Prefer URL param (always present when the page was loaded via the pairing URL)
+  const params = new URLSearchParams(window.location.search);
+  const fromUrl = params.get('token');
+  if (fromUrl) { return fromUrl; }
+  // Fallback: injected global
+  return (window as any).__BOARD_SESSION_TOKEN || '';
+}
+
+/** Build standard headers including the session token. */
+function buildHeaders(hasBody: boolean): Record<string, string> {
+  const h: Record<string, string> = {};
+  if (hasBody) { h['Content-Type'] = 'application/json'; }
+  const token = getSessionToken();
+  if (token) { h['X-Board-Token'] = token; }
+  return h;
+}
+
 interface HttpMapping {
   method: string;
   url: string;
@@ -49,7 +69,7 @@ export class HttpTransport implements ITransport {
     const { method, url, body } = toHttpRequest(msg);
     fetch(url, {
       method,
-      headers: body ? { 'Content-Type': 'application/json' } : undefined,
+      headers: buildHeaders(!!body),
       body: body ? JSON.stringify(body) : undefined,
     }).catch(err => console.error('[HttpTransport] send error:', err));
   }
@@ -62,7 +82,7 @@ export class HttpTransport implements ITransport {
     const { method, url, body } = toHttpRequest(msg);
     const response = await fetch(url, {
       method,
-      headers: body ? { 'Content-Type': 'application/json' } : undefined,
+      headers: buildHeaders(!!body),
       body: body ? JSON.stringify(body) : undefined,
     });
     if (!response.ok) {

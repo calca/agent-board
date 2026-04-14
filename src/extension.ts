@@ -99,9 +99,11 @@ export function activate(context: vscode.ExtensionContext): void {
       await ensureMobileTunnel();
     }
 
-    const url = mobileTunnelEnabled && mobileTunnel?.url
+    const baseUrl = mobileTunnelEnabled && mobileTunnel?.url
       ? mobileTunnel.url
       : `http://${localIp}:${mobileServer.getPort()}`;
+    const sessionToken = mobileServer.getSessionToken();
+    const url = sessionToken ? `${baseUrl}/?token=${sessionToken}` : baseUrl;
     const qrSvg = await QRCode.toString(url, {
       type: 'svg',
       margin: 1,

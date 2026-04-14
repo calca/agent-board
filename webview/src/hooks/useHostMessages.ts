@@ -246,9 +246,15 @@ export function useHostMessages(): void {
     let disposed = false;
     let infoFetched = false;
 
+    const tokenHeaders = (): Record<string, string> => {
+      const params = new URLSearchParams(window.location.search);
+      const token = params.get('token') || (window as any).__BOARD_SESSION_TOKEN;
+      return token ? { 'X-Board-Token': token } : {};
+    };
+
     const pullInfo = async () => {
       try {
-        const r = await fetch('/info');
+        const r = await fetch('/info', { headers: tokenHeaders() });
         const info = await r.json();
         if (disposed) { return; }
 
@@ -336,7 +342,7 @@ export function useHostMessages(): void {
     // Expose manual sync trigger for browser mode (used by Sync button)
     (window as any).__agentBoardMobileSync = async () => {
       // Ask the VS Code extension to refresh its providers first
-      try { await fetch('/sync', { method: 'POST' }); } catch { /* ignore */ }
+      try { await fetch('/sync', { method: 'POST', headers: tokenHeaders() }); } catch { /* ignore */ }
       void pullInfo();
       void pullTasks();
     };
