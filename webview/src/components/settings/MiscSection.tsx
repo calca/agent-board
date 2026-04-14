@@ -7,7 +7,6 @@ function numOrUndef(val: string): number | undefined {
 
 export function MiscSection() {
   const { state, dispatch } = useSettings();
-  const logLevel = state.config.logLevel ?? '';
 
   return (
     <div className="section">
@@ -25,22 +24,6 @@ export function MiscSection() {
               dispatch({ type: 'updateConfig', patch: { pollInterval: numOrUndef(e.target.value) } })
             }
           />
-        </div>
-        <div className="field">
-          <label htmlFor="log-level">Log level</label>
-          <select
-            id="log-level"
-            value={logLevel}
-            onChange={e =>
-              dispatch({ type: 'updateConfig', patch: { logLevel: e.target.value || undefined } })
-            }
-          >
-            <option value="">Default</option>
-            <option value="debug">Debug</option>
-            <option value="info">Info</option>
-            <option value="warn">Warn</option>
-            <option value="error">Error</option>
-          </select>
         </div>
       </div>
     </div>

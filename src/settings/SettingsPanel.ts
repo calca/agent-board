@@ -26,6 +26,7 @@ export class SettingsPanel {
   private readonly panel: vscode.WebviewPanel;
   private disposables: vscode.Disposable[] = [];
   private registry: ProviderRegistry | undefined;
+  private reloadTimer: ReturnType<typeof setTimeout> | undefined;
 
   private constructor(
     panel: vscode.WebviewPanel,
@@ -38,6 +39,8 @@ export class SettingsPanel {
 
     this.panel.onDidDispose(() => this.dispose(), null, this.disposables);
     this.panel.webview.onDidReceiveMessage((msg) => this.handleMessage(msg), null, this.disposables);
+    this.watchConfigFile();
+    this.setupDevWatcher();
   }
 
   static createOrShow(extensionUri: vscode.Uri, registry?: ProviderRegistry): SettingsPanel {
@@ -62,8 +65,48 @@ export class SettingsPanel {
 
   private dispose(): void {
     SettingsPanel.instance = undefined;
+    if (this.reloadTimer) { clearTimeout(this.reloadTimer); }
     for (const d of this.disposables) { d.dispose(); }
     this.disposables = [];
+  }
+
+  /** Watch `dist/settings.*` for changes and auto-reload in dev mode. */
+  private setupDevWatcher(): void {
+    const distPattern = new vscode.RelativePattern(
+      vscode.Uri.joinPath(this.extensionUri, 'dist'),
+      'settings.*',
+    );
+    const watcher = vscode.workspace.createFileSystemWatcher(distPattern);
+    const scheduleReload = () => {
+      if (this.reloadTimer) { clearTimeout(this.reloadTimer); }
+      this.reloadTimer = setTimeout(() => {
+        this.panel.webview.html = this.getHtml(this.panel.webview);
+      }, 300);
+    };
+    watcher.onDidChange(scheduleReload, null, this.disposables);
+    watcher.onDidCreate(scheduleReload, null, this.disposables);
+    this.disposables.push(watcher);
+  }
+
+  /** Watch `.agent-board/config.json` for external changes and auto-reload. */
+  private watchConfigFile(): void {
+    const pattern = new vscode.RelativePattern(
+      vscode.workspace.workspaceFolders?.[0] ?? '',
+      '.agent-board/config.json',
+    );
+    const watcher = vscode.workspace.createFileSystemWatcher(pattern);
+    let debounce: ReturnType<typeof setTimeout> | undefined;
+    const reload = () => {
+      if (debounce) { clearTimeout(debounce); }
+      debounce = setTimeout(() => {
+        this.sendConfig();
+        void this.sendProviderDiagnostics();
+      }, 300);
+    };
+    watcher.onDidChange(reload, null, this.disposables);
+    watcher.onDidCreate(reload, null, this.disposables);
+    watcher.onDidDelete(reload, null, this.disposables);
+    this.disposables.push(watcher);
   }
 
   private handleMessage(msg: { type: string; config?: ProjectConfigData; fileName?: string }): void {
