@@ -14,6 +14,7 @@
 import * as fs from 'fs';
 import * as http from 'http';
 import * as path from 'path';
+import { HiddenTasksStore } from '../config/HiddenTasksStore';
 import { JsonProvider } from '../providers/JsonProvider';
 import { ProviderRegistry } from '../providers/ProviderRegistry';
 import type { ColumnId } from '../types/ColumnId';
@@ -33,7 +34,6 @@ export interface MobileStatusSnapshot {
   columns: { id: string; label: string; color?: string }[];
   repoIsGit: boolean;
   repoIsGitHub: boolean;
-  hiddenTaskIds: string[];
 }
 
 export class LocalApiServer {
@@ -388,8 +388,7 @@ export class LocalApiServer {
       }
 
       // Filter hidden tasks (same filter used by the VS Code webview)
-      const hiddenIds = new Set(this.statusProvider?.().hiddenTaskIds ?? []);
-      const visibleTasks = allTasks.filter(t => !hiddenIds.has(t.id));
+      const visibleTasks = HiddenTasksStore.filterVisible(allTasks);
 
       // Convert KanbanTask to simplified Task format for mobile
       const simplifiedTasks = visibleTasks.map(t => ({

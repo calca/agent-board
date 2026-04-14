@@ -153,8 +153,6 @@ export interface ProjectConfigData {
   };
   pollInterval?: number;
   logLevel?: string;
-  /** Task IDs hidden from the board (persisted locally). */
-  hiddenTaskIds?: string[];
 }
 
 /**

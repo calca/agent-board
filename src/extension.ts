@@ -8,6 +8,7 @@ import * as vscode from 'vscode';
 import { AgentManager } from './agentManager';
 import { AgentsTreeProvider, AgentTreeItem } from './agentsTreeProvider';
 import { refreshTasksCommand } from './commands/refreshTasks';
+import { HiddenTasksStore } from './config/HiddenTasksStore';
 import { ProjectConfig } from './config/ProjectConfig';
 import { DiffWatcher, GIT_REF_SCHEME, GitRefContentProvider, gitRefUri } from './diff/DiffWatcher';
 import { AgentInfo, discoverAgents } from './genai-provider/agentDiscovery';
@@ -243,7 +244,6 @@ export function activate(context: vscode.ExtensionContext): void {
       columns: cols,
       repoIsGit: isGit,
       repoIsGitHub: isGH,
-      hiddenTaskIds: ProjectConfig.getProjectConfig()?.hiddenTaskIds ?? [],
     };
   });
 
@@ -636,10 +636,7 @@ export function activate(context: vscode.ExtensionContext): void {
           break;
         }
         case 'hideTask': {
-          const hiddenIds = ProjectConfig.getProjectConfig()?.hiddenTaskIds ?? [];
-          if (!hiddenIds.includes(msg.taskId)) {
-            ProjectConfig.updateConfig({ hiddenTaskIds: [...hiddenIds, msg.taskId] });
-          }
+          HiddenTasksStore.hide(msg.taskId);
           await sendTasksToPanel(panel, providerRegistry, genAiRegistry, squadManager, sessionStateManager);
           break;
         }
@@ -688,11 +685,7 @@ export function activate(context: vscode.ExtensionContext): void {
             .flatMap(r => r.value);
           const doneTasks2 = allTasks2.filter(t => t.status === doneColId2);
           if (doneTasks2.length === 0) { break; }
-          const existingHidden = ProjectConfig.getProjectConfig()?.hiddenTaskIds ?? [];
-          const newHidden = doneTasks2.map(t => t.id).filter(id => !existingHidden.includes(id));
-          if (newHidden.length > 0) {
-            ProjectConfig.updateConfig({ hiddenTaskIds: [...existingHidden, ...newHidden] });
-          }
+          HiddenTasksStore.hideMany(doneTasks2.map(t => t.id));
           await sendTasksToPanel(panel, providerRegistry, genAiRegistry, squadManager, sessionStateManager);
           break;
         }
@@ -1331,13 +1324,11 @@ const EDITABLE_PROVIDER_IDS = ['json', 'github'];
  */
 async function sendTasksToPanel(panel: KanbanPanel, registry: ProviderRegistry, genAiRegistry?: import('./genai-provider/GenAiProviderRegistry').GenAiProviderRegistry, squadMgr?: SquadManager, sessionStateMgr?: SessionStateManager): Promise<void> {
   const providers = registry.getAll();
-  const hiddenIds = new Set(ProjectConfig.getProjectConfig()?.hiddenTaskIds ?? []);
-  const allTasks = (
-    await Promise.allSettled(providers.map(p => p.getTasks()))
-  )
-    .filter((r): r is PromiseFulfilledResult<import('./types/KanbanTask').KanbanTask[]> => r.status === 'fulfilled')
-    .flatMap(r => r.value)
-    .filter(t => !hiddenIds.has(t.id));
+  const allTasks = HiddenTasksStore.filterVisible(
+    (await Promise.allSettled(providers.map(p => p.getTasks())))
+      .filter((r): r is PromiseFulfilledResult<import('./types/KanbanTask').KanbanTask[]> => r.status === 'fulfilled')
+      .flatMap(r => r.value),
+  );
 
   // Inject session info into tasks so the webview can show status, worktree, errors
   // Prefer SessionStateManager (has worktreePath, errorMessage), fallback to SquadManager active sessions
