@@ -1,7 +1,6 @@
-import * as vscode from 'vscode';
-import * as path from 'path';
 import * as fs from 'fs';
-import type { KanbanTask } from '../types/KanbanTask';
+import * as path from 'path';
+import * as vscode from 'vscode';
 
 /**
  * Centralised store for hidden task IDs.
