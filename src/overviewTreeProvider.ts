@@ -1,4 +1,5 @@
 import * as vscode from 'vscode';
+import { ProjectConfig } from './config/ProjectConfig';
 import { SquadManager } from './genai-provider/SquadManager';
 import { ProviderRegistry } from './providers/ProviderRegistry';
 import { COLUMN_LABELS } from './types/ColumnId';
@@ -42,11 +43,13 @@ export class OverviewTreeProvider implements vscode.TreeDataProvider<OverviewIte
     const items: OverviewItem[] = [];
 
     const providers = this.providerRegistry.getAll();
+    const hiddenIds = new Set(ProjectConfig.getProjectConfig()?.hiddenTaskIds ?? []);
     const allTasks: KanbanTask[] = (
       await Promise.allSettled(providers.map(p => p.getTasks()))
     )
       .filter((r): r is PromiseFulfilledResult<KanbanTask[]> => r.status === 'fulfilled')
-      .flatMap(r => r.value);
+      .flatMap(r => r.value)
+      .filter(t => !hiddenIds.has(t.id));
 
     const counts = new Map<string, number>();
     for (const t of allTasks) {

@@ -1682,27 +1682,81 @@ html, body, #root {
 
 .task-form__readonly-value {
   display: block;
-  padding: 6px 8px;
+  padding: 4px 0;
   font-size: 13px;
   color: var(--vscode-foreground);
-  opacity: 0.85;
+  opacity: 0.9;
   border: none;
-  border-radius: 4px;
+  border-radius: 0;
   background: transparent;
   min-height: 1.4em;
   word-break: break-word;
+  line-height: 1.5;
 }
 
 .task-form__readonly-value--badge {
-  display: inline-block;
-  padding: 2px 10px;
-  border-radius: 12px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 12px;
+  border-radius: 14px;
   font-weight: 600;
   font-size: 12px;
   background: var(--vscode-badge-background, #4d4d4d);
   color: var(--vscode-badge-foreground, #fff);
   border: none;
   opacity: 1;
+  letter-spacing: 0.02em;
+}
+.task-form__readonly-value--badge::before {
+  content: '';
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: currentColor;
+  opacity: 0.65;
+}
+
+.task-form__readonly-value--muted {
+  opacity: 0.45;
+  font-style: italic;
+}
+
+.task-form__label-pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  padding: 4px 0;
+}
+.task-form__label-pill {
+  display: inline-block;
+  padding: 2px 9px;
+  border-radius: 10px;
+  font-size: 11px;
+  font-weight: 500;
+  background: var(--vscode-badge-background, rgba(255,255,255,0.1));
+  color: var(--vscode-badge-foreground, var(--vscode-foreground));
+  opacity: 0.85;
+}
+
+.task-form__assignee-value {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 0;
+  font-size: 13px;
+  color: var(--vscode-foreground);
+  opacity: 0.9;
+}
+.task-form__assignee-value::before {
+  content: '';
+  display: inline-block;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--vscode-badge-background, rgba(255,255,255,0.15));
+  flex-shrink: 0;
 }
 
 .task-form__readonly-body {
@@ -1763,18 +1817,41 @@ html, body, #root {
 
 .task-form__row {
   display: flex;
-  gap: 16px;
-  margin-top: 8px;
-  padding-top: 14px;
-  border-top: 1px solid var(--vscode-panel-border, rgba(255,255,255,0.08));
+  gap: 0;
+  margin-top: 10px;
+  padding: 0;
+  border-radius: 8px;
+  border: 1px solid var(--vscode-panel-border, rgba(255,255,255,0.10));
+  background: color-mix(in srgb, var(--vscode-sideBar-background, var(--vscode-editor-background)) 60%, transparent);
   flex-shrink: 0;
+  overflow: hidden;
 }
 
 .task-form__field {
   flex: 1;
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 6px;
+  padding: 12px 16px;
+  min-width: 0;
+  justify-content: center;
+}
+.task-form__field + .task-form__field {
+  border-left: 1px solid var(--vscode-panel-border, rgba(255,255,255,0.08));
+}
+
+.task-form__row .task-form__select,
+.task-form__row .task-form__input {
+  border-color: transparent;
+  background: color-mix(in srgb, var(--vscode-input-background) 50%, transparent);
+  border-radius: 6px;
+  padding: 6px 10px;
+  font-size: 13px;
+}
+.task-form__row .task-form__select:focus,
+.task-form__row .task-form__input:focus {
+  border-color: var(--vscode-focusBorder);
+  background: var(--vscode-input-background);
 }
 
 .task-form__btn {
@@ -3317,7 +3394,8 @@ html, body, #root {
   background: var(--vscode-toolbar-activeBackground, rgba(128, 128, 128, 0.2));
 }
 
-.md-editor-container select[class*="_selectTrigger_"] {
+.md-editor-container select[class*="_selectTrigger_"],
+.md-editor-container button[class*="_selectTrigger_"] {
   background: transparent;
   border: 1px solid var(--vscode-input-border, rgba(128, 128, 128, 0.25));
   color: var(--vscode-foreground);
@@ -3325,9 +3403,46 @@ html, body, #root {
   font-size: 0.82em;
   padding: 2px 6px;
   opacity: 0.7;
+  cursor: pointer;
 }
-.md-editor-container select[class*="_selectTrigger_"]:hover {
+.md-editor-container select[class*="_selectTrigger_"]:hover,
+.md-editor-container button[class*="_selectTrigger_"]:hover {
   opacity: 1;
+}
+
+/* Radix Select portalled dropdown (BlockTypeSelect) — must sit above the task-form overlay */
+.mdxeditor-popup-container {
+  z-index: 9999 !important;
+}
+[data-radix-popper-content-wrapper] {
+  z-index: 9999 !important;
+}
+div[class*="_selectContent_"],
+.mdxeditor-select-content {
+  background: var(--vscode-dropdown-background, var(--vscode-editor-background));
+  border: 1px solid var(--vscode-dropdown-border, var(--vscode-panel-border));
+  border-radius: 6px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+  padding: 4px 0;
+  min-width: 140px;
+  color: var(--vscode-dropdown-foreground, var(--vscode-foreground));
+  overflow: hidden;
+}
+div[class*="_selectItem_"] {
+  padding: 5px 12px;
+  font-size: 0.88em;
+  cursor: pointer;
+  border-radius: 0;
+  color: var(--vscode-dropdown-foreground, var(--vscode-foreground));
+  outline: none;
+}
+div[class*="_selectItem_"]:hover,
+div[class*="_selectItem_"][data-highlighted] {
+  background: var(--vscode-list-hoverBackground, rgba(128, 128, 128, 0.15));
+}
+div[class*="_selectItem_"][data-state="checked"] {
+  background: var(--vscode-list-activeSelectionBackground, rgba(0, 120, 212, 0.2));
+  font-weight: 600;
 }
 
 /* Dark theme adjustments */

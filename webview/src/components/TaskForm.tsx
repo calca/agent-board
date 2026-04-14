@@ -108,13 +108,17 @@ export function TaskForm() {
             <div className="task-form__field">
               <label className="task-form__label" htmlFor={isRemote ? undefined : 'tf-labels'}>Labels</label>
               {isEdit && isRemote
-                ? <span className="task-form__readonly-value">{task!.labels.join(', ') || '—'}</span>
+                ? (task!.labels.length > 0
+                    ? <span className="task-form__label-pills">{task!.labels.map(l => <span key={l} className="task-form__label-pill">{l}</span>)}</span>
+                    : <span className="task-form__readonly-value task-form__readonly-value--muted">—</span>)
                 : <input className="task-form__input" id="tf-labels" type="text" defaultValue={task?.labels.join(', ') ?? ''} placeholder="bug, feature" />}
             </div>
             <div className="task-form__field">
               <label className="task-form__label">Assignee</label>
               {isEdit && isRemote
-                ? <span className="task-form__readonly-value">{task!.assignee ?? '—'}</span>
+                ? (task!.assignee
+                    ? <span className="task-form__assignee-value">{task!.assignee}</span>
+                    : <span className="task-form__readonly-value task-form__readonly-value--muted">—</span>)
                 : !isEdit
                   ? <input className="task-form__input task-form__input--readonly" id="tf-assignee" type="text" value={currentUser || 'me'} readOnly />
                   : <input className="task-form__input task-form__input--readonly" id="tf-assignee" type="text" value={task?.assignee ?? (currentUser || 'me')} readOnly />}
