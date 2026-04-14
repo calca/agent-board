@@ -1,6 +1,6 @@
 import * as vscode from 'vscode';
-import { Agent, AgentStatus } from './types';
 import { ProviderRegistry } from './providers/ProviderRegistry';
+import { Agent, AgentStatus } from './types';
 
 export class AgentManager {
   private static readonly STORAGE_KEY = 'agentBoard.agents';

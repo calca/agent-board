@@ -1,6 +1,6 @@
+import { KanbanTask } from '../types/KanbanTask';
 import { ITaskProvider } from './ITaskProvider';
 import { DuplicateProviderError } from './ProviderError';
-import { KanbanTask } from '../types/KanbanTask';
 
 /** Resolved task with its owning provider. */
 export interface ResolvedTask {

@@ -6,16 +6,16 @@
  * standalone stdio MCP server.
  */
 
-import { ColumnId, COLUMN_IDS } from '../types/ColumnId';
+import { COLUMN_IDS, ColumnId } from '../types/ColumnId';
 import { KanbanTask } from '../types/KanbanTask';
 import {
-  McpToolDefinition,
-  McpToolResult,
-  ListTasksArgs,
-  GetTaskArgs,
-  UpdateTaskArgs,
-  CreateTaskArgs,
-  DeleteTaskArgs,
+    CreateTaskArgs,
+    DeleteTaskArgs,
+    GetTaskArgs,
+    ListTasksArgs,
+    McpToolDefinition,
+    McpToolResult,
+    UpdateTaskArgs,
 } from './mcpTypes';
 
 // ── Tool catalogue ──────────────────────────────────────────────────

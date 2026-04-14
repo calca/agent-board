@@ -14,14 +14,14 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import * as readline from 'readline';
-import { ColumnId, COLUMN_IDS } from '../types/ColumnId';
+import { COLUMN_IDS, ColumnId } from '../types/ColumnId';
 import { KanbanTask } from '../types/KanbanTask';
-import { JsonRpcRequest, JsonRpcResponse } from './mcpTypes';
 import {
-  MCP_TOOLS,
-  McpTaskAdapter,
-  handleToolCall,
+    MCP_TOOLS,
+    McpTaskAdapter,
+    handleToolCall,
 } from './mcpToolHandler';
+import { JsonRpcRequest, JsonRpcResponse } from './mcpTypes';
 
 // ── CLI argument parsing ────────────────────────────────────────────
 
@@ -224,14 +224,10 @@ function main(): void {
 
 // Allow importing for tests while still running as CLI
 export {
-  resolveTasksPath,
-  readTasks,
-  writeTasks,
-  createFileAdapter,
-  dispatch,
-  normalizeStatus,
-  PROTOCOL_VERSION,
-  SERVER_INFO,
+    PROTOCOL_VERSION,
+    SERVER_INFO, createFileAdapter,
+    dispatch,
+    normalizeStatus, readTasks, resolveTasksPath, writeTasks
 };
 
 // Only run main when executed directly (not imported)

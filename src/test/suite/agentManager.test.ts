@@ -1,7 +1,7 @@
 import * as assert from 'assert';
+import { ExtensionContext } from 'vscode';
 import { AgentManager } from '../../agentManager';
 import { ProviderRegistry } from '../../providers/ProviderRegistry';
-import { ExtensionContext } from 'vscode';
 
 function makeMockContext(): ExtensionContext {
   const store: Record<string, unknown> = {};
