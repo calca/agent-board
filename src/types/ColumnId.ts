@@ -10,12 +10,6 @@ export type ColumnId = string;
 /** Built-in default column identifiers. */
 export const DEFAULT_COLUMN_IDS: readonly string[] = ['todo', 'inprogress', 'review', 'done'] as const;
 
-/**
- * @deprecated Use {@link DEFAULT_COLUMN_IDS} instead.  Kept temporarily
- * for internal references during migration.
- */
-export const COLUMN_IDS: readonly string[] = DEFAULT_COLUMN_IDS;
-
 /** Default display labels for the built-in columns. */
 export const DEFAULT_COLUMN_LABELS: Record<string, string> = {
   todo: 'To Do',
@@ -32,7 +26,3 @@ export const DEFAULT_COLUMN_COLORS: Record<string, string> = {
   done: '#16825d',
 };
 
-/**
- * @deprecated Use {@link DEFAULT_COLUMN_LABELS} instead.
- */
-export const COLUMN_LABELS: Record<string, string> = DEFAULT_COLUMN_LABELS;

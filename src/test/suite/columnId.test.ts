@@ -1,13 +1,9 @@
 import * as assert from 'assert';
-import { COLUMN_IDS, COLUMN_LABELS, DEFAULT_COLUMN_IDS, DEFAULT_COLUMN_LABELS, ColumnId } from '../../types/ColumnId';
+import { ColumnId, DEFAULT_COLUMN_IDS, DEFAULT_COLUMN_LABELS } from '../../types/ColumnId';
 
 suite('ColumnId types', () => {
   test('DEFAULT_COLUMN_IDS contains the four built-in columns', () => {
     assert.deepStrictEqual([...DEFAULT_COLUMN_IDS], ['todo', 'inprogress', 'review', 'done']);
-  });
-
-  test('COLUMN_IDS is an alias for DEFAULT_COLUMN_IDS', () => {
-    assert.deepStrictEqual([...COLUMN_IDS], [...DEFAULT_COLUMN_IDS]);
   });
 
   test('DEFAULT_COLUMN_LABELS maps every default column to a label', () => {
@@ -15,10 +11,6 @@ suite('ColumnId types', () => {
       assert.ok(DEFAULT_COLUMN_LABELS[id], `Missing label for column "${id}"`);
       assert.strictEqual(typeof DEFAULT_COLUMN_LABELS[id], 'string');
     }
-  });
-
-  test('COLUMN_LABELS is an alias for DEFAULT_COLUMN_LABELS', () => {
-    assert.deepStrictEqual(COLUMN_LABELS, DEFAULT_COLUMN_LABELS);
   });
 
   test('ColumnId type accepts any string (flexible columns)', () => {

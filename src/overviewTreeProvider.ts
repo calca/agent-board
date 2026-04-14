@@ -2,7 +2,7 @@ import * as vscode from 'vscode';
 import { HiddenTasksStore } from './config/HiddenTasksStore';
 import { SquadManager } from './genai-provider/SquadManager';
 import { ProviderRegistry } from './providers/ProviderRegistry';
-import { COLUMN_LABELS } from './types/ColumnId';
+import { DEFAULT_COLUMN_LABELS } from './types/ColumnId';
 import { KanbanTask } from './types/KanbanTask';
 
 export class OverviewItem extends vscode.TreeItem {
@@ -83,7 +83,7 @@ export class OverviewTreeProvider implements vscode.TreeDataProvider<OverviewIte
       done: 'terminal.ansiGreen',
     };
 
-    for (const [colId, colLabel] of Object.entries(COLUMN_LABELS)) {
+    for (const [colId, colLabel] of Object.entries(DEFAULT_COLUMN_LABELS)) {
       const count = counts.get(colId) ?? 0;
       const bar = count > 0 ? '\u2588'.repeat(Math.min(count, 12)) : '\u2500';
       items.push(new OverviewItem(

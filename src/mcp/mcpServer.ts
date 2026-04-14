@@ -14,12 +14,12 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import * as readline from 'readline';
-import { COLUMN_IDS, ColumnId } from '../types/ColumnId';
+import { ColumnId, DEFAULT_COLUMN_IDS } from '../types/ColumnId';
 import { KanbanTask } from '../types/KanbanTask';
 import {
-    MCP_TOOLS,
-    McpTaskAdapter,
-    handleToolCall,
+  MCP_TOOLS,
+  McpTaskAdapter,
+  handleToolCall,
 } from './mcpToolHandler';
 import { JsonRpcRequest, JsonRpcResponse } from './mcpTypes';
 
@@ -47,7 +47,7 @@ interface JsonTaskEntry {
 }
 
 function normalizeStatus(raw?: string): ColumnId {
-  if (raw && (COLUMN_IDS as readonly string[]).includes(raw)) {
+  if (raw && (DEFAULT_COLUMN_IDS as readonly string[]).includes(raw)) {
     return raw as ColumnId;
   }
   return 'todo';
@@ -224,10 +224,10 @@ function main(): void {
 
 // Allow importing for tests while still running as CLI
 export {
-    PROTOCOL_VERSION,
-    SERVER_INFO, createFileAdapter,
-    dispatch,
-    normalizeStatus, readTasks, resolveTasksPath, writeTasks
+  PROTOCOL_VERSION,
+  SERVER_INFO, createFileAdapter,
+  dispatch,
+  normalizeStatus, readTasks, resolveTasksPath, writeTasks
 };
 
 // Only run main when executed directly (not imported)

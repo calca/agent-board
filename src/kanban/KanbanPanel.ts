@@ -1,5 +1,5 @@
 import * as vscode from 'vscode';
-import { COLUMN_IDS, COLUMN_LABELS, DEFAULT_COLUMN_COLORS } from '../types/ColumnId';
+import { DEFAULT_COLUMN_COLORS, DEFAULT_COLUMN_IDS, DEFAULT_COLUMN_LABELS } from '../types/ColumnId';
 import { KanbanTask } from '../types/KanbanTask';
 import { AgentOption, Column, FileChangeInfo, GenAiProviderOption, HostToWebView, SquadStatus, WebViewToHost } from '../types/Messages';
 
@@ -108,9 +108,9 @@ export class KanbanPanel {
 
   /** Push a full task + column update to the WebView. */
   updateTasks(tasks: KanbanTask[], editableProviderIds: string[] = [], genAiProviders: GenAiProviderOption[] = []): void {
-    const columns: Column[] = COLUMN_IDS.map(id => ({
+    const columns: Column[] = DEFAULT_COLUMN_IDS.map(id => ({
       id,
-      label: COLUMN_LABELS[id],
+      label: DEFAULT_COLUMN_LABELS[id],
       color: DEFAULT_COLUMN_COLORS[id],
     }));
     this.postMessage({ type: 'tasksUpdate', tasks, columns, editableProviderIds, genAiProviders });

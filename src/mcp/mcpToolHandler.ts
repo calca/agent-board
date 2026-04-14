@@ -6,16 +6,16 @@
  * standalone stdio MCP server.
  */
 
-import { COLUMN_IDS, ColumnId } from '../types/ColumnId';
+import { ColumnId, DEFAULT_COLUMN_IDS } from '../types/ColumnId';
 import { KanbanTask } from '../types/KanbanTask';
 import {
-    CreateTaskArgs,
-    DeleteTaskArgs,
-    GetTaskArgs,
-    ListTasksArgs,
-    McpToolDefinition,
-    McpToolResult,
-    UpdateTaskArgs,
+  CreateTaskArgs,
+  DeleteTaskArgs,
+  GetTaskArgs,
+  ListTasksArgs,
+  McpToolDefinition,
+  McpToolResult,
+  UpdateTaskArgs,
 } from './mcpTypes';
 
 // ── Tool catalogue ──────────────────────────────────────────────────
@@ -32,7 +32,7 @@ export const MCP_TOOLS: McpToolDefinition[] = [
           type: 'string',
           description:
             'Filter by column id (todo, inprogress, review, done). Omit to list all.',
-          enum: [...COLUMN_IDS],
+          enum: [...DEFAULT_COLUMN_IDS],
         },
       },
     },
@@ -66,7 +66,7 @@ export const MCP_TOOLS: McpToolDefinition[] = [
           type: 'string',
           description:
             'Move the task to this column (todo, inprogress, review, done).',
-          enum: [...COLUMN_IDS],
+          enum: [...DEFAULT_COLUMN_IDS],
         },
         title: {
           type: 'string',
@@ -109,7 +109,7 @@ export const MCP_TOOLS: McpToolDefinition[] = [
           type: 'string',
           description:
             'Column to place the task in (default: todo).',
-          enum: [...COLUMN_IDS],
+          enum: [...DEFAULT_COLUMN_IDS],
         },
         labels: {
           type: 'array',
@@ -255,9 +255,9 @@ export async function handleUpdateTask(
   }
 
   // Validate column if provided
-  if (args.column && !(COLUMN_IDS as readonly string[]).includes(args.column)) {
+  if (args.column && !(DEFAULT_COLUMN_IDS as readonly string[]).includes(args.column)) {
     return errorResult(
-      `Invalid column "${args.column}". Must be one of: ${COLUMN_IDS.join(', ')}`,
+      `Invalid column "${args.column}". Must be one of: ${DEFAULT_COLUMN_IDS.join(', ')}`,
     );
   }
 
@@ -294,9 +294,9 @@ export async function handleCreateTask(
 
   // Validate column if provided
   const column = args.column ?? 'todo';
-  if (!(COLUMN_IDS as readonly string[]).includes(column)) {
+  if (!(DEFAULT_COLUMN_IDS as readonly string[]).includes(column)) {
     return errorResult(
-      `Invalid column "${column}". Must be one of: ${COLUMN_IDS.join(', ')}`,
+      `Invalid column "${column}". Must be one of: ${DEFAULT_COLUMN_IDS.join(', ')}`,
     );
   }
 
