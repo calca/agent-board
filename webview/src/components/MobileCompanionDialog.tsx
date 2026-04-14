@@ -1,3 +1,4 @@
+import React, { useCallback, useState } from 'react';
 import { useBoard } from '../context/BoardContext';
 import { getVsCodeApi, postMessage } from '../hooks/useVsCodeApi';
 
@@ -41,6 +42,7 @@ export function MobileCompanionDialog() {
             {mobileServerRunning && activeUrl && (
               <div className="mc__url-chip" title={activeUrl}>
                 <span className="mc__url-text">{activeUrl}</span>
+                <CopyButton text={activeUrl} />
               </div>
             )}
           </div>
@@ -133,5 +135,25 @@ export function MobileCompanionDialog() {
         </div>
       </div>
     </div>
+  );
+}
+
+function CopyButton({ text }: { text: string }) {
+  const [copied, setCopied] = useState(false);
+
+  const handleCopy = useCallback(async () => {
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    } catch {
+      /* clipboard not available */
+    }
+  }, [text]);
+
+  return (
+    <button className="mc__copy-btn" onClick={handleCopy} title="Copia URL" aria-label="Copia URL">
+      {copied ? '✓' : '📋'}
+    </button>
   );
 }
