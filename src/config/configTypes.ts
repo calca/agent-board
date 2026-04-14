@@ -93,11 +93,6 @@ export interface ProjectConfigData {
     /** Maximum retries for a failed session (default 0 = no retry). */
     maxRetries?: number;
     /**
-     * Ordered list of label strings used to prioritise tasks.
-     * Tasks matching an earlier label are launched first.
-     */
-    priorityLabels?: string[];
-    /**
      * Maximum time in milliseconds a session may run before being
      * timed out and marked as failed (default 300 000 = 5 min).
      * Set to 0 to disable timeout.
@@ -109,19 +104,6 @@ export interface ProjectConfigData {
      * Default 0 = no cooldown.
      */
     cooldownMs?: number;
-    /**
-     * Labels that cause a task to be skipped by the squad (case-insensitive).
-     * e.g. `["blocked", "manual"]` will skip any task with those labels.
-     */
-    excludeLabels?: string[];
-    /**
-     * Only launch tasks matching this assignee filter.
-     * - `""` (default) → no filter, all tasks.
-     * - `"*"` → only tasks with *any* assignee.
-     * - `"unassigned"` → only unassigned tasks.
-     * - Any other value → exact assignee match (case-insensitive).
-     */
-    assigneeFilter?: string;
   };
   notifications?: {
     /** Show a VS Code notification when a task is automatically moved to the active column. */

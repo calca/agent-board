@@ -10,14 +10,11 @@ import { GenAiProviderRegistry } from './GenAiProviderRegistry';
 import {
     SquadConfig,
     canRetry,
-    matchesAssignee,
     resolveSquadConfig,
-    shouldExclude,
-    sortByPriority
 } from './squadUtils';
 
 export {
-    DEFAULT_ACTIVE_COLUMN, DEFAULT_AUTO_SQUAD_INTERVAL, DEFAULT_COOLDOWN_MS, DEFAULT_DONE_COLUMN, DEFAULT_MAX_RETRIES, DEFAULT_MAX_SESSIONS, DEFAULT_SESSION_TIMEOUT, DEFAULT_SOURCE_COLUMN, canRetry, computeAvailableSlots, matchesAssignee, resolveSquadConfig, shouldExclude, sortByPriority
+    DEFAULT_ACTIVE_COLUMN, DEFAULT_AUTO_SQUAD_INTERVAL, DEFAULT_COOLDOWN_MS, DEFAULT_DONE_COLUMN, DEFAULT_MAX_RETRIES, DEFAULT_MAX_SESSIONS, DEFAULT_SESSION_TIMEOUT, DEFAULT_SOURCE_COLUMN, canRetry, computeAvailableSlots, resolveSquadConfig
 } from './squadUtils';
 
 export type { SquadConfig } from './squadUtils';
@@ -323,13 +320,10 @@ export class SquadManager {
     const eligible = allTasks.filter(
       t =>
         t.status === cfg.sourceColumn &&
-        !this.activeSessions.has(t.id) &&
-        !shouldExclude(t.labels, cfg.excludeLabels) &&
-        matchesAssignee(t.assignee, cfg.assigneeFilter),
+        !this.activeSessions.has(t.id),
     );
 
-    // Sort by label-based priority when configured
-    return sortByPriority(eligible, cfg.priorityLabels);
+    return eligible;
   }
 
   /** Move a task to the given column via its provider. */

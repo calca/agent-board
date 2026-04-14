@@ -116,11 +116,8 @@ Create a `.agent-board/config.json` file in the workspace root to override any V
     "doneColumn": "review",
     "autoSquadInterval": 15000,
     "maxRetries": 2,
-    "priorityLabels": ["critical", "high", "medium"],
     "sessionTimeout": 300000,
-    "cooldownMs": 2000,
-    "excludeLabels": ["blocked", "manual"],
-    "assigneeFilter": ""
+    "cooldownMs": 2000
   },
   "notifications": {
     "taskActive": true,
@@ -175,11 +172,8 @@ All settings can also be configured globally through **File > Preferences > Sett
 | `agentBoard.squad.doneColumn` | `"review"` | Column tasks move to when agent completes |
 | `agentBoard.squad.autoSquadInterval` | `15000` | Auto-squad polling interval (ms) |
 | `agentBoard.squad.maxRetries` | `0` | Max retries for failed sessions (0 = no retry) |
-| `agentBoard.squad.priorityLabels` | `[]` | Ordered labels for task priority |
 | `agentBoard.squad.sessionTimeout` | `300000` | Session timeout (ms), 0 = disabled |
 | `agentBoard.squad.cooldownMs` | `0` | Delay between consecutive launches (ms) |
-| `agentBoard.squad.excludeLabels` | `[]` | Labels that exclude tasks from the squad |
-| `agentBoard.squad.assigneeFilter` | `""` | Assignee filter: `""` all, `"*"` assigned, `"unassigned"`, or username |
 | `agentBoard.notifications.taskActive` | `true` | Notify when task moves to active column |
 | `agentBoard.notifications.taskDone` | `true` | Notify when task moves to done column |
 | `agentBoard.pollInterval` | `30000` | Polling interval (ms) for providers |
@@ -376,11 +370,8 @@ Tasks flow: **Source** → **Active** → **Done** (all three columns are config
 |---------|-----------|---------|-------------|
 | **Poll interval** | `squad.autoSquadInterval` | `15000` | Auto-squad check frequency (ms) |
 | **Retry** | `squad.maxRetries` | `0` | Max retries for failed sessions |
-| **Priority** | `squad.priorityLabels` | `[]` | Ordered label list for launch priority |
 | **Timeout** | `squad.sessionTimeout` | `300000` | Max session duration (ms) |
 | **Cooldown** | `squad.cooldownMs` | `0` | Delay between launches (ms) |
-| **Exclude labels** | `squad.excludeLabels` | `[]` | Skip tasks with these labels |
-| **Assignee filter** | `squad.assigneeFilter` | `""` | Filter by assignee |
 | **Worktree cleanup** | *(automatic)* | — | Removed in `try/finally` after session |
 | **Concurrency guard** | *(automatic)* | — | Prevents over-scheduling |
 | **Graceful shutdown** | *(automatic)* | — | Sessions moved back to source on extension stop |
@@ -391,11 +382,8 @@ Tasks flow: **Source** → **Active** → **Done** (all three columns are config
     "maxSessions": 5,
     "maxRetries": 2,
     "autoSquadInterval": 30000,
-    "priorityLabels": ["critical", "high", "medium"],
     "sessionTimeout": 600000,
-    "cooldownMs": 2000,
-    "excludeLabels": ["blocked", "manual"],
-    "assigneeFilter": "alice"
+    "cooldownMs": 2000
   }
 }
 ```
@@ -502,7 +490,7 @@ Extension Host (Node.js)
 │   └── LmApiGenAiProvider     (vscode.lm + tool-calling loop + worktree)
 ├── AgentDiscovery          → .github/agents/*.md
 ├── SquadManager            → parallel sessions, auto-squad, SquadConfig
-│   └── squadUtils.ts         (resolveSquadConfig, sortByPriority, canRetry, etc.)
+│   └── squadUtils.ts         (resolveSquadConfig, canRetry, etc.)
 ├── CopilotLauncher         → ContextBuilder + WorktreeManager + DiffWatcher + StreamRegistry
 ├── SessionStateManager     → lifecycle tracking + persistence + timeout
 ├── WorktreeManager         → git worktree create / remove

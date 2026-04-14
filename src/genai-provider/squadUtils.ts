@@ -47,11 +47,8 @@ export interface SquadConfig {
   doneColumn: ColumnId;
   autoSquadInterval: number;
   maxRetries: number;
-  priorityLabels: string[];
   sessionTimeout: number;
   cooldownMs: number;
-  excludeLabels: string[];
-  assigneeFilter: string;
   notifyTaskActive: boolean;
   notifyTaskDone: boolean;
 }
@@ -74,11 +71,8 @@ export function resolveSquadConfig(
     doneColumn: squad?.doneColumn ?? DEFAULT_DONE_COLUMN,
     autoSquadInterval: squad?.autoSquadInterval ?? DEFAULT_AUTO_SQUAD_INTERVAL,
     maxRetries: squad?.maxRetries ?? DEFAULT_MAX_RETRIES,
-    priorityLabels: squad?.priorityLabels ?? [],
     sessionTimeout: squad?.sessionTimeout ?? DEFAULT_SESSION_TIMEOUT,
     cooldownMs: squad?.cooldownMs ?? DEFAULT_COOLDOWN_MS,
-    excludeLabels: squad?.excludeLabels ?? [],
-    assigneeFilter: squad?.assigneeFilter ?? '',
     notifyTaskActive: notifications?.taskActive ?? true,
     notifyTaskDone: notifications?.taskDone ?? true,
   };
@@ -102,30 +96,6 @@ export function canRetry(attempt: number, maxRetries: number): boolean {
 }
 
 /**
- * Sort tasks by label-based priority.
- *
- * `priorityLabels` is an ordered list of label strings; tasks whose
- * labels contain an earlier entry in the list sort first.  Tasks with
- * no matching label sort last (preserving their relative order).
- */
-export function sortByPriority(tasks: KanbanTask[], priorityLabels: string[]): KanbanTask[] {
-  if (priorityLabels.length === 0) {
-    return tasks;
-  }
-
-  const priority = (task: KanbanTask): number => {
-    for (let i = 0; i < priorityLabels.length; i++) {
-      if (task.labels.some(l => l.toLowerCase() === priorityLabels[i].toLowerCase())) {
-        return i;
-      }
-    }
-    return priorityLabels.length; // no matching label → lowest priority
-  };
-
-  return [...tasks].sort((a, b) => priority(a) - priority(b));
-}
-
-/**
  * Determine whether a session has exceeded the configured timeout.
  *
  * @param startedAt  ISO timestamp when the session started.
@@ -140,38 +110,3 @@ export function isTimedOut(startedAt: string, timeoutMs: number, now: Date = new
   return elapsed >= timeoutMs;
 }
 
-/**
- * Determine whether a task should be excluded based on its labels.
- *
- * Returns `true` when the task has *any* label that appears in the
- * `excludeLabels` list (case-insensitive).
- */
-export function shouldExclude(taskLabels: string[], excludeLabels: string[]): boolean {
-  if (excludeLabels.length === 0) {
-    return false;
-  }
-  const lower = excludeLabels.map(l => l.toLowerCase());
-  return taskLabels.some(l => lower.includes(l.toLowerCase()));
-}
-
-/**
- * Determine whether a task matches the assignee filter.
- *
- * - Empty `filter` → matches every task (no filtering).
- * - `"*"` → matches tasks that have *any* assignee (skip unassigned).
- * - `"unassigned"` → matches tasks with no assignee.
- * - Any other value → matches tasks whose `assignee` equals `filter`
- *   (case-insensitive).
- */
-export function matchesAssignee(taskAssignee: string | undefined, filter: string): boolean {
-  if (!filter) {
-    return true; // no filter → all tasks
-  }
-  if (filter === '*') {
-    return !!taskAssignee;
-  }
-  if (filter.toLowerCase() === 'unassigned') {
-    return !taskAssignee;
-  }
-  return (taskAssignee ?? '').toLowerCase() === filter.toLowerCase();
-}
