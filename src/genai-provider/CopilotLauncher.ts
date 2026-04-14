@@ -250,31 +250,6 @@ export class CopilotLauncher {
         this.sessionStateManager?.markError(taskId, sessionError);
       }
 
-      // ── Post agent-summary comment on GitHub issue (3.3) ─────────
-      if (sessionSucceeded && this.ghIssueManager) {
-        const shouldPost = ProjectConfig.getProjectConfig()?.postAgentSummaryToIssue
-          ?? vscode.workspace.getConfiguration('agentBoard').get<boolean>('postAgentSummaryToIssue', false);
-        if (shouldPost && task.providerId === 'github') {
-          const issueNumber = parseInt(task.nativeId, 10);
-          if (!isNaN(issueNumber)) {
-            const changedFiles = this.diffWatchers.get(taskId)?.getChanges() ?? [];
-            const stream = this.streamRegistry.get(taskId);
-            // Last 50 lines of stream output as a trimmed summary
-            const logLines = stream?.exportLog().trim().split('\n') ?? [];
-            const streamSummary = logLines.slice(-50).join('\n');
-            const agentName = agentSlug ?? 'Agent Board';
-            const markdown = this.ghIssueManager.buildAgentSummaryMarkdown({
-              agentName,
-              issueTitle: task.title,
-              changedFiles,
-              prUrl: task.copilotSession?.prUrl,
-              streamSummary: streamSummary || undefined,
-            });
-            void this.ghIssueManager.postAgentSummaryComment(issueNumber, markdown)
-              .catch(e => this.logger.warn('CopilotLauncher: failed to post summary comment:', e));
-          }
-        }
-      }
 
       // Worktree cleanup is disabled by default: the worktree is kept so the
       // next session can reuse the same branch and working directory.

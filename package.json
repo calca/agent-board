@@ -234,11 +234,6 @@
           "default": "standard",
           "description": "How much context to inject into the agent prompt. 'minimal' = task only, 'standard' = task + workspace, 'full' = + file tree + git. Overridable in .agent-board/config.json."
         },
-        "agentBoard.postAgentSummaryToIssue": {
-          "type": "boolean",
-          "default": false,
-          "description": "Post a summary comment on the GitHub issue when an agent session completes."
-        },
         "agentBoard.autoCleanWorktreeOnDone": {
           "type": "boolean",
           "default": false,

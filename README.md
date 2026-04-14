@@ -41,7 +41,7 @@ Split-view streaming: agent output on the left, changed files on the right. Real
 Each agent session gets its own worktree and branch — no conflicts, no stashing, no context switching. Review, merge (squash/rebase/merge), or delete directly from the board.
 
 ### Pull Requests
-When a task completes, a **"Create Pull Request"** button appears on the card. One click creates a GitHub PR (via REST API) or opens the Azure DevOps PR creation page — with branch and changed-file list pre-filled. Auto-squad can also create PRs automatically. Agent Board posts an AI-generated summary comment on the GitHub issue and persists the PR link on the card.
+When a task completes, a **"Create Pull Request"** button appears on the card. One click creates a GitHub PR (via REST API) or opens the Azure DevOps PR creation page — with branch and changed-file list pre-filled. Auto-squad can also create PRs automatically.
 
 ### `@taskai` Chat Participant
 Use `/plan`, `/implement`, `/test`, or `/commit` from VS Code Chat. Agent Board resolves the active task and injects full context automatically.
@@ -164,7 +164,6 @@ All settings can also be configured globally through **File > Preferences > Sett
 | `agentBoard.copilotModel` | `""` | Preferred Copilot model family (e.g. `gpt-4o`). Empty = default |
 | `agentBoard.contextDepth` | `"standard"` | Context depth: `minimal`, `standard`, `full` (file tree + git) |
 | `agentBoard.sessionTimeoutMinutes` | `5` | Max session duration in minutes (0 = disabled) |
-| `agentBoard.postAgentSummaryToIssue` | `false` | Post summary comment on GitHub issue after session |
 | `agentBoard.autoCleanWorktreeOnDone` | `false` | Remove worktree when session completes |
 | `agentBoard.squad.maxSessions` | `10` | Maximum parallel agent sessions |
 | `agentBoard.squad.sourceColumn` | `"todo"` | Column from which the squad picks tasks |

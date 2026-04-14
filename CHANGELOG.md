@@ -12,7 +12,6 @@ All notable changes to **Agent Board** are documented here.
 - **Session Panel** — split-view WebView panel: stream output on the left, changed files list on the right. Includes action bar (Full Diff, Export Log), auto-scroll, and follow-up input.
 - **New message types** — `streamOutput`, `fileChanges` (Host→WebView), `openDiff`, `openFullDiff`, `exportLog`, `sendFollowUp` (WebView→Host).
 - **PullRequestManager** (`src/github/PullRequestManager.ts`) — create PRs via GitHub REST API with confirmation dialog, state tracking, and worktree cleanup support.
-- **postAgentSummary()** on `GitHubProvider` — posts a markdown comment on the GitHub issue after agent completion.
 - **AgentTools** (`src/agent/AgentTools.ts`) — five tools (`read_file`, `write_file`, `run_command`, `get_diff`, `list_files`) with path traversal prevention and 30s timeout, for vscode.lm tool-calling API.
 - **ChatGenAiProvider** tool-calling support — `handleToolCall()` method for executing tool calls from the model, with graceful fallback.
 - **Context depth** setting (`agentBoard.contextDepth`) — `minimal` / `standard` / `full`. Full mode injects file tree and git metadata (branch, recent commits) into the prompt.

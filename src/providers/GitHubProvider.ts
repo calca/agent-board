@@ -128,35 +128,6 @@ export class GitHubProvider implements ITaskProvider {
     this._onDidChangeTasks.fire(tasks);
   }
 
-  /**
-   * Post a markdown summary comment on an issue after agent completion.
-   */
-  async postAgentSummary(issueNumber: number, summary: string): Promise<void> {
-    if (await this.hasGhCli()) {
-      if (!this.owner || !this.repo) { return; }
-      await this.execGh([
-        'issue', 'comment', String(issueNumber),
-        '--repo', `${this.owner}/${this.repo}`,
-        '--body', summary,
-      ]);
-      return;
-    }
-
-    await this.ensureToken();
-    if (!this.token || !this.owner || !this.repo) { return; }
-
-    const res = await fetch(
-      `https://api.github.com/repos/${this.owner}/${this.repo}/issues/${issueNumber}/comments`,
-      {
-        method: 'POST',
-        headers: this.apiHeaders(),
-        body: JSON.stringify({ body: summary }),
-      },
-    );
-    if (!res.ok) {
-      throw new Error(`GitHub API error posting comment: ${res.status} ${res.statusText}`);
-    }
-  }
 
   dispose(): void {
     this._onDidChangeTasks.dispose();

@@ -13,17 +13,7 @@ export function MiscSection() {
     <div className="section">
       <div className="section__title">Misc</div>
       <div className="cols-2">
-        <div className="field field--row">
-          <input
-            type="checkbox"
-            id="post-summary"
-            checked={!!state.config.postAgentSummaryToIssue}
-            onChange={e =>
-              dispatch({ type: 'updateConfig', patch: { postAgentSummaryToIssue: e.target.checked } })
-            }
-          />
-          <label htmlFor="post-summary">Post agent summary to GitHub issue</label>
-        </div>
+
         <div className="field">
           <label htmlFor="poll-interval">Poll interval (ms)</label>
           <input

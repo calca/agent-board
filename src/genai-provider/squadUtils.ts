@@ -4,7 +4,6 @@
  */
 
 import { ColumnId } from '../types/ColumnId';
-import { KanbanTask } from '../types/KanbanTask';
 
 // ── Defaults ────────────────────────────────────────────────────────────────
 
