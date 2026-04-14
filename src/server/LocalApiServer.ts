@@ -492,25 +492,16 @@ export class LocalApiServer {
         return;
       }
 
-      // Extract providerId from taskId (format: providerId:nativeId)
-      const [providerId] = taskId.split(':');
-      const provider = this.registry.get(providerId);
+      // Resolve provider and task from composite id
+      const resolved = await this.registry.resolveTask(taskId);
 
-      if (!provider) {
-        res.writeHead(400, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({ error: `Provider not found: ${providerId}` }));
-        return;
-      }
-
-      // Get the task
-      const tasks = await provider.getTasks();
-      const task = tasks.find(t => t.id === taskId);
-
-      if (!task) {
+      if (!resolved) {
         res.writeHead(404, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({ error: 'Task not found' }));
+        res.end(JSON.stringify({ error: `Task not found: ${taskId}` }));
         return;
       }
+
+      const { provider, task } = resolved;
 
       // Update task status
       await provider.updateTask({

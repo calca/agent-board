@@ -84,15 +84,15 @@ export interface NewTaskData {
 }
 
 export type WebViewToHost =
-  | { type: 'taskMoved'; taskId: string; toCol: ColumnId; index: number }
+  | { type: 'taskMoved'; taskId: string; providerId: string; toCol: ColumnId; index: number }
   | { type: 'openCopilot'; taskId: string; providerId: string; agentSlug?: string }
   | { type: 'cancelSession'; taskId: string }
   | { type: 'refreshRequest'; providerId?: string }
   | { type: 'ready' }
   | { type: 'addTask' }
   | { type: 'saveTask'; data: NewTaskData }
-  | { type: 'editTask'; taskId: string; data: NewTaskData }
-  | { type: 'launchProvider'; taskId: string; genAiProviderId: string }
+  | { type: 'editTask'; taskId: string; providerId: string; data: NewTaskData }
+  | { type: 'launchProvider'; taskId: string; providerId: string; genAiProviderId: string }
   | { type: 'reopenSession'; taskId: string }
   | { type: 'cancelTaskForm' }
   | { type: 'openWorktree'; worktreePath: string }
@@ -115,7 +115,7 @@ export type WebViewToHost =
   | { type: 'agentMerge'; sessionId: string; mergeStrategy: 'squash' | 'merge' | 'rebase'; providerId: string }
   | { type: 'alignWorktree'; sessionId: string }
   | { type: 'deleteWorktree'; sessionId: string }
-  | { type: 'deleteTask'; taskId: string }
+  | { type: 'deleteTask'; taskId: string; providerId: string }
   | { type: 'hideTask'; taskId: string }
   | { type: 'exportDoneMd' }
   | { type: 'cleanDone' }

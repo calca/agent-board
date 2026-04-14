@@ -64,6 +64,7 @@ function readTasks(filePath: string): KanbanTask[] {
         : [];
     return entries.map(e => ({
       id: `json:${e.id}`,
+      nativeId: String(e.id),
       title: e.title ?? 'Untitled',
       body: e.body ?? '',
       status: normalizeStatus(e.status),

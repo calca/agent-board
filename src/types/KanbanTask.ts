@@ -39,6 +39,8 @@ export interface CopilotSessionInfo {
  */
 export interface KanbanTask {
   id: string;
+  /** The provider-local identifier (without the provider prefix). */
+  nativeId: string;
   title: string;
   body: string;
   status: ColumnId;
@@ -53,3 +55,4 @@ export interface KanbanTask {
   /** Copilot session info, present when a copilot session is attached. */
   copilotSession?: CopilotSessionInfo;
 }
+

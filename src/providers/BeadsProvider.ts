@@ -103,13 +103,12 @@ export class BeadsProvider implements ITaskProvider {
   }
 
   getIssueRetrievalPrompt(task: KanbanTask): string | undefined {
-    const nativeId = task.id.replace(`${this.id}:`, '');
-    if (!nativeId) { return undefined; }
+    if (!task.nativeId) { return undefined; }
     return (
       'Before starting, run the following command to retrieve the full issue details. ' +
       'Execute this command first and use the output as the complete specification for your work.\n\n' +
       '```\n' +
-      `${this.executable} show ${nativeId} --format=json\n` +
+      `${this.executable} show ${task.nativeId} --format=json\n` +
       '```'
     );
   }
@@ -178,6 +177,7 @@ export class BeadsProvider implements ITaskProvider {
   private mapBeadsToTask(raw: BeadsIssue): KanbanTask {
     return {
       id: `${this.id}:${raw.id}`,
+      nativeId: String(raw.id),
       title: raw.title,
       body: raw.description ?? '',
       status: this.mapStatus(raw.state),

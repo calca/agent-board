@@ -21,6 +21,8 @@ export interface CopilotSession {
 
 export interface KanbanTask {
   id: string;
+  /** The provider-local identifier (without the provider prefix). */
+  nativeId: string;
   title: string;
   body: string;
   status: string;

@@ -71,6 +71,7 @@ export class JsonProvider implements ITaskProvider {
     const nativeId = `task-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
     const task: KanbanTask = {
       id: `${this.id}:${nativeId}`,
+      nativeId,
       title,
       body: description ?? '',
       status: 'todo',
@@ -215,22 +216,21 @@ export class JsonProvider implements ITaskProvider {
   private async writeTaskFile(task: KanbanTask): Promise<void> {
     if (!this.tasksDir) { return; }
     fs.mkdirSync(this.tasksDir, { recursive: true });
-    const nativeId = task.id.replace(`${this.id}:`, '');
-    const filePath = path.join(this.tasksDir, `${nativeId}.json`);
+    const filePath = path.join(this.tasksDir, `${task.nativeId}.json`);
     const entry = this.toEntry(task);
     fs.writeFileSync(filePath, JSON.stringify(entry, null, 2), 'utf-8');
   }
 
   private deleteTaskFile(task: KanbanTask): void {
     if (!this.tasksDir) { return; }
-    const nativeId = task.id.replace(`${this.id}:`, '');
-    const filePath = path.join(this.tasksDir, `${nativeId}.json`);
+    const filePath = path.join(this.tasksDir, `${task.nativeId}.json`);
     try { fs.unlinkSync(filePath); } catch { /* already gone */ }
   }
 
   private mapEntry(entry: JsonTaskEntry): KanbanTask {
     return {
       id: `${this.id}:${entry.id}`,
+      nativeId: entry.id,
       title: entry.title ?? 'Untitled',
       body: entry.body ?? '',
       status: this.normalizeStatus(entry.status),
@@ -246,7 +246,7 @@ export class JsonProvider implements ITaskProvider {
 
   private toEntry(task: KanbanTask): JsonTaskEntry {
     const entry: JsonTaskEntry = {
-      id: task.id.replace(`${this.id}:`, ''),
+      id: task.nativeId,
       title: task.title,
       body: task.body,
       status: task.status,

@@ -63,7 +63,7 @@ export class AzureDevOpsProvider implements ITaskProvider {
     }
 
     // Try to sync to Azure DevOps for terminal states (fire-and-forget)
-    const nativeId = task.id.replace(`${this.id}:`, '');
+    const nativeId = task.nativeId;
     const azState = this.reverseMapStatus(task.status);
     if (azState) {
       const args = [
@@ -139,7 +139,7 @@ export class AzureDevOpsProvider implements ITaskProvider {
   }
 
   getIssueRetrievalPrompt(task: KanbanTask): string | undefined {
-    const workItemId = task.id.replace(`${this.id}:`, '');
+    const workItemId = task.nativeId;
     if (!this.organization || !this.project || !workItemId) { return undefined; }
     return (
       'Before starting, run the following command to retrieve the full work item details ' +
@@ -297,6 +297,7 @@ export class AzureDevOpsProvider implements ITaskProvider {
 
     return {
       id: `${this.id}:${item.id}`,
+      nativeId: String(item.id),
       title: fields['System.Title'] ?? `#${item.id}`,
       body,
       status: this.mapStatus(fields['System.State']),

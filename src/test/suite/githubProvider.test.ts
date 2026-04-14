@@ -24,6 +24,7 @@ function mapStatus(state: string, labels: Array<{ name: string }>): string {
 /** Pure re-implementation of GitHubProvider.mapIssue for unit testing. */
 function mapIssue(issue: GitHubIssue): {
   id: string;
+  nativeId: string;
   title: string;
   body: string;
   status: string;
@@ -33,6 +34,7 @@ function mapIssue(issue: GitHubIssue): {
 } {
   return {
     id: `github:${issue.number}`,
+    nativeId: String(issue.number),
     title: issue.title,
     body: issue.body ?? '',
     status: mapStatus(issue.state, issue.labels),
@@ -100,6 +102,7 @@ suite('GitHubProvider (mapping logic)', () => {
   test('mapIssue produces correct id format', () => {
     const task = mapIssue(fakeIssue({ number: 123 }));
     assert.strictEqual(task.id, 'github:123');
+    assert.strictEqual(task.nativeId, '123');
     assert.strictEqual(task.providerId, 'github');
   });
 

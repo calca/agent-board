@@ -27,7 +27,7 @@ export function TaskCard({ task }: { task: KanbanTask }) {
 
   const initials = task.assignee ? task.assignee.slice(0, 2).toUpperCase() : '';
   const avatarUrl = (task.meta as Record<string, unknown>)?.avatarUrl as string | undefined;
-  const shortId = task.id.includes(':') ? task.id.replace(':', '-').toUpperCase() : task.id;
+  const shortId = `${task.providerId}-${task.nativeId}`.toUpperCase();
 
   // Body snippet
   const hasBody = !!task.body;

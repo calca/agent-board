@@ -46,6 +46,7 @@ export function KanbanBoard() {
             key={col.id}
             column={col}
             tasks={filtered.filter(t => t.status === col.id)}
+            allTasks={tasks}
             isActive={col.id === selectedCol}
           />
         ))}
@@ -54,7 +55,7 @@ export function KanbanBoard() {
   );
 }
 
-function KanbanColumn({ column, tasks, isActive }: { column: Column; tasks: KanbanTask[]; isActive: boolean }) {
+function KanbanColumn({ column, tasks, allTasks, isActive }: { column: Column; tasks: KanbanTask[]; allTasks: KanbanTask[]; isActive: boolean }) {
   const { dispatch } = useBoard();
   const bgStyle = column.color ? { background: `${column.color}0D` } : undefined;
   const headerStyle = column.color ? { background: `${column.color}1A` } : undefined;
@@ -64,9 +65,12 @@ function KanbanColumn({ column, tasks, isActive }: { column: Column; tasks: Kanb
   function handleDragOver(e: React.DragEvent) { e.preventDefault(); }
   function handleDrop(e: React.DragEvent) {
     e.preventDefault();
-    const taskId = e.dataTransfer.getData('text/plain');
-    if (taskId) {
-      DataProvider.updateTaskStatus(taskId, column.id).catch(err => console.error('Error updating task status:', err));
+    const raw = e.dataTransfer.getData('text/plain');
+    if (raw) {
+      const task = allTasks.find(t => t.id === raw);
+      if (task) {
+        DataProvider.updateTaskStatus(task.id, column.id, task.providerId).catch(err => console.error('Error updating task status:', err));
+      }
     }
   }
 

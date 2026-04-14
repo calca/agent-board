@@ -208,7 +208,7 @@ function FvReadOnlyDetails({ task, statusCol, columns }: { task: KanbanTask; sta
           <select
             className="task-form__select fv-status-select"
             defaultValue={task.status}
-            onChange={e => DataProvider.updateTaskStatus(task.id, e.target.value as any).catch(err => console.error('Error updating task status:', err))}
+            onChange={e => DataProvider.updateTaskStatus(task.id, e.target.value as any, task.providerId).catch(err => console.error('Error updating task status:', err))}
           >
             {columns.map(c => <option key={c.id} value={c.id}>{c.label}</option>)}
           </select>
@@ -338,7 +338,7 @@ function FvActions({ task, sessionInfo, isRunning, isMerged, hasWorktree, active
         <>
           <div className="fv-actions__providers">
             {genAiProviders.filter(p => !p.disabled).map(p => (
-              <button key={p.id} className="fv-action-btn fv-launch-provider" onClick={() => postMessage({ type: 'launchProvider', taskId: task.id, genAiProviderId: p.id })} title={p.displayName}>
+              <button key={p.id} className="fv-action-btn fv-launch-provider" onClick={() => postMessage({ type: 'launchProvider', taskId: task.id, providerId: task.providerId, genAiProviderId: p.id })} title={p.displayName}>
                 <svg className="fv-icon" width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M6 3.5L12 8l-6 4.5v-9Z"/></svg>
                 {' '}{p.displayName}
               </button>

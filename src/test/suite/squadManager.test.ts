@@ -150,6 +150,7 @@ suite('KanbanTask with copilotSession', () => {
   test('task without copilot session', () => {
     const task: KanbanTask = {
       id: 'github:42',
+      nativeId: '42',
       title: 'Test task',
       body: 'Description',
       status: 'todo',
@@ -163,6 +164,7 @@ suite('KanbanTask with copilotSession', () => {
   test('task with copilot session', () => {
     const task: KanbanTask = {
       id: 'github:42',
+      nativeId: '42',
       title: 'Test task',
       body: 'Description',
       status: 'inprogress',
@@ -330,6 +332,7 @@ suite('sortByPriority', () => {
   function makeTask(id: string, labels: string[]): KanbanTask {
     return {
       id,
+      nativeId: id.includes(':') ? id.split(':').slice(1).join(':') : id,
       title: `Task ${id}`,
       body: '',
       status: 'todo',

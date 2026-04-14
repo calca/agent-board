@@ -74,10 +74,11 @@ class DataProviderImpl {
   /**
    * Update task status (move between columns).
    */
-  async updateTaskStatus(id: string, status: ColumnId): Promise<void> {
+  async updateTaskStatus(id: string, status: ColumnId, providerId: string): Promise<void> {
     transport.send({
       type: 'taskMoved',
       taskId: id,
+      providerId,
       toCol: status,
       index: 0,
     });

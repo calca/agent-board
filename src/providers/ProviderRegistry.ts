@@ -1,5 +1,12 @@
 import { ITaskProvider } from './ITaskProvider';
 import { DuplicateProviderError } from './ProviderError';
+import { KanbanTask } from '../types/KanbanTask';
+
+/** Resolved task with its owning provider. */
+export interface ResolvedTask {
+  provider: ITaskProvider;
+  task: KanbanTask;
+}
 
 /**
  * Central registry of all `ITaskProvider` instances.
@@ -49,5 +56,23 @@ export class ProviderRegistry {
       provider.dispose();
     }
     this.providers.clear();
+  }
+
+  /**
+   * Look up a task by its composite id (`providerId:nativeId`).
+   *
+   * Finds the provider whose `id` matches `task.providerId`, then
+   * searches its task list for the matching composite id.
+   * Returns the provider + task pair, or `undefined`.
+   */
+  async resolveTask(compositeId: string): Promise<ResolvedTask | undefined> {
+    for (const provider of this.providers.values()) {
+      const tasks = await provider.getTasks();
+      const task = tasks.find(t => t.id === compositeId);
+      if (task) {
+        return { provider, task };
+      }
+    }
+    return undefined;
   }
 }

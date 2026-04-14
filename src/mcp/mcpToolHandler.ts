@@ -302,6 +302,7 @@ export async function handleCreateTask(
 
   const task: KanbanTask = {
     id: '',
+    nativeId: '',
     title: args.title,
     body: args.body ?? '',
     status: column as ColumnId,

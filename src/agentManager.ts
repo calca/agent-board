@@ -1,6 +1,6 @@
 import * as vscode from 'vscode';
 import { Agent, AgentStatus } from './types';
-import { TaskStore } from './taskStore';
+import { ProviderRegistry } from './providers/ProviderRegistry';
 
 export class AgentManager {
   private static readonly STORAGE_KEY = 'agentBoard.agents';
@@ -8,7 +8,7 @@ export class AgentManager {
 
   constructor(
     private readonly context: vscode.ExtensionContext,
-    private readonly taskStore: TaskStore,
+    private readonly providerRegistry: ProviderRegistry,
   ) {
     this.agents = context.workspaceState.get<Agent[]>(AgentManager.STORAGE_KEY, []);
     // Reset any agents that were running when VS Code was closed
@@ -87,9 +87,13 @@ export class AgentManager {
       finishedAt: new Date().toISOString(),
       output,
     };
-    // Complete the associated task if present
+    // Complete the associated task via the owning provider
     if (agent.taskId) {
-      this.taskStore.completeTask(agent.taskId);
+      this.providerRegistry.resolveTask(agent.taskId).then(resolved => {
+        if (resolved) {
+          resolved.provider.updateTask({ ...resolved.task, status: 'done' });
+        }
+      });
     }
     this.persist();
     return this.agents[index];

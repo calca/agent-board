@@ -22,7 +22,7 @@ export function TaskForm() {
 
   const handleDelete = useCallback(() => {
     if (task) {
-      postMessage({ type: 'deleteTask', taskId: task.id });
+      postMessage({ type: 'deleteTask', taskId: task.id, providerId: task.providerId });
       dispatch({ type: 'CLOSE_TASK_FORM' });
       dispatch({ type: 'CLOSE_FULL_VIEW' });
     }
@@ -47,9 +47,9 @@ export function TaskForm() {
 
     if (task) {
       if (isRemote) {
-        postMessage({ type: 'editTask', taskId: task.id, data: { title: task.title, body: task.body, status, labels: task.labels.join(', '), assignee: task.assignee ?? '' } });
+        postMessage({ type: 'editTask', taskId: task.id, providerId: task.providerId, data: { title: task.title, body: task.body, status, labels: task.labels.join(', '), assignee: task.assignee ?? '' } });
       } else {
-        postMessage({ type: 'editTask', taskId: task.id, data: { title, body, status, labels, assignee } });
+        postMessage({ type: 'editTask', taskId: task.id, providerId: task.providerId, data: { title, body, status, labels, assignee } });
       }
     } else {
       postMessage({ type: 'saveTask', data: { title, body, status, labels, assignee } });

@@ -154,27 +154,21 @@ export class SquadManager {
    *
    * Returns immediately after registration so the UI can refresh.
    */
-  async launchSingle(taskId: string, providerId: string, agentSlug?: string): Promise<void> {
+  async launchSingle(taskId: string, genAiProviderId: string, agentSlug?: string): Promise<void> {
     const cfg = this.getConfig();
 
     // Resolve the task from its provider
-    const [taskProviderId] = taskId.split(':');
-    const taskProvider = this.providerRegistry.get(taskProviderId);
-    if (!taskProvider) {
-      this.logger.warn('SquadManager.launchSingle: provider "%s" not found', taskProviderId);
-      return;
-    }
-    const tasks = await taskProvider.getTasks();
-    const task = tasks.find(t => t.id === taskId);
-    if (!task) {
+    const resolved = await this.providerRegistry.resolveTask(taskId);
+    if (!resolved) {
       this.logger.warn('SquadManager.launchSingle: task "%s" not found', taskId);
       return;
     }
+    const { provider: taskProvider, task } = resolved;
 
     // Register the session
     const session: CopilotSessionInfo = {
       state: 'starting',
-      providerId,
+      providerId: genAiProviderId,
       startedAt: new Date().toISOString(),
     };
     this.activeSessions.set(taskId, session);
@@ -193,7 +187,7 @@ export class SquadManager {
     await this.moveTask(task, cfg.activeColumn);
 
     // Run the provider in the background (fire-and-forget)
-    this.runInBackground(taskId, task, providerId, agentSlug, cfg);
+    this.runInBackground(taskId, task, genAiProviderId, agentSlug, cfg);
   }
 
   /** Execute the provider in the background and update session state on completion. */
@@ -292,19 +286,11 @@ export class SquadManager {
         session.state = 'error';
         session.finishedAt = new Date().toISOString();
         // Best-effort: move task back (fire-and-forget — we're shutting down).
-        const [providerId] = taskId.split(':');
-        const provider = this.providerRegistry.get(providerId);
-        if (provider) {
-          void provider.updateTask({
-            id: taskId,
-            title: taskId,
-            body: '',
-            status: cfg.sourceColumn,
-            labels: [],
-            providerId,
-            meta: { gracefulShutdown: true },
-          });
-        }
+        void this.providerRegistry.resolveTask(taskId).then(resolved => {
+          if (resolved) {
+            void resolved.provider.updateTask({ ...resolved.task, status: cfg.sourceColumn });
+          }
+        });
       }
       this.activeSessions.clear();
     }
@@ -348,8 +334,7 @@ export class SquadManager {
 
   /** Move a task to the given column via its provider. */
   private async moveTask(task: KanbanTask, toColumn: ColumnId): Promise<void> {
-    const [providerId] = task.id.split(':');
-    const provider = this.providerRegistry.get(providerId);
+    const provider = this.providerRegistry.get(task.providerId);
     if (provider) {
       await provider.updateTask({ ...task, status: toColumn });
     }

@@ -74,23 +74,22 @@ export class GitHubProvider implements ITaskProvider {
     }
 
     // Fire-and-forget remote sync
-    const nativeId = task.id.replace(`${this.id}:`, '');
-    const issueNumber = parseInt(nativeId, 10);
+    const issueNumber = parseInt(task.nativeId, 10);
     const state = task.status === 'done' ? 'closed' : 'open';
 
     const syncRemote = async () => {
       if (await this.hasGhCli()) {
         const repoSlug = `${this.owner}/${this.repo}`;
         if (state === 'closed') {
-          await this.execGh(['issue', 'close', nativeId, '--repo', repoSlug]);
+          await this.execGh(['issue', 'close', task.nativeId, '--repo', repoSlug]);
         } else {
-          await this.execGh(['issue', 'reopen', nativeId, '--repo', repoSlug]);
+          await this.execGh(['issue', 'reopen', task.nativeId, '--repo', repoSlug]);
         }
       } else {
         await this.ensureToken();
         if (!this.token) { return; }
         const res = await fetch(
-          `https://api.github.com/repos/${this.owner}/${this.repo}/issues/${nativeId}`,
+          `https://api.github.com/repos/${this.owner}/${this.repo}/issues/${task.nativeId}`,
           {
             method: 'PATCH',
             headers: this.apiHeaders(),
@@ -214,7 +213,7 @@ export class GitHubProvider implements ITaskProvider {
   }
 
   getIssueRetrievalPrompt(task: KanbanTask): string | undefined {
-    const issueNumber = task.id.replace(`${this.id}:`, '');
+    const issueNumber = task.nativeId;
     if (!this.owner || !this.repo || !issueNumber) { return undefined; }
     return (
       'Before starting, run the following command to retrieve the full issue details ' +
@@ -411,6 +410,7 @@ export class GitHubProvider implements ITaskProvider {
     }
     return {
       id: `${this.id}:${issue.number}`,
+      nativeId: String(issue.number),
       title: issue.title,
       body: issue.body ?? '',
       status: this.mapStatus(issue.state, labels.map(l => ({ name: l }))),
@@ -431,6 +431,7 @@ export class GitHubProvider implements ITaskProvider {
     }
     return {
       id: `${this.id}:${issue.number}`,
+      nativeId: String(issue.number),
       title: issue.title,
       body: issue.body ?? '',
       status: this.mapStatus(issue.state, issue.labels),

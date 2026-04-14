@@ -37,7 +37,6 @@ import { ProviderPicker } from './providers/ProviderPicker';
 import { ProviderRegistry } from './providers/ProviderRegistry';
 import { LocalApiServer } from './server/LocalApiServer';
 import { SettingsPanel } from './settings/SettingsPanel';
-import { TaskStore } from './taskStore';
 import { TaskTreeItem } from './tasksTreeProvider';
 import { COLUMN_IDS, COLUMN_LABELS, DEFAULT_COLUMN_COLORS } from './types/ColumnId';
 import { AgentOption, GenAiProviderOption } from './types/Messages';
@@ -278,8 +277,7 @@ export function activate(context: vscode.ExtensionContext): void {
 
   // ── Internal stores ────────────────────────────────────────────────────
 
-  const taskStore = new TaskStore(context);
-  const agentManager = new AgentManager(context, taskStore);
+  const agentManager = new AgentManager(context, providerRegistry);
 
   // JSON-backed task provider — always registered, persists to .agent-board/tasks.json
   const jsonProvider = new JsonProvider();
@@ -467,8 +465,7 @@ export function activate(context: vscode.ExtensionContext): void {
           await pushMobileStatus(panel);
           break;
         case 'taskMoved': {
-          const [providerId] = msg.taskId.split(':');
-          const provider = providerRegistry.get(providerId);
+          const provider = providerRegistry.get(msg.providerId);
           if (provider) {
             const tasks = await provider.getTasks();
             const task = tasks.find(t => t.id === msg.taskId);
@@ -488,7 +485,7 @@ export function activate(context: vscode.ExtensionContext): void {
                     : '';
                   const pr = await prManager.createPR({
                     title: task.title,
-                    body: `Closes #${msg.taskId.split(':')[1]}\n\n${diffSummary}`,
+                    body: `Closes #${task.nativeId}\n\n${diffSummary}`,
                     headBranch: worktreeBranch,
                   });
                   if (pr) {
@@ -608,8 +605,7 @@ export function activate(context: vscode.ExtensionContext): void {
         case 'cancelTaskForm':
           break;
         case 'editTask': {
-          const [editProviderId] = msg.taskId.split(':');
-          const editProvider = providerRegistry.get(editProviderId);
+          const editProvider = providerRegistry.get(msg.providerId);
           if (editProvider) {
             const tasks = await editProvider.getTasks();
             const existing = tasks.find(t => t.id === msg.taskId);
@@ -631,8 +627,7 @@ export function activate(context: vscode.ExtensionContext): void {
           break;
         }
         case 'deleteTask': {
-          const [delProviderId] = msg.taskId.split(':');
-          const delProvider = providerRegistry.get(delProviderId);
+          const delProvider = providerRegistry.get(msg.providerId);
           if (delProvider && 'deleteTaskById' in delProvider && typeof (delProvider as Record<string, unknown>).deleteTaskById === 'function') {
             await (delProvider as unknown as { deleteTaskById(id: string): Promise<boolean> }).deleteTaskById(msg.taskId);
           }
@@ -768,7 +763,7 @@ export function activate(context: vscode.ExtensionContext): void {
           const worktreeRoot = dw?.rootPath ?? vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
           if (worktreeRoot) {
             const terminal = vscode.window.createTerminal({
-              name: `Worktree: ${msg.sessionId.split(':').pop() ?? msg.sessionId}`,
+              name: `Worktree: ${msg.sessionId.split(':').slice(1).join(':') || msg.sessionId}`,
               cwd: worktreeRoot,
             });
             terminal.show();
@@ -919,12 +914,10 @@ export function activate(context: vscode.ExtensionContext): void {
             panel.postMessage({ type: 'mergeResult', sessionId: msg.sessionId, success: true, message: `Branch "${branch}" mergiato in main (${strategyLabels[strategy]}).` });
             vscode.window.showInformationMessage(`✅ Branch "${branch}" mergiato in main (${strategyLabels[strategy]}).`);
 
-            // Move task to next column after successful merge
-            const [mergeProviderId] = msg.sessionId.split(':');
-            const mergeProvider = providerRegistry.get(mergeProviderId);
-            if (mergeProvider) {
-              const mergeTasks = await mergeProvider.getTasks();
-              const mergeTask = mergeTasks.find(t => t.id === msg.sessionId);
+            // Move task to the next column after successful merge
+            const mergeResolved = await providerRegistry.resolveTask(msg.sessionId);
+            if (mergeResolved) {
+              const { provider: mergeProvider, task: mergeTask } = mergeResolved;
               if (mergeTask) {
                 const columnOrder = ProjectConfig.getProjectConfig()?.kanban?.columns ?? [...COLUMN_IDS];
                 const currentIdx = columnOrder.indexOf(mergeTask.status);

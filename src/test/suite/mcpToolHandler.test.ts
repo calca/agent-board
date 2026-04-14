@@ -18,6 +18,7 @@ import { KanbanTask } from '../../types/KanbanTask';
 function makeTask(id: string, overrides?: Partial<KanbanTask>): KanbanTask {
   return {
     id,
+    nativeId: id.includes(':') ? id.split(':').slice(1).join(':') : id,
     title: `Task ${id}`,
     body: `Body of ${id}`,
     status: 'todo',
@@ -43,7 +44,7 @@ function createAdapter(tasks: KanbanTask[]): McpTaskAdapter & { tasks: KanbanTas
     },
     async createTask(task: KanbanTask) {
       const newId = `test:${store.length + 1}`;
-      const created: KanbanTask = { ...task, id: newId };
+      const created: KanbanTask = { ...task, id: newId, nativeId: String(store.length + 1) };
       store.push(created);
       return created;
     },

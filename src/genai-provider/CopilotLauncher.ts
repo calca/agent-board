@@ -255,7 +255,7 @@ export class CopilotLauncher {
         const shouldPost = ProjectConfig.getProjectConfig()?.postAgentSummaryToIssue
           ?? vscode.workspace.getConfiguration('agentBoard').get<boolean>('postAgentSummaryToIssue', false);
         if (shouldPost && task.providerId === 'github') {
-          const issueNumber = parseInt(task.id.split(':')[1] ?? '', 10);
+          const issueNumber = parseInt(task.nativeId, 10);
           if (!isNaN(issueNumber)) {
             const changedFiles = this.diffWatchers.get(taskId)?.getChanges() ?? [];
             const stream = this.streamRegistry.get(taskId);
@@ -400,13 +400,8 @@ export class CopilotLauncher {
   }
 
   private async resolveTask(taskId: string): Promise<KanbanTask | undefined> {
-    const [providerId] = taskId.split(':');
-    const provider = this.registry.get(providerId);
-    if (!provider) {
-      return undefined;
-    }
-    const tasks = await provider.getTasks();
-    return tasks.find(t => t.id === taskId);
+    const resolved = await this.registry.resolveTask(taskId);
+    return resolved?.task;
   }
 
   // ── Log persistence ─────────────────────────────────────────────────
@@ -416,8 +411,7 @@ export class CopilotLauncher {
    */
   private async moveTaskToReview(task: KanbanTask): Promise<void> {
     if (task.status === 'review' || task.status === 'done') { return; }
-    const [providerId] = task.id.split(':');
-    const provider = this.registry.get(providerId);
+    const provider = this.registry.get(task.providerId);
     if (provider) {
       try {
         await provider.updateTask({ ...task, status: 'review' });

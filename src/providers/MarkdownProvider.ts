@@ -53,7 +53,7 @@ export class MarkdownProvider implements ITaskProvider {
 
     // Move the file to the done directory when the task is marked as done.
     if (task.status === 'done' && this.inboxDir && this.doneDir) {
-      const nativeId = task.id.replace(`${this.id}:`, '');
+    const nativeId = task.nativeId;
       const srcPath = path.join(this.inboxDir, `${nativeId}.md`);
       if (fs.existsSync(srcPath)) {
         try {
@@ -125,7 +125,7 @@ export class MarkdownProvider implements ITaskProvider {
   }
 
   getIssueRetrievalPrompt(task: KanbanTask): string | undefined {
-    const nativeId = task.id.replace(`${this.id}:`, '');
+    const nativeId = task.nativeId;
     const dir = task.status === 'done' ? this.doneDir : this.inboxDir;
     if (!dir) { return undefined; }
     const filePath = path.join(dir, `${nativeId}.md`);
@@ -207,6 +207,7 @@ export class MarkdownProvider implements ITaskProvider {
     const title = nativeId.replace(/[-_]/g, ' ');
     return {
       id: `${this.id}:${nativeId}`,
+      nativeId,
       title,
       body: content,
       status: 'todo',
