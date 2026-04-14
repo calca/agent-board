@@ -51,10 +51,6 @@ Each agent session gets its own worktree and branch — no conflicts, no stashin
 
 When a task completes, a **"Create Pull Request"** button appears on the card. One click creates a GitHub PR (via `gh` CLI) or opens the Azure DevOps PR creation page — with branch and changed-file list pre-filled. Auto-squad can also create PRs automatically.
 
-### `@taskai` Chat Participant
-
-Use `/plan`, `/implement`, `/test`, or `/commit` from VS Code Chat. Agent Board resolves the active task and injects full context automatically.
-
 ### MCP Server
 
 Stdio-based Model Context Protocol server for full CRUD: `list_tasks`, `get_task`, `create_task`, `update_task`, `delete_task`. Any MCP-compatible agent can manage your board.
@@ -414,19 +410,6 @@ Tasks flow: **Source** → **Active** → **Done** (all three columns are config
 
 Failure notifications are always shown.
 
-## `@taskai` Chat Participant
-
-Use Agent Board directly from VS Code Chat:
-
-| Slash Command | Persona | Description |
-| --------------- | --------- | ------------- |
-| `/plan` | Architect | Generate a structured implementation plan |
-| `/implement` | Developer | Generate production-ready code |
-| `/test` | Test Engineer | Generate test cases |
-| `/commit` | — | Generate conventional commit message |
-
-The participant auto-resolves the active task (prefers `inprogress`, falls back to most recent `todo`) and injects full context via `ContextBuilder`. Supports multi-turn conversation history.
-
 ## Session State Management
 
 Sessions follow a full lifecycle: `idle → starting → running → paused → completed | error | interrupted`.
@@ -515,7 +498,6 @@ Extension Host (Node.js)
 │   ├── MessageBridge          (typed postMessage)
 │   └── theme.css              (--vscode-* variables)
 ├── SettingsPanel           → React WebView (config editing, provider diagnostics, About)
-├── ChatParticipant         → @taskai (/plan, /implement, /test, /commit)
 ├── PullRequestManager      → GitHub PR creation (gh CLI) + state tracking
 ├── AgentTools              → read_file, write_file, run_command, get_diff, list_files
 ├── MCP Server              → stdio JSON-RPC 2.0 (5 tools)

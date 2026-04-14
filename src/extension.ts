@@ -13,7 +13,6 @@ import { ProjectConfig } from './config/ProjectConfig';
 import { DiffWatcher, GIT_REF_SCHEME, GitRefContentProvider, gitRefUri } from './diff/DiffWatcher';
 import { AgentInfo, discoverAgents } from './genai-provider/agentDiscovery';
 import { cancelAgent as cancelCliAgent, runAgent as runCliAgent } from './genai-provider/AgentRunner';
-import { registerChatParticipant } from './genai-provider/ChatParticipant';
 import { CopilotLauncher } from './genai-provider/CopilotLauncher';
 import { GenAiProviderRegistry } from './genai-provider/GenAiProviderRegistry';
 import { ModelSelector } from './genai-provider/ModelSelector';
@@ -271,9 +270,6 @@ export function activate(context: vscode.ExtensionContext): void {
       void pushMobileStatus(activePanel);
     }
   });
-
-  // Register @taskai chat participant (gracefully skipped if API unavailable)
-  const chatParticipant = registerChatParticipant(context, providerRegistry);
 
   // Re-read log level when settings change
   context.subscriptions.push(
@@ -1287,10 +1283,6 @@ export function activate(context: vscode.ExtensionContext): void {
 
   context.subscriptions.push({ dispose: () => { void stopMobileTunnel(); mobileServer.stop(); } });
   logger.info('Mobile companion server started on http://localhost:%d', mobileServerPort);
-  if (chatParticipant) {
-    context.subscriptions.push(chatParticipant);
-  }
-
   logger.info('Agent Board activated — %d subscriptions registered', context.subscriptions.length);
 }
 

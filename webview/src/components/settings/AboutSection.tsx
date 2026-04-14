@@ -28,7 +28,6 @@ export function AboutSection() {
           <li>MCP server for external agent integration</li>
           <li>GitHub Issues, Azure DevOps, JSON, Markdown, Beads providers</li>
           <li>Multiple GenAI backends: Copilot, Ollama, Mistral, LM API</li>
-          <li><code>@taskai</code> chat participant with /plan, /implement, /test, /commit</li>
         </ul>
       </div>
 
