@@ -1,6 +1,6 @@
 import * as vscode from 'vscode';
 import { ProjectConfig } from '../config/ProjectConfig';
-import { ColumnId, DEFAULT_COLUMN_IDS } from '../types/ColumnId';
+import { ColumnId, LAST_COLUMN } from '../types/ColumnId';
 import { KanbanTask } from '../types/KanbanTask';
 import { Logger } from '../utils/logger';
 import { execShell, execShellOk } from './execShell';
@@ -246,10 +246,7 @@ export class GitHubProvider implements ITaskProvider {
   }
 
   private getLastColumn(): string {
-    const cfg = ProjectConfig.getProjectConfig();
-    const columns = cfg?.kanban?.columns;
-    const list = columns?.length ? columns : DEFAULT_COLUMN_IDS;
-    return list[list.length - 1];
+    return LAST_COLUMN;
   }
 
   private isCacheValid(): boolean {

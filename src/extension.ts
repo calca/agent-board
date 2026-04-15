@@ -37,7 +37,7 @@ import { ProviderRegistry } from './providers/ProviderRegistry';
 import { LocalApiServer } from './server/LocalApiServer';
 import { SettingsPanel } from './settings/SettingsPanel';
 import { TaskTreeItem } from './tasksTreeProvider';
-import { DEFAULT_COLUMN_COLORS, DEFAULT_COLUMN_IDS, DEFAULT_COLUMN_LABELS } from './types/ColumnId';
+import { DEFAULT_COLUMN_COLORS, DEFAULT_COLUMN_IDS, DEFAULT_COLUMN_LABELS, buildColumnOrder } from './types/ColumnId';
 import { AgentOption, GenAiProviderOption } from './types/Messages';
 import { Logger, LogLevel } from './utils/logger';
 
@@ -230,7 +230,7 @@ export function activate(context: vscode.ExtensionContext): void {
       }
       return entry;
     }).filter(p => !p.disabled);
-    const columnOrder = ProjectConfig.getProjectConfig()?.kanban?.columns ?? [...DEFAULT_COLUMN_IDS];
+    const columnOrder = buildColumnOrder(ProjectConfig.getProjectConfig()?.kanban?.intermediateColumns);
     const cols = columnOrder.map((id: string) => ({
       id,
       label: DEFAULT_COLUMN_LABELS[id] ?? id,
@@ -556,7 +556,7 @@ export function activate(context: vscode.ExtensionContext): void {
           break;
         }
         case 'addTask': {
-          const columns = DEFAULT_COLUMN_IDS.map(id => ({ id, label: DEFAULT_COLUMN_LABELS[id], color: DEFAULT_COLUMN_COLORS[id] }));
+          const columns = buildColumnOrder(ProjectConfig.getProjectConfig()?.kanban?.intermediateColumns).map(id => ({ id, label: DEFAULT_COLUMN_LABELS[id] ?? id, color: DEFAULT_COLUMN_COLORS[id] }));
           let currentUser = '';
           try {
             const ghSession = await vscode.authentication.getSession('github', ['repo'], { createIfNone: false });
@@ -620,7 +620,7 @@ export function activate(context: vscode.ExtensionContext): void {
           break;
         }
         case 'exportDoneMd': {
-          const configuredCols = ProjectConfig.getProjectConfig()?.kanban?.columns ?? [...DEFAULT_COLUMN_IDS];
+          const configuredCols = buildColumnOrder(ProjectConfig.getProjectConfig()?.kanban?.intermediateColumns);
           const doneColId = configuredCols[configuredCols.length - 1] ?? 'done';
           const allProviders = providerRegistry.getAll().filter(p => p.isEnabled());
           const allTasks = HiddenTasksStore.filterVisible(
@@ -658,7 +658,7 @@ export function activate(context: vscode.ExtensionContext): void {
           break;
         }
         case 'cleanDone': {
-          const configuredCols2 = ProjectConfig.getProjectConfig()?.kanban?.columns ?? [...DEFAULT_COLUMN_IDS];
+          const configuredCols2 = buildColumnOrder(ProjectConfig.getProjectConfig()?.kanban?.intermediateColumns);
           const doneColId2 = configuredCols2[configuredCols2.length - 1] ?? 'done';
           const allProviders2 = providerRegistry.getAll().filter(p => p.isEnabled());
           const allTasks2 = (await Promise.allSettled(allProviders2.map(p => p.getTasks())))
@@ -893,7 +893,7 @@ export function activate(context: vscode.ExtensionContext): void {
             if (mergeResolved) {
               const { provider: mergeProvider, task: mergeTask } = mergeResolved;
               if (mergeTask) {
-                const columnOrder = ProjectConfig.getProjectConfig()?.kanban?.columns ?? [...DEFAULT_COLUMN_IDS];
+                const columnOrder = buildColumnOrder(ProjectConfig.getProjectConfig()?.kanban?.intermediateColumns);
                 const currentIdx = columnOrder.indexOf(mergeTask.status);
                 const nextCol = currentIdx >= 0 && currentIdx < columnOrder.length - 1
                   ? columnOrder[currentIdx + 1]

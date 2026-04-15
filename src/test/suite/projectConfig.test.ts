@@ -118,7 +118,7 @@ suite('ProjectConfigData (full shape)', () => {
         ollama: { enabled: true, model: 'llama3', endpoint: 'http://localhost:11434/api/generate' },
         mistral: { enabled: true, model: 'mistral-small-latest' },
       },
-      kanban: { columns: ['backlog', 'todo', 'done'] },
+      kanban: { intermediateColumns: ['backlog', 'doing'] },
       logLevel: 'DEBUG',
     };
 
@@ -130,7 +130,7 @@ suite('ProjectConfigData (full shape)', () => {
     assert.strictEqual(cfg.genAiProviders?.ollama?.model, 'llama3');
     assert.strictEqual(cfg.genAiProviders?.mistral?.enabled, true);
     assert.strictEqual(cfg.genAiProviders?.mistral?.model, 'mistral-small-latest');
-    assert.deepStrictEqual(cfg.kanban?.columns, ['backlog', 'todo', 'done']);
+    assert.deepStrictEqual(cfg.kanban?.intermediateColumns, ['backlog', 'doing']);
     assert.strictEqual(cfg.logLevel, 'DEBUG');
   });
 

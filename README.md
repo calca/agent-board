@@ -143,13 +143,13 @@ Create a `.agent-board/config.json` file in the workspace root to override any V
 
 ### Flexible Columns
 
-Column identifiers are arbitrary strings. The built-in defaults are `todo`, `inprogress`, `review`, and `done`, but you can define any workflow:
+Column identifiers are arbitrary strings. The first column is always `todo` and the last is always `done`. You can customise only the intermediate columns:
 
 ```jsonc
 {
-  "kanban": { "columns": ["backlog", "ready", "doing", "qa", "shipped"] },
+  "kanban": { "intermediateColumns": ["ready", "doing", "qa"] },
   "squad": {
-    "sourceColumn": "ready",
+    "sourceColumn": "todo",
     "activeColumn": "doing",
     "doneColumn": "qa"
   }
@@ -169,7 +169,7 @@ All settings can also be configured globally through **File > Preferences > Sett
 | `agentBoard.worktree.enabled` | `true` | Create an isolated git worktree for providers that support it |
 | `agentBoard.copilotCli.yolo` | `true` | Enable `/yolo` mode — auto-approve all changes without confirmation |
 | `agentBoard.copilotCli.fleet` | `false` | Enable `/fleet` mode — optimise prompt for parallel fleet execution |
-| `agentBoard.kanban.columns` | `["todo","inprogress","review","done"]` | Kanban column IDs (any string values) |
+| `agentBoard.kanban.intermediateColumns` | `["inprogress","review"]` | Intermediate column IDs between todo and done |
 | `agentBoard.copilotModel` | `""` | Preferred Copilot model family (e.g. `gpt-4o`). Empty = default |
 | `agentBoard.contextDepth` | `"standard"` | Context depth: `minimal`, `standard`, `full` (file tree + git) |
 | `agentBoard.sessionTimeoutMinutes` | `5` | Max session duration in minutes (0 = disabled) |

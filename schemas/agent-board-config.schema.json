@@ -198,12 +198,12 @@
     },
     "kanban": {
       "type": "object",
-      "description": "Kanban board settings.",
+      "description": "Kanban board settings. The first column is always 'todo' and the last is always 'done'. Only intermediate columns are configurable.",
       "properties": {
-        "columns": {
+        "intermediateColumns": {
           "type": "array",
           "items": { "type": "string" },
-          "description": "Ordered list of Kanban column identifiers."
+          "description": "Ordered list of intermediate column identifiers between the fixed 'todo' and 'done' columns. Default: ['inprogress', 'review']."
         }
       },
       "additionalProperties": false

@@ -241,11 +241,11 @@ suite('handleUpdateTask', () => {
     assert.ok(result.content[0].text.includes('not found'));
   });
 
-  test('returns error for invalid column', async () => {
+  test('accepts any column string (columns are configurable)', async () => {
     const adapter = createAdapter([makeTask('t:1')]);
-    const result = await handleUpdateTask(adapter, { taskId: 't:1', column: 'invalid' });
-    assert.strictEqual(result.isError, true);
-    assert.ok(result.content[0].text.includes('Invalid column'));
+    const result = await handleUpdateTask(adapter, { taskId: 't:1', column: 'custom' });
+    assert.strictEqual(result.isError, undefined);
+    assert.strictEqual(adapter.tasks[0].status, 'custom');
   });
 
   test('multiple fields updated at once', async () => {
@@ -307,11 +307,11 @@ suite('handleCreateTask', () => {
     assert.ok(result.content[0].text.includes('title'));
   });
 
-  test('returns error for invalid column', async () => {
+  test('accepts any column string (columns are configurable)', async () => {
     const adapter = createAdapter([]);
-    const result = await handleCreateTask(adapter, { title: 'X', column: 'bad' });
-    assert.strictEqual(result.isError, true);
-    assert.ok(result.content[0].text.includes('Invalid column'));
+    const result = await handleCreateTask(adapter, { title: 'X', column: 'custom' });
+    assert.strictEqual(result.isError, undefined);
+    assert.strictEqual(adapter.tasks[0].status, 'custom');
   });
 
   test('defaults column to todo when omitted', async () => {

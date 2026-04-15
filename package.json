@@ -195,18 +195,16 @@
           "default": false,
           "description": "Enable /fleet mode for Copilot CLI — optimise prompt for parallel fleet execution. Overridable in .agent-board/config.json under genAiProviders.copilot-cli.fleet."
         },
-        "agentBoard.kanban.columns": {
+        "agentBoard.kanban.intermediateColumns": {
           "type": "array",
           "items": {
             "type": "string"
           },
           "default": [
-            "todo",
             "inprogress",
-            "review",
-            "done"
+            "review"
           ],
-          "description": "Ordered list of Kanban column identifiers. Overridable in .agent-board/config.json."
+          "description": "Intermediate column identifiers between the fixed 'todo' and 'done' columns. Overridable in .agent-board/config.json."
         },
         "agentBoard.copilotModel": {
           "type": "string",

@@ -14,7 +14,7 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import * as readline from 'readline';
-import { ColumnId, DEFAULT_COLUMN_IDS } from '../types/ColumnId';
+import { ColumnId, FIRST_COLUMN } from '../types/ColumnId';
 import { KanbanTask } from '../types/KanbanTask';
 import {
   MCP_TOOLS,
@@ -47,10 +47,9 @@ interface JsonTaskEntry {
 }
 
 function normalizeStatus(raw?: string): ColumnId {
-  if (raw && (DEFAULT_COLUMN_IDS as readonly string[]).includes(raw)) {
-    return raw as ColumnId;
-  }
-  return 'todo';
+  // Accept any string as a valid column — columns are configurable.
+  // Default to the fixed first column when missing.
+  return raw ?? FIRST_COLUMN;
 }
 
 function readTasks(filePath: string): KanbanTask[] {

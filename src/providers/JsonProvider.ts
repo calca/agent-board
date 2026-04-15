@@ -2,7 +2,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import * as vscode from 'vscode';
 import { ProjectConfig } from '../config/ProjectConfig';
-import { ColumnId, DEFAULT_COLUMN_IDS } from '../types/ColumnId';
+import { ColumnId, FIRST_COLUMN } from '../types/ColumnId';
 import { KanbanTask } from '../types/KanbanTask';
 import { Logger } from '../utils/logger';
 import { ITaskProvider, ProviderConfigField, ProviderDiagnostic } from './ITaskProvider';
@@ -267,9 +267,7 @@ export class JsonProvider implements ITaskProvider {
   }
 
   private normalizeStatus(raw?: string): ColumnId {
-    if (raw && (DEFAULT_COLUMN_IDS as readonly string[]).includes(raw)) {
-      return raw as ColumnId;
-    }
-    return 'todo';
+    // Accept any string — columns are configurable.
+    return raw ?? FIRST_COLUMN;
   }
 }

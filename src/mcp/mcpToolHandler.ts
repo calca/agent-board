@@ -6,7 +6,7 @@
  * standalone stdio MCP server.
  */
 
-import { ColumnId, DEFAULT_COLUMN_IDS } from '../types/ColumnId';
+import { ColumnId, FIRST_COLUMN, LAST_COLUMN } from '../types/ColumnId';
 import { KanbanTask } from '../types/KanbanTask';
 import {
   CreateTaskArgs,
@@ -31,8 +31,7 @@ export const MCP_TOOLS: McpToolDefinition[] = [
         column: {
           type: 'string',
           description:
-            'Filter by column id (todo, inprogress, review, done). Omit to list all.',
-          enum: [...DEFAULT_COLUMN_IDS],
+            'Filter by column id (e.g. todo, inprogress, review, done). The first column is always todo and the last is always done; intermediate columns are configurable. Omit to list all.',
         },
       },
     },
@@ -65,8 +64,7 @@ export const MCP_TOOLS: McpToolDefinition[] = [
         column: {
           type: 'string',
           description:
-            'Move the task to this column (todo, inprogress, review, done).',
-          enum: [...DEFAULT_COLUMN_IDS],
+            'Move the task to this column (e.g. todo, inprogress, review, done). The first column is always todo and the last is always done; intermediate columns are configurable.',
         },
         title: {
           type: 'string',
@@ -108,8 +106,7 @@ export const MCP_TOOLS: McpToolDefinition[] = [
         column: {
           type: 'string',
           description:
-            'Column to place the task in (default: todo).',
-          enum: [...DEFAULT_COLUMN_IDS],
+            'Column to place the task in (default: todo). The first column is always todo and the last is always done; intermediate columns are configurable.',
         },
         labels: {
           type: 'array',
@@ -254,12 +251,8 @@ export async function handleUpdateTask(
     return errorResult(`Task not found: ${args.taskId}`);
   }
 
-  // Validate column if provided
-  if (args.column && !(DEFAULT_COLUMN_IDS as readonly string[]).includes(args.column)) {
-    return errorResult(
-      `Invalid column "${args.column}". Must be one of: ${DEFAULT_COLUMN_IDS.join(', ')}`,
-    );
-  }
+  // Column value is not strictly validated here — columns are configurable.
+  // Invalid values will be handled by the provider.
 
   const updated: KanbanTask = {
     ...task,
@@ -292,13 +285,8 @@ export async function handleCreateTask(
     return errorResult('Missing required parameter: title');
   }
 
-  // Validate column if provided
-  const column = args.column ?? 'todo';
-  if (!(DEFAULT_COLUMN_IDS as readonly string[]).includes(column)) {
-    return errorResult(
-      `Invalid column "${column}". Must be one of: ${DEFAULT_COLUMN_IDS.join(', ')}`,
-    );
-  }
+  // Column value is not strictly validated — columns are configurable.
+  const column = args.column ?? FIRST_COLUMN;
 
   const task: KanbanTask = {
     id: '',

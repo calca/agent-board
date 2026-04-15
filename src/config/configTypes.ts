@@ -111,7 +111,8 @@ export interface ProjectConfigData {
    */
   genAiProviders?: Record<string, GenAiProviderConfigEntry>;
   kanban?: {
-    columns?: string[];
+    /** Intermediate columns between the fixed 'todo' and 'done' columns (default: ['inprogress','review']). */
+    intermediateColumns?: string[];
   };
   squad?: {
     /** Maximum parallel agent sessions (default 10). */
