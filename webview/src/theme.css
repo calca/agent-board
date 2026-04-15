@@ -2949,6 +2949,15 @@ html, body, #root {
   flex-direction: column;
   gap: 4px;
 }
+.fv-actions__no-providers {
+  font-size: 12px;
+  opacity: 0.65;
+  padding: 6px 0;
+  margin: 0;
+}
+.fv-actions__no-providers strong {
+  opacity: 1;
+}
 .fv-actions__running-provider {
   font-weight: 600;
   padding: 6px 0;

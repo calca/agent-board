@@ -1,4 +1,5 @@
 import { AboutSection } from './components/settings/AboutSection';
+import { GenAiSection } from './components/settings/GenAiSection';
 import { KanbanSection } from './components/settings/KanbanSection';
 import { LoggingSection } from './components/settings/LoggingSection';
 import { McpSection } from './components/settings/McpSection';
@@ -13,6 +14,7 @@ import type { SectionId } from './settingsTypes';
 
 const SECTION_COMPONENTS: Record<SectionId, () => React.JSX.Element> = {
   providers: ProvidersSection,
+  genai: GenAiSection,
   kanban: KanbanSection,
   worktree: WorktreeSection,
   squad: SquadSection,

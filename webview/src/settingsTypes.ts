@@ -35,6 +35,7 @@ export type SettingsConfig = Record<string, any>;
 
 export type SectionId =
   | 'providers'
+  | 'genai'
   | 'kanban'
   | 'worktree'
   | 'squad'
@@ -45,6 +46,7 @@ export type SectionId =
 
 export const SECTIONS: { id: SectionId; label: string }[] = [
   { id: 'providers', label: 'Providers' },
+  { id: 'genai', label: 'GenAI' },
   { id: 'kanban', label: 'Kanban' },
   { id: 'worktree', label: 'Worktree' },
   { id: 'squad', label: 'Squad' },

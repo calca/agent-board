@@ -37,8 +37,6 @@ export function LoggingSection() {
   const handleLevelChange = useCallback((e: React.ChangeEvent<HTMLSelectElement>) => {
     const val = e.target.value || undefined;
     update({ level: val });
-    // Also keep top-level logLevel in sync for backward compat
-    dispatch({ type: 'updateConfig', patch: { logLevel: val } });
   }, [logging]);
 
   const handleRefresh = useCallback(() => {

@@ -362,12 +362,15 @@ function FvActions({ task, sessionInfo, isRunning, isMerged, hasWorktree, active
       ) : sessionInfo?.state !== 'completed' && !isMerged ? (
         <>
           <div className="fv-actions__providers">
-            {genAiProviders.filter(p => !p.disabled).map(p => (
-              <button key={p.id} className="fv-action-btn fv-launch-provider" onClick={() => postMessage({ type: 'launchProvider', taskId: task.id, providerId: task.providerId, genAiProviderId: p.id })} title={p.displayName}>
-                <svg className="fv-icon" width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M6 3.5L12 8l-6 4.5v-9Z"/></svg>
-                {' '}{p.displayName}
-              </button>
-            ))}
+            {genAiProviders.filter(p => !p.disabled).length > 0
+              ? genAiProviders.filter(p => !p.disabled).map(p => (
+                <button key={p.id} className="fv-action-btn fv-launch-provider" onClick={() => postMessage({ type: 'launchProvider', taskId: task.id, providerId: task.providerId, genAiProviderId: p.id })} title={p.displayName}>
+                  <svg className="fv-icon" width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M6 3.5L12 8l-6 4.5v-9Z"/></svg>
+                  {' '}{p.displayName}
+                </button>
+              ))
+              : <p className="fv-actions__no-providers">No GenAI providers enabled. Configure them in <strong>Settings → GenAI</strong>.</p>
+            }
           </div>
           <hr className="fv-actions__separator" />
         </>

@@ -1546,24 +1546,33 @@ async function isAzureDevOpsRepository(): Promise<boolean> {
 async function buildGenAiOptions(registry: GenAiProviderRegistry): Promise<GenAiProviderOption[]> {
   const isGit = await isGitRepository();
   const isGitHub = await isGitHubRepository();
+  const genAiCfg = ProjectConfig.getProjectConfig()?.genAiProviders ?? {};
 
-  return registry.getAll().map(p => {
-    const option: GenAiProviderOption = {
-      id: p.id,
-      displayName: p.displayName,
-      icon: p.icon,
-    };
+  return registry.getAll()
+    .filter(p => {
+      const entry = genAiCfg[p.id];
+      // Global providers are enabled by default unless explicitly disabled
+      if (p.scope === 'global') { return entry?.enabled !== false; }
+      // Project providers must be explicitly enabled
+      return entry?.enabled === true;
+    })
+    .map(p => {
+      const option: GenAiProviderOption = {
+        id: p.id,
+        displayName: p.displayName,
+        icon: p.icon,
+      };
 
-    if (!isGit && (p.id === 'copilot-cli' || p.id === 'cloud' || p.id === 'copilot-lm')) {
-      option.disabled = true;
-      option.disabledReason = 'Requires a git repository';
-    } else if (!isGitHub && p.id === 'cloud') {
-      option.disabled = true;
-      option.disabledReason = 'Requires a GitHub repository';
-    }
+      if (!isGit && (p.id === 'copilot-cli' || p.id === 'cloud' || p.id === 'copilot-lm')) {
+        option.disabled = true;
+        option.disabledReason = 'Requires a git repository';
+      } else if (!isGitHub && p.id === 'cloud') {
+        option.disabled = true;
+        option.disabledReason = 'Requires a GitHub repository';
+      }
 
-    return option;
-  });
+      return option;
+    });
 }
 
 function getLocalIPv4(): string | undefined {

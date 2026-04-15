@@ -135,6 +135,7 @@ export interface ProjectConfigData {
      */
     tasksPath?: string;
   };
+  /** @deprecated Use `logging.level` instead. */
   logLevel?: string;
   logging?: {
     /** Minimum log level written to file: trace | debug | info | warn | error (default "info"). */

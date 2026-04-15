@@ -241,7 +241,7 @@ export class Logger {
   private readLevel(): LogLevel {
     const projectCfg = ProjectConfig.getProjectConfig();
     const raw = ProjectConfig.resolve(
-      projectCfg?.logLevel,
+      projectCfg?.logging?.level ?? projectCfg?.logLevel,
       'logLevel',
       'INFO',
     ).toUpperCase();
