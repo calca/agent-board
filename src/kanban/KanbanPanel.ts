@@ -1,9 +1,9 @@
 import * as vscode from 'vscode';
+import { ProjectConfig } from '../config/ProjectConfig';
 import { DEFAULT_COLUMN_COLORS, DEFAULT_COLUMN_LABELS, buildColumnOrder } from '../types/ColumnId';
 import { KanbanTask } from '../types/KanbanTask';
 import { AgentOption, Column, FileChangeInfo, GenAiProviderOption, HostToWebView, SquadStatus, WebViewToHost } from '../types/Messages';
 import { Logger } from '../utils/logger';
-import { ProjectConfig } from '../config/ProjectConfig';
 
 /**
  * Manages the Kanban board WebView panel.

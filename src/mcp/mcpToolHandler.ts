@@ -6,7 +6,7 @@
  * standalone stdio MCP server.
  */
 
-import { ColumnId, FIRST_COLUMN, LAST_COLUMN } from '../types/ColumnId';
+import { ColumnId, FIRST_COLUMN } from '../types/ColumnId';
 import { KanbanTask } from '../types/KanbanTask';
 import {
   CreateTaskArgs,

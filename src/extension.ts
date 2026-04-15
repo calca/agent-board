@@ -37,7 +37,7 @@ import { ProviderRegistry } from './providers/ProviderRegistry';
 import { LocalApiServer } from './server/LocalApiServer';
 import { SettingsPanel } from './settings/SettingsPanel';
 import { TaskTreeItem } from './tasksTreeProvider';
-import { DEFAULT_COLUMN_COLORS, DEFAULT_COLUMN_IDS, DEFAULT_COLUMN_LABELS, buildColumnOrder } from './types/ColumnId';
+import { buildColumnOrder, DEFAULT_COLUMN_COLORS, DEFAULT_COLUMN_LABELS } from './types/ColumnId';
 import { AgentOption, GenAiProviderOption } from './types/Messages';
 import { Logger, LogLevel } from './utils/logger';
 
