@@ -20,6 +20,25 @@ interface AzWorkItem {
   url?: string;
 }
 
+function parsePossiblyNoisyJson<T>(raw: string): T {
+  const trimmed = raw.trim();
+  try {
+    return JSON.parse(trimmed) as T;
+  } catch {
+    const objectStart = trimmed.indexOf('{');
+    const arrayStart = trimmed.indexOf('[');
+    const firstStart = [objectStart, arrayStart]
+      .filter(i => i >= 0)
+      .sort((a, b) => a - b)[0];
+    if (firstStart === undefined) {
+      throw new Error('No JSON payload found in command output.');
+    }
+
+    const candidate = trimmed.slice(firstStart);
+    return JSON.parse(candidate) as T;
+  }
+}
+
 /**
  * Task provider backed by the **Azure DevOps CLI** (`az boards`).
  *
@@ -228,9 +247,9 @@ export class AzureDevOpsProvider implements ITaskProvider {
   private async fetchWorkItemDetails(queryOutput: string): Promise<void> {
     let ids: number[];
     try {
-      const parsed = JSON.parse(queryOutput);
+      const parsed = parsePossiblyNoisyJson<Record<string, unknown> | Array<Record<string, unknown>>>(queryOutput);
       // az boards query may return { workItems: [{ id }] }, [{ id }], or [{ fields: { 'System.Id': N } }]
-      const items = parsed.workItems ?? parsed;
+      const items = Array.isArray(parsed) ? parsed : ((parsed.workItems as Array<Record<string, unknown>> | undefined) ?? []);
       ids = (items as Array<Record<string, unknown>>).map(w => {
         if (typeof w.id === 'number') { return w.id; }
         // Some formats nest the id in fields
@@ -265,7 +284,7 @@ export class AzureDevOpsProvider implements ITaskProvider {
           log.debug('AzureDevOpsProvider: exec → az %s', wiArgs.join(' '));
           return execShell('az', wiArgs, { timeout: 15_000 }).then(({ stdout }) => {
             log.debug('AzureDevOpsProvider: work-item %d stdout (%d chars) → %s', id, stdout.length, stdout.slice(0, 1000));
-            return JSON.parse(stdout) as AzWorkItem;
+            return parsePossiblyNoisyJson<AzWorkItem>(stdout);
           });
         }),
       );
