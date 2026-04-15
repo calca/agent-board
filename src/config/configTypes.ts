@@ -108,6 +108,11 @@ export interface ProjectConfigData {
      * Default 0 = no cooldown.
      */
     cooldownMs?: number;
+    /**
+     * Automatically create a Pull Request when a squad session completes.
+     * Default false.
+     */
+    autoPR?: boolean;
   };
   notifications?: {
     /** Show a VS Code notification when a task is automatically moved to the active column. */

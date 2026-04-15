@@ -64,11 +64,12 @@ export type HostToWebView =
   | { type: 'streamResume'; sessionId: string; log: string }
   | { type: 'toolCall'; sessionId: string; status: string }
   | { type: 'fileChanges'; sessionId: string; files: FileChangeInfo[] }
-  | { type: 'repoStatus'; isGit: boolean; isGitHub: boolean; workspaceRoot?: string; workspaceName?: string }
+  | { type: 'repoStatus'; isGit: boolean; isGitHub: boolean; isAzureDevOps?: boolean; workspaceRoot?: string; workspaceName?: string }
   | { type: 'mobileStatus'; running: boolean; url: string; devices: MobileDeviceInfo[]; qrSvg?: string; tunnelEnabled?: boolean; tunnelActive?: boolean; tunnelUrl?: string; refreshing?: boolean }
   | { type: 'mobileDialog'; open: boolean }
   | { type: 'mergeResult'; sessionId: string; success: boolean; message: string }
   | { type: 'deleteWorktreeResult'; sessionId: string; success: boolean; message?: string }
+  | { type: 'createPullRequestResult'; sessionId: string; success: boolean; prUrl?: string; prNumber?: number; message?: string }
   | { type: 'agentLog'; taskId: string; chunk: string; done: boolean }
   | { type: 'agentError'; taskId: string; error: string };
 
@@ -117,6 +118,7 @@ export type WebViewToHost =
   | { type: 'deleteWorktree'; sessionId: string }
   | { type: 'deleteTask'; taskId: string; providerId: string }
   | { type: 'hideTask'; taskId: string }
+  | { type: 'createPullRequest'; sessionId: string }
   | { type: 'exportDoneMd' }
   | { type: 'cleanDone' }
   | { type: 'startAgent'; taskId: string; provider: string; prompt: string }

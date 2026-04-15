@@ -58,6 +58,14 @@ export function SquadSection() {
           <input type="number" id="sq-interval" value={sq.autoSquadInterval ?? 15000}
             onChange={e => update({ autoSquadInterval: numOrUndef(e.target.value) })} />
         </div>
+        <div className="field field--checkbox">
+          <label htmlFor="sq-autopr">
+            <input type="checkbox" id="sq-autopr" checked={sq.autoPR ?? false}
+              onChange={e => update({ autoPR: e.target.checked })} />
+            Auto-PR on completion
+          </label>
+          <span className="hint">Automatically create a Pull Request when a squad session completes</span>
+        </div>
       </div>
     </div>
   );

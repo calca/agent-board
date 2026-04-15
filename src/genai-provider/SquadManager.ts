@@ -54,6 +54,10 @@ export class SquadManager {
   /** Fires whenever the squad status changes. */
   readonly onDidChangeStatus: vscode.Event<SquadStatus> = this.onStatusChangeEmitter.event;
 
+  private readonly onSessionCompletedEmitter = new vscode.EventEmitter<{ taskId: string; autoPR: boolean }>();
+  /** Fires when a squad session completes successfully. */
+  readonly onSessionCompleted: vscode.Event<{ taskId: string; autoPR: boolean }> = this.onSessionCompletedEmitter.event;
+
   constructor(
     private readonly providerRegistry: ProviderRegistry,
     private readonly copilotLauncher: CopilotLauncher,
@@ -458,6 +462,9 @@ export class SquadManager {
       }
 
       this.completeSession(task.id);
+
+      // Fire auto-PR event when configured
+      this.onSessionCompletedEmitter.fire({ taskId: task.id, autoPR: cfg.autoPR });
     } catch {
       // Always notify on failure — failures are important regardless of config
       vscode.window.showErrorMessage(

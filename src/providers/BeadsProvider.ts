@@ -2,6 +2,7 @@ import * as vscode from 'vscode';
 import { ProjectConfig } from '../config/ProjectConfig';
 import { ColumnId } from '../types/ColumnId';
 import { KanbanTask } from '../types/KanbanTask';
+import { Logger } from '../utils/logger';
 import { execShell, execShellOk } from './execShell';
 import { ITaskProvider, ProviderConfigField, ProviderDiagnostic } from './ITaskProvider';
 
@@ -145,7 +146,10 @@ export class BeadsProvider implements ITaskProvider {
     try {
       const args = ['list', '--format=json'];
       if (this.onlyAssignedToMe) { args.push('--assignee', '@me'); }
+      const log = Logger.getInstance();
+      log.debug('BeadsProvider: exec → %s %s', this.executable, args.join(' '));
       const { stdout } = await execShell(this.executable, args, { timeout: 15_000 });
+      log.debug('BeadsProvider: stdout (%d chars) → %s', stdout.length, stdout.slice(0, 2000));
       try {
         const raw: BeadsIssue[] = JSON.parse(stdout);
         const newTasks = raw.map(issue => this.mapBeadsToTask(issue));

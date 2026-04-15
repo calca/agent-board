@@ -48,6 +48,7 @@ export interface SquadConfig {
   maxRetries: number;
   sessionTimeout: number;
   cooldownMs: number;
+  autoPR: boolean;
   notifyTaskActive: boolean;
   notifyTaskDone: boolean;
 }
@@ -72,6 +73,7 @@ export function resolveSquadConfig(
     maxRetries: squad?.maxRetries ?? DEFAULT_MAX_RETRIES,
     sessionTimeout: squad?.sessionTimeout ?? DEFAULT_SESSION_TIMEOUT,
     cooldownMs: squad?.cooldownMs ?? DEFAULT_COOLDOWN_MS,
+    autoPR: squad?.autoPR ?? false,
     notifyTaskActive: notifications?.taskActive ?? true,
     notifyTaskDone: notifications?.taskDone ?? true,
   };

@@ -2,6 +2,7 @@ import * as vscode from 'vscode';
 import { ProjectConfig } from '../config/ProjectConfig';
 import { ColumnId } from '../types/ColumnId';
 import { KanbanTask } from '../types/KanbanTask';
+import { Logger } from '../utils/logger';
 import { execShell, execShellOk } from './execShell';
 import { ITaskProvider, ProviderConfigField, ProviderDiagnostic } from './ITaskProvider';
 
@@ -199,8 +200,11 @@ export class AzureDevOpsProvider implements ITaskProvider {
       '--org', this.organization,
       '--output', 'json',
     ];
+    const log = Logger.getInstance();
+    log.debug('AzureDevOpsProvider: exec → az %s', args.join(' '));
     try {
       const { stdout } = await execShell('az', args, { timeout: 30_000 });
+      log.debug('AzureDevOpsProvider: query stdout (%d chars) → %s', stdout.length, stdout.slice(0, 2000));
       // az boards query returns only IDs; always fetch full details for description etc.
       await this.fetchWorkItemDetails(stdout);
     } catch (err) {
@@ -240,14 +244,20 @@ export class AzureDevOpsProvider implements ITaskProvider {
     for (let i = 0; i < batchIds.length; i += CONCURRENCY) {
       const chunk = batchIds.slice(i, i + CONCURRENCY);
       const settled = await Promise.allSettled(
-        chunk.map(id =>
-          execShell('az', [
+        chunk.map(id => {
+          const wiArgs = [
             'boards', 'work-item', 'show',
             '--id', String(id),
             '--org', this.organization,
             '--output', 'json',
-          ], { timeout: 15_000 }).then(({ stdout }) => JSON.parse(stdout) as AzWorkItem),
-        ),
+          ];
+          const log = Logger.getInstance();
+          log.debug('AzureDevOpsProvider: exec → az %s', wiArgs.join(' '));
+          return execShell('az', wiArgs, { timeout: 15_000 }).then(({ stdout }) => {
+            log.debug('AzureDevOpsProvider: work-item %d stdout (%d chars) → %s', id, stdout.length, stdout.slice(0, 1000));
+            return JSON.parse(stdout) as AzWorkItem;
+          });
+        }),
       );
       for (const r of settled) {
         if (r.status === 'fulfilled') { results.push(r.value); }

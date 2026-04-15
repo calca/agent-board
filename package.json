@@ -29,7 +29,8 @@
       "agent-board": [
         {
           "id": "agentBoardOverview",
-          "name": "Overview"
+          "name": "Overview",
+          "icon": "media/icon.svg"
         }
       ]
     },
@@ -290,6 +291,11 @@
           "default": 0,
           "minimum": 0,
           "description": "Delay in milliseconds between consecutive session launches. Prevents rate-limiting. Overridable in .agent-board/config.json."
+        },
+        "agentBoard.squad.autoPR": {
+          "type": "boolean",
+          "default": false,
+          "description": "Automatically create a Pull Request when a squad session completes. Overridable in .agent-board/config.json."
         },
         "agentBoard.notifications.taskActive": {
           "type": "boolean",

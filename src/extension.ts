@@ -459,6 +459,7 @@ export function activate(context: vscode.ExtensionContext): void {
             type: 'repoStatus',
             isGit: await isGitRepository(),
             isGitHub: await isGitHubRepository(),
+            isAzureDevOps: await isAzureDevOpsRepository(),
             workspaceRoot: vscode.workspace.workspaceFolders?.[0]?.uri.fsPath,
             workspaceName: vscode.workspace.name ?? vscode.workspace.workspaceFolders?.[0]?.name ?? '',
           });
@@ -480,38 +481,6 @@ export function activate(context: vscode.ExtensionContext): void {
             const task = tasks.find(t => t.id === msg.taskId);
             if (task) {
               await provider.updateTask({ ...task, status: msg.toCol });
-
-              // ── Auto-PR on move to "done" ────────────────────────────
-              if (msg.toCol === 'done' && task.copilotSession?.state === 'completed') {
-                const worktreeBranch = task.copilotSession.changedFiles && task.copilotSession.changedFiles.length > 0
-                  ? `agent-board/${msg.taskId.replace(/[^a-zA-Z0-9-]/g, '-')}`
-                  : undefined;
-                if (worktreeBranch) {
-                  const dw = copilotLauncher.getDiffWatcher(msg.taskId);
-                  const changedFiles = dw?.getChanges() ?? [];
-                  const diffSummary = changedFiles.length > 0
-                    ? `### Files changed\n\n${changedFiles.map(f => `- \`${f.path}\``).join('\n')}`
-                    : '';
-                  const pr = await prManager.createPR({
-                    title: task.title,
-                    body: `Closes #${task.nativeId}\n\n${diffSummary}`,
-                    headBranch: worktreeBranch,
-                  });
-                  if (pr) {
-                    // Persist PR link on the task's session info
-                    const updatedTask = { ...task, status: msg.toCol as import('./types/ColumnId').ColumnId };
-                    if (updatedTask.copilotSession) {
-                      updatedTask.copilotSession = {
-                        ...updatedTask.copilotSession,
-                        prUrl: pr.url,
-                        prNumber: pr.number,
-                        prState: pr.state,
-                      };
-                    }
-                    await provider.updateTask(updatedTask);
-                  }
-                }
-              }
             }
           }
           await sendTasksToPanel(panel, providerRegistry, genAiRegistry, squadManager, sessionStateManager);
@@ -1082,6 +1051,51 @@ export function activate(context: vscode.ExtensionContext): void {
           }
           break;
         }
+        case 'createPullRequest': {
+          const taskId = msg.sessionId;
+          const allProviders = providerRegistry.getAll().filter(p => p.isEnabled());
+          const allTasks = (await Promise.allSettled(allProviders.map(p => p.getTasks())))
+            .filter((r): r is PromiseFulfilledResult<import('./types/KanbanTask').KanbanTask[]> => r.status === 'fulfilled')
+            .flatMap(r => r.value);
+          const task = allTasks.find(t => t.id === taskId);
+          if (!task) { break; }
+
+          const worktreeBranch = task.copilotSession?.changedFiles && task.copilotSession.changedFiles.length > 0
+            ? `agent-board/${taskId.replace(/[^a-zA-Z0-9-]/g, '-')}`
+            : undefined;
+          if (!worktreeBranch) {
+            panel.postMessage({ type: 'createPullRequestResult', sessionId: taskId, success: false, message: 'No changed files found.' });
+            break;
+          }
+
+          const isAzure = await isAzureDevOpsRepository();
+          const dw = copilotLauncher.getDiffWatcher(taskId);
+          const changedFiles = dw?.getChanges() ?? [];
+          const diffSummary = changedFiles.length > 0
+            ? `### Files changed\n\n${changedFiles.map(f => `- \`${f.path}\``).join('\n')}`
+            : '';
+          const pr = await prManager.createPR({
+            title: task.title,
+            body: `Closes #${task.nativeId}\n\n${diffSummary}`,
+            headBranch: worktreeBranch,
+            isAzureDevOps: isAzure,
+          });
+          if (pr) {
+            const provider = providerRegistry.get(task.providerId);
+            if (provider) {
+              const updatedTask = { ...task };
+              if (updatedTask.copilotSession) {
+                updatedTask.copilotSession = { ...updatedTask.copilotSession, prUrl: pr.url, prNumber: pr.number, prState: pr.state };
+              }
+              await provider.updateTask(updatedTask);
+            }
+            panel.postMessage({ type: 'createPullRequestResult', sessionId: taskId, success: true, prUrl: pr.url, prNumber: pr.number });
+            await sendTasksToPanel(panel, providerRegistry, genAiRegistry, squadManager, sessionStateManager);
+          } else {
+            panel.postMessage({ type: 'createPullRequestResult', sessionId: taskId, success: false, message: 'PR creation cancelled or failed.' });
+          }
+          break;
+        }
       }
     });
 
@@ -1091,6 +1105,48 @@ export function activate(context: vscode.ExtensionContext): void {
       await sendTasksToPanel(panel, providerRegistry, genAiRegistry, squadManager, sessionStateManager);
     });
     panel.onDispose(() => squadSub.dispose());
+
+    // Auto-PR when a squad session completes (if squad.autoPR is enabled)
+    const squadPRSub = squadManager.onSessionCompleted(async ({ taskId, autoPR }) => {
+      if (!autoPR) { return; }
+      const allProviders = providerRegistry.getAll().filter(p => p.isEnabled());
+      const allTasks = (await Promise.allSettled(allProviders.map(p => p.getTasks())))
+        .filter((r): r is PromiseFulfilledResult<import('./types/KanbanTask').KanbanTask[]> => r.status === 'fulfilled')
+        .flatMap(r => r.value);
+      const task = allTasks.find(t => t.id === taskId);
+      if (!task) { return; }
+
+      const worktreeBranch = task.copilotSession?.changedFiles && task.copilotSession.changedFiles.length > 0
+        ? `agent-board/${taskId.replace(/[^a-zA-Z0-9-]/g, '-')}`
+        : undefined;
+      if (!worktreeBranch) { return; }
+
+      const isAzure = await isAzureDevOpsRepository();
+      const dw = copilotLauncher.getDiffWatcher(taskId);
+      const changedFiles = dw?.getChanges() ?? [];
+      const diffSummary = changedFiles.length > 0
+        ? `### Files changed\n\n${changedFiles.map(f => `- \`${f.path}\``).join('\n')}`
+        : '';
+      const pr = await prManager.createPR({
+        title: task.title,
+        body: `Closes #${task.nativeId}\n\n${diffSummary}`,
+        headBranch: worktreeBranch,
+        isAzureDevOps: isAzure,
+      });
+      if (pr) {
+        const provider = providerRegistry.get(task.providerId);
+        if (provider) {
+          const updatedTask = { ...task };
+          if (updatedTask.copilotSession) {
+            updatedTask.copilotSession = { ...updatedTask.copilotSession, prUrl: pr.url, prNumber: pr.number, prState: pr.state };
+          }
+          await provider.updateTask(updatedTask);
+        }
+        panel.postMessage({ type: 'createPullRequestResult', sessionId: taskId, success: true, prUrl: pr.url, prNumber: pr.number });
+        await sendTasksToPanel(panel, providerRegistry, genAiRegistry, squadManager, sessionStateManager);
+      }
+    });
+    panel.onDispose(() => squadPRSub.dispose());
 
     // Auto-refresh board when session state changes (worktree creation, running, done, error)
     const sessionSub = sessionStateManager.onDidChangeState(async () => {
@@ -1443,6 +1499,7 @@ async function pickAgent(agents: AgentInfo[]): Promise<string | undefined> {
 /** Cache for workspace git/github detection (computed once per session). */
 let _isGitRepo: boolean | undefined;
 let _isGitHubRepo: boolean | undefined;
+let _isAzureDevOpsRepo: boolean | undefined;
 
 function shellCheck(cmd: string, cwd: string): Promise<boolean> {
   return new Promise(resolve => {
@@ -1468,6 +1525,15 @@ async function isGitHubRepository(): Promise<boolean> {
   const root = vscode.workspace.workspaceFolders![0].uri.fsPath;
   _isGitHubRepo = await shellCheck('git remote -v | grep -i github.com', root);
   return _isGitHubRepo;
+}
+
+async function isAzureDevOpsRepository(): Promise<boolean> {
+  if (_isAzureDevOpsRepo !== undefined) { return _isAzureDevOpsRepo; }
+  const isGit = await isGitRepository();
+  if (!isGit) { _isAzureDevOpsRepo = false; return false; }
+  const root = vscode.workspace.workspaceFolders![0].uri.fsPath;
+  _isAzureDevOpsRepo = await shellCheck('git remote -v | grep -iE "dev\.azure\.com|visualstudio\.com"', root);
+  return _isAzureDevOpsRepo;
 }
 
 /**

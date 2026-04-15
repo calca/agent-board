@@ -229,6 +229,11 @@
           "minimum": 0,
           "default": 0,
           "description": "Delay in milliseconds between consecutive session launches. Prevents rate-limiting. Default: 0 (no cooldown)."
+        },
+        "autoPR": {
+          "type": "boolean",
+          "default": false,
+          "description": "Automatically create a Pull Request when a squad session completes. Default: false."
         }
       },
       "additionalProperties": false

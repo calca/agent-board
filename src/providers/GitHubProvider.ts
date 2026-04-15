@@ -195,7 +195,10 @@ export class GitHubProvider implements ITaskProvider {
   /** Run a `gh` command and return stdout. Throws on non-zero exit. */
   private async execGh(args: string[]): Promise<string> {
     const cwd = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
+    const log = Logger.getInstance();
+    log.debug('GitHubProvider: exec → gh %s', args.join(' '));
     const { stdout } = await execShell('gh', args, { timeout: 30_000, cwd });
+    log.debug('GitHubProvider: stdout (%d chars) → %s', stdout.length, stdout.slice(0, 2000));
     return stdout;
   }
 
