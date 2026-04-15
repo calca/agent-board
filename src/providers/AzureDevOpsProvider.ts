@@ -1,6 +1,6 @@
 import * as vscode from 'vscode';
 import { ProjectConfig } from '../config/ProjectConfig';
-import { ColumnId } from '../types/ColumnId';
+import { ColumnId, DEFAULT_COLUMN_IDS } from '../types/ColumnId';
 import { KanbanTask } from '../types/KanbanTask';
 import { Logger } from '../utils/logger';
 import { execShell, execShellOk } from './execShell';
@@ -42,6 +42,7 @@ export class AzureDevOpsProvider implements ITaskProvider {
   private onlyAssignedToMe = false;
   private pollIntervalMs = 30_000;
   private states: string[] = ['Active'];
+  private doneRemoteStatus = '';
 
   constructor() {
     this.readConfig();
@@ -113,6 +114,7 @@ export class AzureDevOpsProvider implements ITaskProvider {
       { key: 'onlyAssignedToMe', label: 'Only items assigned to me', type: 'boolean' },
       { key: 'pollInterval', label: 'Poll interval (ms)', type: 'number', placeholder: '30000', hint: 'How often to check for new work items' },
       { key: 'states', label: 'States to fetch', type: 'string', placeholder: 'Active, New', hint: 'Comma-separated work item states (default: Active)' },
+      { key: 'doneRemoteStatus', label: 'Done remote status', type: 'string', placeholder: 'e.g. Closed', hint: 'Remote status to set when a card moves to the last column. Empty = no remote update (default)' },
     ];
   }
 
@@ -173,6 +175,10 @@ export class AzureDevOpsProvider implements ITaskProvider {
     this.onlyAssignedToMe = projectCfg?.azureDevOps?.onlyAssignedToMe === true;
     const cfgStates = projectCfg?.azureDevOps?.states;
     this.states = cfgStates && cfgStates.length > 0 ? cfgStates : ['Active'];
+    this.doneRemoteStatus = projectCfg?.azureDevOps?.doneRemoteStatus ?? '';
+    if (this.doneRemoteStatus && !this.states.includes(this.doneRemoteStatus)) {
+      this.states = [...this.states, this.doneRemoteStatus];
+    }
   }
 
   private startPolling(): void {
@@ -347,11 +353,20 @@ export class AzureDevOpsProvider implements ITaskProvider {
   }
 
   private reverseMapStatus(column: ColumnId): string | undefined {
+    const lastCol = this.getLastColumn();
+    if (column === lastCol) {
+      return this.doneRemoteStatus || undefined;
+    }
     switch (column) {
-      case 'done': return 'Closed';
       case 'review': return 'Resolved';
-      // 'todo' and 'inprogress' stay local — Azure 'Active' maps to todo on fetch
       default: return undefined;
     }
+  }
+
+  private getLastColumn(): string {
+    const cfg = ProjectConfig.getProjectConfig();
+    const columns = cfg?.kanban?.columns;
+    const list = columns?.length ? columns : DEFAULT_COLUMN_IDS;
+    return list[list.length - 1];
   }
 }

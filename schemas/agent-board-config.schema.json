@@ -31,6 +31,10 @@
           "items": { "type": "string" },
           "default": ["open"],
           "description": "Issue states to fetch. Use 'open', 'closed', or both. Default: ['open']."
+        },
+        "doneRemoteStatus": {
+          "type": "string",
+          "description": "Remote status to set when a card is moved to the last column (e.g. 'closed'). If empty (default), the remote issue is not updated. The same status is automatically added to the fetch filter so the column stays populated until the issue transitions to an unmanaged state."
         }
       },
       "additionalProperties": false
@@ -99,6 +103,10 @@
           "type": "array",
           "items": { "type": "string" },
           "description": "Issue states to fetch. When set, only items matching these states are shown."
+        },
+        "doneRemoteStatus": {
+          "type": "string",
+          "description": "Remote status to include in the fetch filter when a card is moved to the last column (e.g. 'done'). If empty (default), the status is not added. Beads CLI does not support remote writes, so only the fetch filter is affected."
         }
       },
       "additionalProperties": false
@@ -136,6 +144,10 @@
           "items": { "type": "string" },
           "default": ["Active"],
           "description": "Work item states to fetch. Only items in these states are queried via WIQL. Default: ['Active']."
+        },
+        "doneRemoteStatus": {
+          "type": "string",
+          "description": "Remote status to set when a card is moved to the last column (e.g. 'Closed'). If empty (default), the work item state is not updated remotely. The same status is automatically added to the fetch filter."
         }
       },
       "additionalProperties": false

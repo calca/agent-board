@@ -35,6 +35,7 @@ export class BeadsProvider implements ITaskProvider {
   private onlyAssignedToMe = false;
   private pollIntervalMs = 30_000;
   private states: string[] = [];
+  private doneRemoteStatus = '';
 
   constructor() {
     this.readConfig();
@@ -89,6 +90,7 @@ export class BeadsProvider implements ITaskProvider {
       { key: 'onlyAssignedToMe', label: 'Only items assigned to me', type: 'boolean' },
       { key: 'pollInterval', label: 'Poll interval (ms)', type: 'number', placeholder: '30000', hint: 'How often to check for new items' },
       { key: 'states', label: 'States to fetch', type: 'string', placeholder: 'e.g. open, in_progress', hint: 'Comma-separated states to filter (empty = all)' },
+      { key: 'doneRemoteStatus', label: 'Done remote status', type: 'string', placeholder: 'e.g. done', hint: 'Remote status to include in fetch when a card moves to the last column. Empty = not added (default)' },
     ];
   }
 
@@ -129,6 +131,10 @@ export class BeadsProvider implements ITaskProvider {
     this.pollIntervalMs = projectCfg?.beadsProvider?.pollInterval ?? 30_000;
     this.onlyAssignedToMe = projectCfg?.beadsProvider?.onlyAssignedToMe === true;
     this.states = projectCfg?.beadsProvider?.states?.length ? projectCfg.beadsProvider.states : [];
+    this.doneRemoteStatus = projectCfg?.beadsProvider?.doneRemoteStatus ?? '';
+    if (this.doneRemoteStatus && this.states.length > 0 && !this.states.map(s => s.toLowerCase()).includes(this.doneRemoteStatus.toLowerCase())) {
+      this.states = [...this.states, this.doneRemoteStatus];
+    }
   }
 
   private startPolling(): void {

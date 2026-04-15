@@ -1,6 +1,6 @@
 import * as vscode from 'vscode';
 import { ProjectConfig } from '../config/ProjectConfig';
-import { ColumnId } from '../types/ColumnId';
+import { ColumnId, DEFAULT_COLUMN_IDS } from '../types/ColumnId';
 import { KanbanTask } from '../types/KanbanTask';
 import { Logger } from '../utils/logger';
 import { execShell, execShellOk } from './execShell';
@@ -59,6 +59,7 @@ export class GitHubProvider implements ITaskProvider {
   private cacheTtlMs = 60_000;
   private onlyAssignedToMe = false;
   private states: string[] = ['open'];
+  private doneRemoteStatus = '';
   /** `true` after we confirmed `gh` is available. */
   private ghCliAvailable: boolean | undefined;
   private pollTimer: ReturnType<typeof setInterval> | undefined;
@@ -89,14 +90,18 @@ export class GitHubProvider implements ITaskProvider {
 
     // Fire-and-forget remote sync
     const issueNumber = parseInt(task.nativeId, 10);
-    const state = task.status === 'done' ? 'closed' : 'open';
 
     const syncRemote = async () => {
       const repoSlug = `${this.owner}/${this.repo}`;
-      if (state === 'closed') {
-        await this.execGh(['issue', 'close', task.nativeId, '--repo', repoSlug]);
-      } else {
-        await this.execGh(['issue', 'reopen', task.nativeId, '--repo', repoSlug]);
+
+      // Close/reopen only when doneRemoteStatus is configured
+      if (this.doneRemoteStatus) {
+        const lastCol = this.getLastColumn();
+        if (task.status === lastCol) {
+          await this.execGh(['issue', 'close', task.nativeId, '--repo', repoSlug]);
+        } else {
+          await this.execGh(['issue', 'reopen', task.nativeId, '--repo', repoSlug]);
+        }
       }
 
       // Sync kanban column label
@@ -142,6 +147,7 @@ export class GitHubProvider implements ITaskProvider {
       { key: 'repo', label: 'Repository', type: 'string', placeholder: 'e.g. my-repo', hint: 'Auto-detected from gh CLI if empty' },
       { key: 'onlyAssignedToMe', label: 'Only issues assigned to me', type: 'boolean' },
       { key: 'states', label: 'States to fetch', type: 'string', placeholder: 'open, closed', hint: 'Comma-separated issue states (default: open)' },
+      { key: 'doneRemoteStatus', label: 'Done remote status', type: 'string', placeholder: 'e.g. closed', hint: 'Remote status to set when a card moves to the last column. Empty = no remote update (default)' },
     ];
   }
 
@@ -233,6 +239,17 @@ export class GitHubProvider implements ITaskProvider {
     this.onlyAssignedToMe = ProjectConfig.getProjectConfig()?.github?.onlyAssignedToMe === true;
     const cfgStates = ProjectConfig.getProjectConfig()?.github?.states;
     this.states = cfgStates && cfgStates.length > 0 ? cfgStates : ['open'];
+    this.doneRemoteStatus = ProjectConfig.getProjectConfig()?.github?.doneRemoteStatus ?? '';
+    if (this.doneRemoteStatus && !this.states.includes(this.doneRemoteStatus)) {
+      this.states = [...this.states, this.doneRemoteStatus];
+    }
+  }
+
+  private getLastColumn(): string {
+    const cfg = ProjectConfig.getProjectConfig();
+    const columns = cfg?.kanban?.columns;
+    const list = columns?.length ? columns : DEFAULT_COLUMN_IDS;
+    return list[list.length - 1];
   }
 
   private isCacheValid(): boolean {

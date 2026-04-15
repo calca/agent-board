@@ -27,6 +27,16 @@ export interface ProjectConfigData {
     onlyAssignedToMe?: boolean;
     /** Issue states to fetch (default: ['open']). Use 'open', 'closed', or both. */
     states?: string[];
+    /**
+     * Remote status to set when a card is moved to the last column.
+     * If empty (default), the remote issue is not updated.
+     * The same status is automatically added to the fetch filter so
+     * the column stays populated until the issue transitions to an
+     * unmanaged state on the remote system.
+     *
+     * Example: `'closed'` — closes the issue when moved to done.
+     */
+    doneRemoteStatus?: string;
   };
   jsonProvider?: {
     enabled?: boolean;
@@ -48,6 +58,12 @@ export interface ProjectConfigData {
     pollInterval?: number;
     /** Issue states to fetch. When set, only items matching these states are shown. */
     states?: string[];
+    /**
+     * Remote status to set when a card is moved to the last column.
+     * If empty (default), the remote item is not updated.
+     * The same status is automatically added to the fetch filter.
+     */
+    doneRemoteStatus?: string;
   };
   azureDevOps?: {
     enabled?: boolean;
@@ -61,6 +77,14 @@ export interface ProjectConfigData {
     pollInterval?: number;
     /** Work item states to fetch (default: ['Active']). Only items in these states are queried. */
     states?: string[];
+    /**
+     * Remote status to set when a card is moved to the last column.
+     * If empty (default), the work item state is not updated remotely.
+     * The same status is automatically added to the fetch filter.
+     *
+     * Example: `'Closed'` — transitions the work item to Closed.
+     */
+    doneRemoteStatus?: string;
   };
   /**
    * Git worktree settings.
