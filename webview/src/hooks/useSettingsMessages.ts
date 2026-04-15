@@ -17,6 +17,13 @@ export function useSettingsMessages(): void {
         case 'configData':
           dispatch({ type: 'setConfig', config: msg.config ?? {} });
           break;
+        case 'configSaved':
+          // Authoritative merged config from host after save — always accept
+          dispatch({ type: 'setConfig', config: msg.config ?? {}, force: true });
+          break;
+        case 'saveOk':
+          dispatch({ type: 'markClean' });
+          break;
         case 'providerDiagnostics':
           dispatch({ type: 'setProviders', providers: msg.providers ?? [] });
           break;

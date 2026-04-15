@@ -41,6 +41,7 @@ export class AzureDevOpsProvider implements ITaskProvider {
   private project = '';
   private onlyAssignedToMe = false;
   private pollIntervalMs = 30_000;
+  private states: string[] = ['Active'];
 
   constructor() {
     this.readConfig();
@@ -111,6 +112,7 @@ export class AzureDevOpsProvider implements ITaskProvider {
       { key: 'project', label: 'Project', type: 'string', placeholder: 'e.g. MyProject', required: true },
       { key: 'onlyAssignedToMe', label: 'Only items assigned to me', type: 'boolean' },
       { key: 'pollInterval', label: 'Poll interval (ms)', type: 'number', placeholder: '30000', hint: 'How often to check for new work items' },
+      { key: 'states', label: 'States to fetch', type: 'string', placeholder: 'Active, New', hint: 'Comma-separated work item states (default: Active)' },
     ];
   }
 
@@ -169,6 +171,8 @@ export class AzureDevOpsProvider implements ITaskProvider {
     );
     this.pollIntervalMs = projectCfg?.azureDevOps?.pollInterval ?? 30_000;
     this.onlyAssignedToMe = projectCfg?.azureDevOps?.onlyAssignedToMe === true;
+    const cfgStates = projectCfg?.azureDevOps?.states;
+    this.states = cfgStates && cfgStates.length > 0 ? cfgStates : ['Active'];
   }
 
   private startPolling(): void {
@@ -189,7 +193,13 @@ export class AzureDevOpsProvider implements ITaskProvider {
       return Promise.resolve();
     }
 
-    let wiql = `SELECT [System.Id], [System.Title], [System.Description], [System.State], [System.Tags], [System.AssignedTo], [System.CreatedDate] FROM WorkItems WHERE [System.TeamProject] = '${this.project.replace(/'/g, "''")}' AND [System.State] <> 'Removed'`;
+    let wiql = `SELECT [System.Id], [System.Title], [System.Description], [System.State], [System.Tags], [System.AssignedTo], [System.CreatedDate] FROM WorkItems WHERE [System.TeamProject] = '${this.project.replace(/'/g, "''")}'`;
+    if (this.states.length > 0) {
+      const inList = this.states.map(s => `'${s.replace(/'/g, "''")}'`).join(', ');
+      wiql += ` AND [System.State] IN (${inList})`;
+    } else {
+      wiql += ` AND [System.State] <> 'Removed'`;
+    }
     if (this.onlyAssignedToMe) {
       wiql += ` AND [System.AssignedTo] = @Me`;
     }

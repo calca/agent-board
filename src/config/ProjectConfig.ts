@@ -2,6 +2,7 @@ import * as vscode from 'vscode';
 import * as path from 'path';
 import * as fs from 'fs';
 import { ProjectConfigData, extractGitHubConfig, resolveConfigValue } from './configTypes';
+import { Logger } from '../utils/logger';
 
 export { ProjectConfigData, extractGitHubConfig, resolveConfigValue };
 
@@ -58,10 +59,12 @@ export class ProjectConfig {
   static updateConfig(partial: Partial<ProjectConfigData>): void {
     const filePath = ProjectConfig.configFilePath();
     if (!filePath) {
+      Logger.getInstance().warn('ProjectConfig.updateConfig: no workspace folder, cannot save config');
       return;
     }
 
     const existing = ProjectConfig.readConfigFile() ?? {};
+    Logger.getInstance().debug('ProjectConfig.updateConfig: partial keys=%s, existing keys=%s', Object.keys(partial).join(','), Object.keys(existing).join(','));
 
     // Shallow-merge top-level keys; for objects, merge one level deeper
     const merged: Record<string, unknown> = { ...existing };

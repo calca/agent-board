@@ -25,6 +25,12 @@
           "type": "boolean",
           "default": false,
           "description": "Only fetch issues assigned to the current user."
+        },
+        "states": {
+          "type": "array",
+          "items": { "type": "string" },
+          "default": ["open"],
+          "description": "Issue states to fetch. Use 'open', 'closed', or both. Default: ['open']."
         }
       },
       "additionalProperties": false
@@ -88,6 +94,11 @@
           "minimum": 5000,
           "default": 30000,
           "description": "Polling interval in milliseconds for checking new items."
+        },
+        "states": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Issue states to fetch. When set, only items matching these states are shown."
         }
       },
       "additionalProperties": false
@@ -119,6 +130,12 @@
           "minimum": 5000,
           "default": 30000,
           "description": "Polling interval in milliseconds for checking new work items."
+        },
+        "states": {
+          "type": "array",
+          "items": { "type": "string" },
+          "default": ["Active"],
+          "description": "Work item states to fetch. Only items in these states are queried via WIQL. Default: ['Active']."
         }
       },
       "additionalProperties": false

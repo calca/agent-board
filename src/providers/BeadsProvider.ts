@@ -34,6 +34,7 @@ export class BeadsProvider implements ITaskProvider {
   private executable = 'beads';
   private onlyAssignedToMe = false;
   private pollIntervalMs = 30_000;
+  private states: string[] = [];
 
   constructor() {
     this.readConfig();
@@ -87,6 +88,7 @@ export class BeadsProvider implements ITaskProvider {
       { key: 'executable', label: 'Beads executable', type: 'string', placeholder: 'beads', hint: 'Path or command name' },
       { key: 'onlyAssignedToMe', label: 'Only items assigned to me', type: 'boolean' },
       { key: 'pollInterval', label: 'Poll interval (ms)', type: 'number', placeholder: '30000', hint: 'How often to check for new items' },
+      { key: 'states', label: 'States to fetch', type: 'string', placeholder: 'e.g. open, in_progress', hint: 'Comma-separated states to filter (empty = all)' },
     ];
   }
 
@@ -126,6 +128,7 @@ export class BeadsProvider implements ITaskProvider {
     );
     this.pollIntervalMs = projectCfg?.beadsProvider?.pollInterval ?? 30_000;
     this.onlyAssignedToMe = projectCfg?.beadsProvider?.onlyAssignedToMe === true;
+    this.states = projectCfg?.beadsProvider?.states?.length ? projectCfg.beadsProvider.states : [];
   }
 
   private startPolling(): void {
@@ -151,7 +154,11 @@ export class BeadsProvider implements ITaskProvider {
       const { stdout } = await execShell(this.executable, args, { timeout: 15_000 });
       log.debug('BeadsProvider: stdout (%d chars) → %s', stdout.length, stdout.slice(0, 2000));
       try {
-        const raw: BeadsIssue[] = JSON.parse(stdout);
+        let raw: BeadsIssue[] = JSON.parse(stdout);
+        if (this.states.length > 0) {
+          const allowed = new Set(this.states.map(s => s.toLowerCase()));
+          raw = raw.filter(i => allowed.has((i.state ?? '').toLowerCase()));
+        }
         const newTasks = raw.map(issue => this.mapBeadsToTask(issue));
         // Preserve local status overrides — but respect remote terminal states (done)
         const oldStatusMap = new Map(this.tasks.map(t => [t.id, t.status]));

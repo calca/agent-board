@@ -25,6 +25,8 @@ export interface ProjectConfigData {
     repo?: string;
     /** Only fetch issues assigned to the current user. */
     onlyAssignedToMe?: boolean;
+    /** Issue states to fetch (default: ['open']). Use 'open', 'closed', or both. */
+    states?: string[];
   };
   jsonProvider?: {
     enabled?: boolean;
@@ -44,6 +46,8 @@ export interface ProjectConfigData {
     onlyAssignedToMe?: boolean;
     /** Polling interval in milliseconds (default 30000). */
     pollInterval?: number;
+    /** Issue states to fetch. When set, only items matching these states are shown. */
+    states?: string[];
   };
   azureDevOps?: {
     enabled?: boolean;
@@ -55,6 +59,8 @@ export interface ProjectConfigData {
     onlyAssignedToMe?: boolean;
     /** Polling interval in milliseconds (default 30000). */
     pollInterval?: number;
+    /** Work item states to fetch (default: ['Active']). Only items in these states are queried. */
+    states?: string[];
   };
   /**
    * Git worktree settings.

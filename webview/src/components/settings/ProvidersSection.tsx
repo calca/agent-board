@@ -6,6 +6,51 @@ function escHtml(val: string): string {
   return val.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 }
 
+/** Text input that stores a comma-separated string locally and syncs a `string[]` to config. */
+function StatesField({ fieldId, value, placeholder, hint, label, required, onChange }: {
+  fieldId: string;
+  value: unknown;
+  placeholder?: string;
+  hint?: string;
+  label: string;
+  required?: boolean;
+  onChange: (arr: string[] | undefined) => void;
+}) {
+  const display = Array.isArray(value) ? value.join(', ') : typeof value === 'string' ? value : '';
+  const [text, setText] = useState(display);
+  const localEdit = useRef(false);
+
+  // Sync external value changes (e.g. config reload) — skip when user is typing
+  useEffect(() => {
+    if (!localEdit.current) { setText(display); }
+    localEdit.current = false;
+  }, [display]);
+
+  function handleChange(raw: string) {
+    localEdit.current = true;
+    setText(raw);
+    // Keep config in sync on every keystroke so Save always has the latest value.
+    // Send [] (not undefined) when empty — undefined is stripped by JSON.stringify
+    // and the merge with the existing file would preserve the old value.
+    const arr = raw.split(',').map(s => s.trim()).filter(Boolean);
+    onChange(arr);
+  }
+
+  return (
+    <div className="field">
+      <label htmlFor={fieldId}>{label}{required ? ' *' : ''}</label>
+      <input
+        type="text"
+        id={fieldId}
+        value={text}
+        placeholder={placeholder}
+        onChange={e => handleChange(e.target.value)}
+      />
+      {hint && <span className="hint">{hint}</span>}
+    </div>
+  );
+}
+
 function DiagBadge({ diagnostic }: { diagnostic: ProviderInfo['diagnostic'] }) {
   if (!diagnostic) { return null; }
   const icon = diagnostic.severity === 'ok' ? '✓' : diagnostic.severity === 'warning' ? '⚠' : '✗';
@@ -22,14 +67,10 @@ function ProviderCard({ provider, onRemove }: { provider: ProviderInfo; onRemove
 
   function updateField(key: string, value: unknown) {
     dispatch({
-      type: 'updateConfig',
-      patch: {
-        [provider.configSection]: {
-          ...state.config[provider.configSection],
-          enabled: true,
-          [key]: value,
-        },
-      },
+      type: 'updateSectionField',
+      section: provider.configSection,
+      key,
+      value,
     });
   }
 
@@ -72,6 +113,20 @@ function ProviderCard({ provider, onRemove }: { provider: ProviderInfo; onRemove
                 </div>
               );
             }
+            if (f.key === 'states') {
+              return (
+                <StatesField
+                  key={f.key}
+                  fieldId={fieldId}
+                  value={val}
+                  placeholder={f.placeholder}
+                  hint={f.hint}
+                  label={f.label}
+                  required={f.required}
+                  onChange={arr => updateField(f.key, arr)}
+                />
+              );
+            }
             return (
               <div className="field" key={f.key}>
                 <label htmlFor={fieldId}>{f.label}{f.required ? ' *' : ''}</label>
@@ -103,7 +158,7 @@ function ProviderCard({ provider, onRemove }: { provider: ProviderInfo; onRemove
  *   Remove:  card fades out → reappears as available item → persist
  */
 export function ProvidersSection() {
-  const { state, dispatch, refreshDiagnostics } = useSettings();
+  const { state, dispatch, configRef, refreshDiagnostics } = useSettings();
   const providers = state.providers;
 
   // Local override: id → true (force active) | false (force available)
@@ -143,14 +198,21 @@ export function ProvidersSection() {
     if (!pending) { return; }
     pendingSave.current.delete(id);
 
-    const updated = { ...state.config[pending.section], enabled: pending.enabled };
-    dispatch({ type: 'updateConfig', patch: { [pending.section]: updated } });
+    dispatch({
+      type: 'updateSectionField',
+      section: pending.section,
+      key: 'enabled',
+      value: pending.enabled,
+    });
+    // Use configRef for the latest config to avoid stale closure
+    const current = configRef.current;
+    const updated = { ...current[pending.section], enabled: pending.enabled };
     postSettingsMessage({
       type: 'save',
-      config: { ...state.config, [pending.section]: updated },
+      config: { ...current, [pending.section]: updated },
     });
     // Override stays until host confirms via providerDiagnostics
-  }, [state.config, dispatch]);
+  }, [dispatch, configRef]);
 
   function handleEnable(p: ProviderInfo) {
     pendingSave.current.set(p.id, { section: p.configSection, enabled: true });

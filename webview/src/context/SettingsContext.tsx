@@ -1,4 +1,4 @@
-import React, { createContext, useCallback, useContext, useReducer } from 'react';
+import React, { createContext, useCallback, useContext, useReducer, useRef } from 'react';
 import type { ProviderInfo, SectionId, SettingsConfig } from '../settingsTypes';
 
 // ── State ──────────────────────────────────────────────────────
@@ -28,10 +28,11 @@ const initialState: SettingsState = {
 // ── Actions ────────────────────────────────────────────────────
 
 type Action =
-  | { type: 'setConfig'; config: SettingsConfig }
+  | { type: 'setConfig'; config: SettingsConfig; force?: boolean }
   | { type: 'setProviders'; providers: ProviderInfo[] }
   | { type: 'setActiveSection'; section: SectionId }
   | { type: 'updateConfig'; patch: SettingsConfig }
+  | { type: 'updateSectionField'; section: string; key: string; value: unknown }
   | { type: 'markClean' }
   | { type: 'setLogContent'; content: string }
   | { type: 'setLogFiles'; files: string[] };
@@ -39,13 +40,38 @@ type Action =
 function reducer(state: SettingsState, action: Action): SettingsState {
   switch (action.type) {
     case 'setConfig':
+      // When the user has unsaved edits, ignore file-watcher reloads
+      // to avoid overwriting in-progress changes. Force is used by resetToFile.
+      if (state.loaded && state.dirty && !action.force) { return state; }
       return { ...state, config: action.config, loaded: true, dirty: false };
     case 'setProviders':
       return { ...state, providers: action.providers };
     case 'setActiveSection':
       return { ...state, activeSection: action.section };
-    case 'updateConfig':
-      return { ...state, config: { ...state.config, ...action.patch }, dirty: true };
+    case 'updateConfig': {
+      // Deep-merge one level down for object values (same as host ProjectConfig.updateConfig).
+      // This prevents partial section patches from wiping out existing fields like `states`.
+      const next: SettingsConfig = { ...state.config };
+      for (const [key, value] of Object.entries(action.patch)) {
+        if (value && typeof value === 'object' && !Array.isArray(value)) {
+          next[key] = { ...(state.config[key] ?? {}), ...value };
+        } else {
+          next[key] = value;
+        }
+      }
+      return { ...state, config: next, dirty: true };
+    }
+    case 'updateSectionField': {
+      const prev = state.config[action.section] ?? {};
+      return {
+        ...state,
+        config: {
+          ...state.config,
+          [action.section]: { ...prev, enabled: true, [action.key]: action.value },
+        },
+        dirty: true,
+      };
+    }
     case 'markClean':
       return { ...state, dirty: false };
     case 'setLogContent':
@@ -62,6 +88,7 @@ function reducer(state: SettingsState, action: Action): SettingsState {
 interface SettingsContextValue {
   state: SettingsState;
   dispatch: React.Dispatch<Action>;
+  configRef: React.MutableRefObject<SettingsConfig>;
   save: () => void;
   resetToFile: () => void;
   refreshDiagnostics: () => void;
@@ -95,12 +122,18 @@ export function postSettingsMessage(msg: unknown): void {
 export function SettingsProvider({ children }: { children: React.ReactNode }) {
   const [state, dispatch] = useReducer(reducer, initialState);
 
+  // Ref always points to the latest config — eliminates stale-closure issues in save
+  const configRef = useRef(state.config);
+  configRef.current = state.config;
+
   const save = useCallback(() => {
-    postSettingsMessage({ type: 'save', config: state.config });
-    dispatch({ type: 'markClean' });
-  }, [state.config]);
+    postSettingsMessage({ type: 'save', config: configRef.current });
+    // Don't markClean here — wait for host's saveOk confirmation.
+    // This keeps dirty=true to block any file-watcher configData in transit.
+  }, []);
 
   const resetToFile = useCallback(() => {
+    dispatch({ type: 'markClean' });
     postSettingsMessage({ type: 'requestConfig' });
   }, []);
 
@@ -109,7 +142,7 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   return (
-    <SettingsContext.Provider value={{ state, dispatch, save, resetToFile, refreshDiagnostics }}>
+    <SettingsContext.Provider value={{ state, dispatch, configRef, save, resetToFile, refreshDiagnostics }}>
       {children}
     </SettingsContext.Provider>
   );

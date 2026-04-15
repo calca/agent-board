@@ -58,6 +58,7 @@ export class GitHubProvider implements ITaskProvider {
   private repo = '';
   private cacheTtlMs = 60_000;
   private onlyAssignedToMe = false;
+  private states: string[] = ['open'];
   /** `true` after we confirmed `gh` is available. */
   private ghCliAvailable: boolean | undefined;
   private pollTimer: ReturnType<typeof setInterval> | undefined;
@@ -140,6 +141,7 @@ export class GitHubProvider implements ITaskProvider {
       { key: 'owner', label: 'Owner', type: 'string', placeholder: 'e.g. my-org', hint: 'Auto-detected from gh CLI if empty' },
       { key: 'repo', label: 'Repository', type: 'string', placeholder: 'e.g. my-repo', hint: 'Auto-detected from gh CLI if empty' },
       { key: 'onlyAssignedToMe', label: 'Only issues assigned to me', type: 'boolean' },
+      { key: 'states', label: 'States to fetch', type: 'string', placeholder: 'open, closed', hint: 'Comma-separated issue states (default: open)' },
     ];
   }
 
@@ -229,6 +231,8 @@ export class GitHubProvider implements ITaskProvider {
     this.repo = ghCfg.repo;
     this.cacheTtlMs = 60_000;
     this.onlyAssignedToMe = ProjectConfig.getProjectConfig()?.github?.onlyAssignedToMe === true;
+    const cfgStates = ProjectConfig.getProjectConfig()?.github?.states;
+    this.states = cfgStates && cfgStates.length > 0 ? cfgStates : ['open'];
   }
 
   private isCacheValid(): boolean {
@@ -254,17 +258,14 @@ export class GitHubProvider implements ITaskProvider {
     const assigneeArgs = this.onlyAssignedToMe ? ['--assignee', '@me'] : [];
 
     try {
-      // Fetch open + closed issues
-      const [openStdout, closedStdout] = await Promise.all([
-        this.execGh(['issue', 'list', '--repo', repoSlug, '--state', 'open',
-          '--limit', '200', '--json', fields, ...assigneeArgs]),
-        this.execGh(['issue', 'list', '--repo', repoSlug, '--state', 'closed',
-          '--limit', '100', '--json', fields, ...assigneeArgs]),
-      ]);
-
-      const openIssues = JSON.parse(openStdout) as GhCliIssue[];
-      const closedIssues = JSON.parse(closedStdout) as GhCliIssue[];
-      const all = [...openIssues, ...closedIssues];
+      // Fetch only configured states (default: open only)
+      const fetches = this.states.map(state => {
+        const limit = state === 'closed' ? '100' : '200';
+        return this.execGh(['issue', 'list', '--repo', repoSlug, '--state', state,
+          '--limit', limit, '--json', fields, ...assigneeArgs]);
+      });
+      const results = await Promise.all(fetches);
+      const all = results.flatMap(stdout => JSON.parse(stdout) as GhCliIssue[]);
 
       const newCache = all.map(issue => this.mapGhCliIssue(issue));
       // Preserve local status overrides — but respect remote terminal states (done)

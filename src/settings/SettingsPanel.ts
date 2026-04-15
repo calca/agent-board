@@ -27,6 +27,10 @@ export class SettingsPanel {
   private disposables: vscode.Disposable[] = [];
   private registry: ProviderRegistry | undefined;
   private reloadTimer: ReturnType<typeof setTimeout> | undefined;
+  /** Debounce timer for config-file watcher reloads. */
+  private configDebounce: ReturnType<typeof setTimeout> | undefined;
+  /** Suppress file-watcher reloads until this timestamp (to avoid echoing stale data after save). */
+  private suppressUntil = 0;
 
   private constructor(
     panel: vscode.WebviewPanel,
@@ -69,6 +73,7 @@ export class SettingsPanel {
   private dispose(): void {
     SettingsPanel.instance = undefined;
     if (this.reloadTimer) { clearTimeout(this.reloadTimer); }
+    if (this.configDebounce) { clearTimeout(this.configDebounce); }
     for (const d of this.disposables) { d.dispose(); }
     this.disposables = [];
   }
@@ -98,10 +103,10 @@ export class SettingsPanel {
       '.agent-board/config.json',
     );
     const watcher = vscode.workspace.createFileSystemWatcher(pattern);
-    let debounce: ReturnType<typeof setTimeout> | undefined;
     const reload = () => {
-      if (debounce) { clearTimeout(debounce); }
-      debounce = setTimeout(() => {
+      if (this.configDebounce) { clearTimeout(this.configDebounce); }
+      this.configDebounce = setTimeout(() => {
+        if (Date.now() < this.suppressUntil) { return; }
         this.sendConfig();
         void this.sendProviderDiagnostics();
       }, 300);
@@ -120,9 +125,27 @@ export class SettingsPanel {
         break;
       case 'save':
         if (msg.config) {
+          const log = Logger.getInstance();
+          log.info('SettingsPanel save: received config → %s', JSON.stringify(msg.config).slice(0, 2000));
+          // Cancel any pending file-watcher reload to prevent stale data echo
+          if (this.configDebounce) { clearTimeout(this.configDebounce); }
+          // Suppress file-watcher reloads for 1s
+          this.suppressUntil = Date.now() + 1000;
           ProjectConfig.updateConfig(msg.config);
+          // Send the merged config back — the webview may have sent a partial
+          // config (e.g. missing `states` array), so the authoritative merged
+          // version from disk must replace the webview state.
+          const merged = ProjectConfig.getProjectConfig() ?? {};
+          log.info('SettingsPanel save: merged config → %s', JSON.stringify(merged).slice(0, 2000));
+          this.panel.webview.postMessage({ type: 'configSaved', config: merged });
           vscode.window.showInformationMessage('Agent Board settings saved.');
           Logger.getInstance().refreshLevel();
+          // Refresh all providers so they re-read the updated config
+          if (this.registry) {
+            for (const p of this.registry.getAll()) {
+              void p.refresh();
+            }
+          }
           void this.sendProviderDiagnostics();
         }
         break;
