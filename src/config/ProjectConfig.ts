@@ -1,8 +1,8 @@
-import * as vscode from 'vscode';
-import * as path from 'path';
 import * as fs from 'fs';
-import { ProjectConfigData, extractGitHubConfig, resolveConfigValue } from './configTypes';
+import * as path from 'path';
+import * as vscode from 'vscode';
 import { Logger } from '../utils/logger';
+import { ProjectConfigData, extractGitHubConfig, resolveConfigValue } from './configTypes';
 
 export { ProjectConfigData, extractGitHubConfig, resolveConfigValue };
 
