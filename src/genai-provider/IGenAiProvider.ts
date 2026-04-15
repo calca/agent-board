@@ -23,6 +23,8 @@ export interface GenAiProviderConfig {
   yolo?: boolean;
   /** Enable /fleet mode — optimise prompt for parallel fleet execution. */
   fleet?: boolean;
+  /** Enable --remote mode — run the Copilot CLI session against the remote GitHub repository. */
+  remote?: boolean;
 }
 
 /**

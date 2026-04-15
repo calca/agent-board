@@ -191,6 +191,11 @@
             "type": "boolean",
             "default": false,
             "description": "Enable /fleet mode — optimise prompt for parallel fleet execution (copilot-cli only)."
+          },
+          "remote": {
+            "type": "boolean",
+            "default": false,
+            "description": "Enable --remote mode — run the Copilot CLI session against the remote GitHub repository (copilot-cli only)."
           }
         },
         "additionalProperties": false

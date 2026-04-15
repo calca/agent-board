@@ -14,6 +14,7 @@ interface ProviderEntry {
   endpoint?: string;
   yolo?: boolean;
   fleet?: boolean;
+  remote?: boolean;
 }
 
 export function GenAiSection() {
@@ -79,6 +80,7 @@ function ProviderCard({ id, displayName, hint, defaultEnabled, entry, onChange }
   onChange: (patch: Partial<ProviderEntry>) => void;
 }) {
   const enabled = entry.enabled ?? defaultEnabled;
+  const showRemote = id === 'copilot-cli';
 
   return (
     <div className={`provider-card${enabled ? '' : ' provider-card--disabled'}`} style={{ marginBottom: 16 }}>
@@ -116,6 +118,16 @@ function ProviderCard({ id, displayName, hint, defaultEnabled, entry, onChange }
             </label>
             <span className="hint">Optimise prompt for parallel fleet execution</span>
           </div>
+          {showRemote && (
+            <div className="field field--checkbox">
+              <label htmlFor={`genai-${id}-remote`}>
+                <input type="checkbox" id={`genai-${id}-remote`} checked={entry.remote ?? false}
+                  onChange={e => onChange({ remote: e.target.checked })} />
+                Remote mode
+              </label>
+              <span className="hint">Run session against the remote GitHub repository (--remote)</span>
+            </div>
+          )}
         </div>
       )}
     </div>

@@ -195,6 +195,11 @@
           "default": false,
           "description": "Enable /fleet mode for Copilot CLI — optimise prompt for parallel fleet execution. Overridable in .agent-board/config.json under genAiProviders.copilot-cli.fleet."
         },
+        "agentBoard.copilotCli.remote": {
+          "type": "boolean",
+          "default": false,
+          "description": "Enable --remote mode for Copilot CLI — run sessions against the remote GitHub repository. Overridable in .agent-board/config.json under genAiProviders.copilot-cli.remote."
+        },
         "agentBoard.kanban.intermediateColumns": {
           "type": "array",
           "items": {

@@ -23,6 +23,7 @@ export class CopilotCliGenAiProvider implements IGenAiProvider {
   private readonly logger = Logger.getInstance();
   private readonly yolo: boolean;
   private readonly fleet: boolean;
+  private readonly remote: boolean;
   private _proc: ChildProcess | undefined;
   private _resumeSessionId: string | undefined;
   private _lastSessionId: string | undefined;
@@ -33,6 +34,7 @@ export class CopilotCliGenAiProvider implements IGenAiProvider {
   constructor(config?: GenAiProviderConfig) {
     this.yolo   = config?.yolo   ?? true;
     this.fleet  = config?.fleet  ?? false;
+    this.remote = config?.remote ?? false;
   }
 
   /** Set-up a resume session ID so the next `run()` adds `--resume=<id>`. */
@@ -62,7 +64,11 @@ export class CopilotCliGenAiProvider implements IGenAiProvider {
     const resumeId = this._resumeSessionId;
     this._resumeSessionId = undefined;
     const resumeLabel = resumeId ? ` --resume=${resumeId}` : '';
-    const flags = this.yolo ? ' --allow-all --autopilot' : '';
+    const flagParts = [
+      ...(this.yolo ? ['--allow-all', '--autopilot'] : []),
+      ...(this.remote ? ['--remote'] : []),
+    ];
+    const flags = flagParts.length > 0 ? ` ${flagParts.join(' ')}` : '';
     this._emit(`[copilot-cli] Avvio: copilot${flags}${resumeLabel}\n`);
     await this._spawnCopilot(fullPrompt, cwd, resumeId);
   }
@@ -88,6 +94,9 @@ export class CopilotCliGenAiProvider implements IGenAiProvider {
       args.push('-p', prompt);
       if (this.yolo) {
         args.push('--allow-all', '--autopilot');
+      }
+      if (this.remote) {
+        args.push('--remote');
       }
 
       // Snapshot existing session IDs so we can diff after the process exits.

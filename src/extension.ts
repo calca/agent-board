@@ -149,12 +149,13 @@ export function activate(context: vscode.ExtensionContext): void {
     autopilot: lmYolo,
   }));
 
-  // Copilot CLI — pass per-project config (yolo / fleet), falling back to VS Code settings
+  // Copilot CLI — pass per-project config (yolo / fleet / remote), falling back to VS Code settings
   const copilotCliCfg = ProjectConfig.getProjectConfig()?.genAiProviders?.['copilot-cli'];
   const copilotCliConfig = {
     ...copilotCliCfg,
     yolo: copilotCliCfg?.yolo ?? vscode.workspace.getConfiguration('agentBoard').get<boolean>('copilotCli.yolo', true),
     fleet: copilotCliCfg?.fleet ?? vscode.workspace.getConfiguration('agentBoard').get<boolean>('copilotCli.fleet', false),
+    remote: copilotCliCfg?.remote ?? vscode.workspace.getConfiguration('agentBoard').get<boolean>('copilotCli.remote', false),
   };
   const copilotCliGenAi = new CopilotCliGenAiProvider(copilotCliConfig);
   genAiRegistry.register(copilotCliGenAi);
