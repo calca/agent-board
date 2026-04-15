@@ -6,7 +6,7 @@ import * as vscode from 'vscode';
 import { KanbanTask } from '../../types/KanbanTask';
 import { formatError } from '../../utils/errorUtils';
 import { Logger } from '../../utils/logger';
-import { buildOptimisationPrefix } from '../copilotCliUtils';
+import { buildOptimisationPrefix, isGitHubRepository } from '../copilotCliUtils';
 import { GenAiProviderConfig, GenAiProviderScope, IGenAiProvider } from '../IGenAiProvider';
 
 /** Directory where the copilot CLI persists session state. */
@@ -63,14 +63,25 @@ export class CopilotCliGenAiProvider implements IGenAiProvider {
     const cwd = worktreePath ?? vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
     const resumeId = this._resumeSessionId;
     this._resumeSessionId = undefined;
+
+    // --remote is only supported for GitHub repositories.
+    let useRemote = false;
+    if (this.remote) {
+      useRemote = cwd ? await isGitHubRepository(cwd) : false;
+      if (!useRemote) {
+        this._emit('[copilot-cli] Warning: --remote ignorato — il workspace non è un repository GitHub.\n');
+        this.logger.warn('CopilotCliGenAiProvider: --remote richiesto ma il workspace non è un repository GitHub; flag ignorato.');
+      }
+    }
+
     const resumeLabel = resumeId ? ` --resume=${resumeId}` : '';
     const flagParts = [
       ...(this.yolo ? ['--allow-all', '--autopilot'] : []),
-      ...(this.remote ? ['--remote'] : []),
+      ...(useRemote ? ['--remote'] : []),
     ];
     const flags = flagParts.length > 0 ? ` ${flagParts.join(' ')}` : '';
     this._emit(`[copilot-cli] Avvio: copilot${flags}${resumeLabel}\n`);
-    await this._spawnCopilot(fullPrompt, cwd, resumeId);
+    await this._spawnCopilot(fullPrompt, cwd, resumeId, useRemote);
   }
 
   cancel(): void {
@@ -85,7 +96,7 @@ export class CopilotCliGenAiProvider implements IGenAiProvider {
 
   private _emit(text: string): void { this._onDidStreamEmitter.fire(text); }
 
-  private _spawnCopilot(prompt: string, cwd?: string, resumeId?: string): Promise<void> {
+  private _spawnCopilot(prompt: string, cwd?: string, resumeId?: string, useRemote?: boolean): Promise<void> {
     return new Promise<void>((resolve, reject) => {
       const args: string[] = [];
       if (resumeId) {
@@ -95,7 +106,7 @@ export class CopilotCliGenAiProvider implements IGenAiProvider {
       if (this.yolo) {
         args.push('--allow-all', '--autopilot');
       }
-      if (this.remote) {
+      if (useRemote) {
         args.push('--remote');
       }
 

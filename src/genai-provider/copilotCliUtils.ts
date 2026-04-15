@@ -5,6 +5,8 @@
  * unit-tested without the VS Code host — same pattern as `squadUtils.ts`.
  */
 
+import { exec } from 'child_process';
+
 /**
  * Prefix appended to the prompt when `/yolo` mode is enabled.
  * Instructs the model to apply all changes without asking for confirmation.
@@ -33,4 +35,19 @@ export function buildOptimisationPrefix(yolo: boolean, fleet: boolean): string {
     prefix += FLEET_PREFIX;
   }
   return prefix;
+}
+
+/**
+ * Returns `true` when `cwd` is inside a git repository whose remotes contain `github.com`.
+ *
+ * Used to guard the `--remote` flag — that flag is only supported by the
+ * Copilot CLI when the workspace is backed by a GitHub repository.
+ */
+export function isGitHubRepository(cwd: string): Promise<boolean> {
+  return new Promise<boolean>(resolve => {
+    exec('git remote -v', { cwd, timeout: 5_000 }, (err, stdout) => {
+      if (err) { resolve(false); return; }
+      resolve(/github\.com/i.test(stdout));
+    });
+  });
 }

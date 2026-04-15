@@ -1,7 +1,9 @@
 import * as assert from 'assert';
+import * as os from 'os';
+import * as path from 'path';
 import { GenAiProviderRegistry } from '../../genai-provider/GenAiProviderRegistry';
 import { GenAiProviderScope, IGenAiProvider } from '../../genai-provider/IGenAiProvider';
-import { buildOptimisationPrefix, FLEET_PREFIX, YOLO_PREFIX } from '../../genai-provider/copilotCliUtils';
+import { buildOptimisationPrefix, FLEET_PREFIX, isGitHubRepository, YOLO_PREFIX } from '../../genai-provider/copilotCliUtils';
 
 /** Minimal stub GenAI provider for testing the registry. */
 function makeGenAiProvider(
@@ -184,5 +186,25 @@ suite('buildOptimisationPrefix (CopilotCliGenAiProvider)', () => {
     const yoloIdx = result.indexOf('/yolo');
     const fleetIdx = result.indexOf('/fleet');
     assert.ok(yoloIdx < fleetIdx, 'yolo should appear before fleet');
+  });
+});
+
+suite('isGitHubRepository', () => {
+  test('returns false for a non-existent directory', async () => {
+    const result = await isGitHubRepository(path.join(os.tmpdir(), 'nonexistent-agent-board-test'));
+    assert.strictEqual(result, false);
+  });
+
+  test('returns false for the OS temp directory (no git remote)', async () => {
+    // os.tmpdir() is not inside a git repo in the test runner environment
+    const result = await isGitHubRepository(os.tmpdir());
+    assert.strictEqual(result, false);
+  });
+
+  test('returns true for the agent-board repository itself (has github.com remote)', async () => {
+    // The test runs inside the cloned agent-board repo which has a github.com remote
+    const repoRoot = path.resolve(__dirname, '../../../');
+    const result = await isGitHubRepository(repoRoot);
+    assert.strictEqual(result, true);
   });
 });
