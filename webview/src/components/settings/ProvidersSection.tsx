@@ -177,7 +177,7 @@ export function ProvidersSection() {
 
   return (
     <div className="section">
-      <div className="section__title">Task Providers</div>
+      <div className="section__title">Issue Providers</div>
 
       {providers.length === 0 && (
         <p style={{ opacity: 0.5, fontSize: '0.85em' }}>Loading provider information…</p>

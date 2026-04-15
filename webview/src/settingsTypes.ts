@@ -45,7 +45,7 @@ export type SectionId =
   | 'about';
 
 export const SECTIONS: { id: SectionId; label: string }[] = [
-  { id: 'providers', label: 'Providers' },
+  { id: 'providers', label: 'Issues' },
   { id: 'genai', label: 'GenAI' },
   { id: 'kanban', label: 'Kanban' },
   { id: 'worktree', label: 'Worktree' },
