@@ -183,11 +183,11 @@ export function FullView() {
         </div>
       </div>
 
-      {/* ROW 2: Agent Chat Log */}
+      {/* ROW 2: Activity Logs */}
       <div className={`fv-row fv-row--bottom${logExpanded ? ' fv-row--expanded' : ''}`} data-fv-tab="chat" data-active={mobileTab === 'chat' || undefined}>
         <div className="fv-panel fv-panel--fill" style={{ background: '#8888880D' }}>
           <div className="fv-panel__header fv-panel__header--static fv-log-panel-header" style={{ background: '#8888881A' }}>
-            <span className="fv-panel__header-text">≡ Agent Chat</span>
+            <span className="fv-panel__header-text">≡ Activity Logs</span>
             <span className="fv-panel__badge">{chatMessages.length || logs.length}</span>
             <button className="fv-panel__header-btn" title={logExpanded ? 'Collapse' : 'Expand'} onClick={() => dispatch({ type: 'TOGGLE_LOG_EXPANDED' })}>
               {logExpanded ? '⊖' : '⊕'}
