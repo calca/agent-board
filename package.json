@@ -200,6 +200,11 @@
           "default": false,
           "description": "Enable --remote mode for Copilot CLI — run sessions against the remote GitHub repository. Overridable in .agent-board/config.json under genAiProviders.copilot-cli.remote."
         },
+        "agentBoard.copilotCli.rubberDuck": {
+          "type": "boolean",
+          "default": false,
+          "description": "Enable --rubber-duck mode for Copilot CLI — use a second model family for a second opinion review. Overridable in .agent-board/config.json under genAiProviders.copilot-cli.rubberDuck."
+        },
         "agentBoard.kanban.intermediateColumns": {
           "type": "array",
           "items": {

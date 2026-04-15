@@ -156,6 +156,7 @@ export function activate(context: vscode.ExtensionContext): void {
     yolo: copilotCliCfg?.yolo ?? vscode.workspace.getConfiguration('agentBoard').get<boolean>('copilotCli.yolo', true),
     fleet: copilotCliCfg?.fleet ?? vscode.workspace.getConfiguration('agentBoard').get<boolean>('copilotCli.fleet', false),
     remote: copilotCliCfg?.remote ?? vscode.workspace.getConfiguration('agentBoard').get<boolean>('copilotCli.remote', false),
+    rubberDuck: copilotCliCfg?.rubberDuck ?? vscode.workspace.getConfiguration('agentBoard').get<boolean>('copilotCli.rubberDuck', false),
   };
   const copilotCliGenAi = new CopilotCliGenAiProvider(copilotCliConfig);
   genAiRegistry.register(copilotCliGenAi);

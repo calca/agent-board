@@ -15,6 +15,7 @@ interface ProviderEntry {
   yolo?: boolean;
   fleet?: boolean;
   remote?: boolean;
+  rubberDuck?: boolean;
 }
 
 export function GenAiSection() {
@@ -126,6 +127,16 @@ function ProviderCard({ id, displayName, hint, defaultEnabled, entry, onChange }
                 Remote mode
               </label>
               <span className="hint">Run session against the remote GitHub repository (--remote)</span>
+            </div>
+          )}
+          {showRemote && (
+            <div className="field field--checkbox">
+              <label htmlFor={`genai-${id}-rubberDuck`}>
+                <input type="checkbox" id={`genai-${id}-rubberDuck`} checked={entry.rubberDuck ?? false}
+                  onChange={e => onChange({ rubberDuck: e.target.checked })} />
+                Rubber Duck mode
+              </label>
+              <span className="hint">Use a second model family for a second opinion review (--rubber-duck)</span>
             </div>
           )}
         </div>

@@ -24,6 +24,7 @@ export class CopilotCliGenAiProvider implements IGenAiProvider {
   private readonly yolo: boolean;
   private readonly fleet: boolean;
   private readonly remote: boolean;
+  private readonly rubberDuck: boolean;
   private _proc: ChildProcess | undefined;
   private _resumeSessionId: string | undefined;
   private _lastSessionId: string | undefined;
@@ -32,9 +33,10 @@ export class CopilotCliGenAiProvider implements IGenAiProvider {
   readonly onDidStream: vscode.Event<string> = this._onDidStreamEmitter.event;
 
   constructor(config?: GenAiProviderConfig) {
-    this.yolo   = config?.yolo   ?? true;
-    this.fleet  = config?.fleet  ?? false;
-    this.remote = config?.remote ?? false;
+    this.yolo       = config?.yolo       ?? true;
+    this.fleet      = config?.fleet      ?? false;
+    this.remote     = config?.remote     ?? false;
+    this.rubberDuck = config?.rubberDuck ?? false;
   }
 
   /** Set-up a resume session ID so the next `run()` adds `--resume=<id>`. */
@@ -78,10 +80,11 @@ export class CopilotCliGenAiProvider implements IGenAiProvider {
     const flagParts = [
       ...(this.yolo ? ['--allow-all', '--autopilot'] : []),
       ...(useRemote ? ['--remote'] : []),
+      ...(this.rubberDuck ? ['--rubber-duck'] : []),
     ];
     const flags = flagParts.length > 0 ? ` ${flagParts.join(' ')}` : '';
     this._emit(`[copilot-cli] Avvio: copilot${flags}${resumeLabel}\n`);
-    await this._spawnCopilot(fullPrompt, cwd, resumeId, useRemote);
+    await this._spawnCopilot(fullPrompt, cwd, resumeId, useRemote, this.rubberDuck);
   }
 
   cancel(): void {
@@ -96,7 +99,7 @@ export class CopilotCliGenAiProvider implements IGenAiProvider {
 
   private _emit(text: string): void { this._onDidStreamEmitter.fire(text); }
 
-  private _spawnCopilot(prompt: string, cwd?: string, resumeId?: string, useRemote?: boolean): Promise<void> {
+  private _spawnCopilot(prompt: string, cwd?: string, resumeId?: string, useRemote?: boolean, useRubberDuck?: boolean): Promise<void> {
     return new Promise<void>((resolve, reject) => {
       const args: string[] = [];
       if (resumeId) {
@@ -108,6 +111,9 @@ export class CopilotCliGenAiProvider implements IGenAiProvider {
       }
       if (useRemote) {
         args.push('--remote');
+      }
+      if (useRubberDuck) {
+        args.push('--rubber-duck');
       }
 
       // Snapshot existing session IDs so we can diff after the process exits.

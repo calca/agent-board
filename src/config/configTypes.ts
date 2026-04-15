@@ -12,6 +12,8 @@ export interface GenAiProviderConfigEntry {
   fleet?: boolean;
   /** Enable --remote mode — run the Copilot CLI session against the remote GitHub repository. */
   remote?: boolean;
+  /** Enable --rubber-duck mode — use a second model family for a second opinion review. */
+  rubberDuck?: boolean;
 }
 
 /**
