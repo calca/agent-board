@@ -12,7 +12,7 @@ function shellEscape(arg: string): string {
 
 /**
  * Build the full command string (single level of escaping)
- * to be passed as the argument of `<shell> -ilc '<cmd> <args…>'`.
+ * to be passed as the argument of `<shell> -lc '<cmd> <args…>'`.
  */
 function buildShellCmd(cmd: string, args: readonly string[]): string {
   return [cmd, ...args].map(shellEscape).join(' ');
@@ -20,9 +20,9 @@ function buildShellCmd(cmd: string, args: readonly string[]): string {
 
 /**
  * Thin wrapper around `execFile` that always runs through the user's **login**
- * shell (`-ilc`) so that Homebrew / custom PATH entries are resolved correctly.
+ * shell (`-lc`) so that Homebrew / custom PATH entries are resolved correctly.
  *
- * Uses `execFile(shell, ['-ilc', cmd])` — no intermediate `/bin/sh`, so
+ * Uses `execFile(shell, ['-lc', cmd])` — no intermediate `/bin/sh`, so
  * shell arguments are only escaped once.
  */
 export function execShell(
@@ -31,7 +31,7 @@ export function execShell(
   opts: ExecFileOptions,
 ): Promise<{ stdout: string; stderr: string }> {
   return new Promise((resolve, reject) => {
-    execFile(userShell, ['-ilc', buildShellCmd(cmd, args)], opts, (err, stdout, stderr) => {
+    execFile(userShell, ['-lc', buildShellCmd(cmd, args)], opts, (err, stdout, stderr) => {
       if (err) { reject(err); } else { resolve({ stdout: String(stdout), stderr: String(stderr) }); }
     });
   });
@@ -46,6 +46,6 @@ export function execShellOk(
   opts: ExecFileOptions = {},
 ): Promise<boolean> {
   return new Promise((resolve) => {
-    execFile(userShell, ['-ilc', buildShellCmd(cmd, args)], opts, (err) => resolve(!err));
+    execFile(userShell, ['-lc', buildShellCmd(cmd, args)], opts, (err) => resolve(!err));
   });
 }
