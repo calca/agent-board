@@ -113,7 +113,7 @@ export class CopilotLauncher {
     this.agents = agents;
   }
 
-  async launch(taskId: string, providerId: string, agentSlug?: string, promptOverride?: string): Promise<void> {
+  async launch(taskId: string, providerId: string, agentSlug?: string, promptOverride?: string, baseBranch?: string): Promise<void> {
     this.logger.info(`CopilotLauncher: launching provider "${providerId}" for task ${taskId}${agentSlug ? ` with agent "${agentSlug}"` : ''}`);
 
     const provider = this.genAiRegistry.get(providerId);
@@ -132,7 +132,7 @@ export class CopilotLauncher {
     let worktree: WorktreeInfo | undefined;
     if (provider.supportsWorktree && this.isWorktreeEnabled(provider.id)) {
       try {
-        worktree = await this.tryCreateWorktree(taskId);
+        worktree = await this.tryCreateWorktree(taskId, baseBranch);
       } catch (wtErr) {
         const errMsg = formatError(wtErr);
         this.sessionStateManager?.startSession(taskId, providerId, undefined, undefined);
@@ -155,7 +155,7 @@ export class CopilotLauncher {
     const logPath = this.computeLogPath(taskId);
 
     // ── Register session in SessionStateManager ───────────────────────
-    this.sessionStateManager?.startSession(taskId, providerId, worktree?.path, logPath);
+    this.sessionStateManager?.startSession(taskId, providerId, worktree?.path, logPath, baseBranch);
 
     // ── Agent instructions ────────────────────────────────────────────
     if (agentSlug) {
@@ -187,8 +187,8 @@ export class CopilotLauncher {
     let dwSub: vscode.Disposable | undefined;
     if (watchRoot) {
       // When running in a worktree the agent may commit its changes, so we diff
-      // against `main` (the parent branch) instead of `HEAD` to keep seeing them.
-      const baseRef = worktree ? 'main' : 'HEAD';
+      // against the parent branch instead of `HEAD` to keep seeing them.
+      const baseRef = worktree ? (baseBranch || 'main') : 'HEAD';
       const dw = new DiffWatcher(watchRoot, baseRef);
       this.diffWatchers.set(taskId, dw);
       dwSub = dw.onDidChange(files => this._onDidChangeDiff.fire({ sessionId: taskId, files }));
@@ -317,14 +317,14 @@ export class CopilotLauncher {
     return settingValue ?? true;
   }
 
-  private async tryCreateWorktree(taskId: string): Promise<WorktreeInfo | undefined> {
+  private async tryCreateWorktree(taskId: string, baseBranch?: string): Promise<WorktreeInfo | undefined> {
     const folders = vscode.workspace.workspaceFolders;
     if (!folders || folders.length === 0) {
       return undefined;
     }
 
     const repoRoot = folders[0].uri.fsPath;
-    const info = await createWorktree(repoRoot, taskId);
+    const info = await createWorktree(repoRoot, taskId, baseBranch);
     if (info) {
       this.logger.info(
         `CopilotLauncher: worktree created at ${info.path} (branch: ${info.branch})`,

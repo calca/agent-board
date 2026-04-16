@@ -463,6 +463,7 @@ export function activate(context: vscode.ExtensionContext): void {
             workspaceRoot: vscode.workspace.workspaceFolders?.[0]?.uri.fsPath,
             workspaceName: vscode.workspace.name ?? vscode.workspace.workspaceFolders?.[0]?.name ?? '',
           });
+          await sendBranchesToPanel(panel);
           await pushMobileStatus(panel);
           break;
         case 'refreshRequest':
@@ -472,6 +473,7 @@ export function activate(context: vscode.ExtensionContext): void {
           await sendTasksToPanel(panel, providerRegistry, genAiRegistry, squadManager, sessionStateManager);
           refreshAgents();
           panel.updateAgents(agentOptions());
+          await sendBranchesToPanel(panel);
           await pushMobileStatus(panel);
           break;
         case 'taskMoved': {
@@ -491,7 +493,7 @@ export function activate(context: vscode.ExtensionContext): void {
             vscode.window.showWarningMessage('Agent Board: squad requires a git repository.');
             break;
           }
-          await squadManager.launchSingle(msg.taskId, msg.providerId, msg.agentSlug);
+          await squadManager.launchSingle(msg.taskId, msg.providerId, msg.agentSlug, msg.baseBranch);
           panel.updateSquadStatus(squadManager.getStatus());
           await sendTasksToPanel(panel, providerRegistry, genAiRegistry, squadManager, sessionStateManager);
           break;
@@ -500,7 +502,7 @@ export function activate(context: vscode.ExtensionContext): void {
             vscode.window.showWarningMessage('Agent Board: squad requires a git repository.');
             break;
           }
-          await handleStartSquad(squadManager, msg.agentSlug, msg.genAiProviderId);
+          await handleStartSquad(squadManager, msg.agentSlug, msg.genAiProviderId, msg.baseBranch);
           panel.updateSquadStatus(squadManager.getStatus());
           await sendTasksToPanel(panel, providerRegistry, genAiRegistry, squadManager, sessionStateManager);
           break;
@@ -510,7 +512,7 @@ export function activate(context: vscode.ExtensionContext): void {
             vscode.window.showWarningMessage('Agent Board: squad requires a git repository.');
             break;
           }
-          handleToggleAutoSquad(squadManager, msg.agentSlug, msg.genAiProviderId);
+          handleToggleAutoSquad(squadManager, msg.agentSlug, msg.genAiProviderId, msg.baseBranch);
           panel.updateSquadStatus(squadManager.getStatus());
           break;
         }
@@ -671,7 +673,7 @@ export function activate(context: vscode.ExtensionContext): void {
           break;
         }
         case 'launchProvider': {
-          await squadManager.launchSingle(msg.taskId, msg.genAiProviderId, undefined);
+          await squadManager.launchSingle(msg.taskId, msg.genAiProviderId, undefined, msg.baseBranch);
           panel.updateSquadStatus(squadManager.getStatus());
           await sendTasksToPanel(panel, providerRegistry, genAiRegistry, squadManager, sessionStateManager);
           break;
@@ -698,7 +700,7 @@ export function activate(context: vscode.ExtensionContext): void {
             const wtPath = session?.worktreePath;
             const watchRoot = wtPath ?? vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
             if (watchRoot) {
-              const baseRef = wtPath ? 'main' : 'HEAD';
+              const baseRef = wtPath ? (session?.baseBranch || 'main') : 'HEAD';
               const absPath = path.join(watchRoot, msg.filePath);
               const headUri = gitRefUri(watchRoot, msg.filePath, baseRef);
               const workingUri = vscode.Uri.file(absPath);
@@ -717,7 +719,7 @@ export function activate(context: vscode.ExtensionContext): void {
             const wtPath = fdSession?.worktreePath;
             const watchRoot = wtPath ?? vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
             if (watchRoot) {
-              const baseRef = wtPath ? 'main' : 'HEAD';
+              const baseRef = wtPath ? (fdSession?.baseBranch || 'main') : 'HEAD';
               const tempDw = new DiffWatcher(watchRoot, baseRef);
               const files = await tempDw.refresh();
               if (files.length > 0) {
@@ -778,7 +780,7 @@ export function activate(context: vscode.ExtensionContext): void {
             const wtPath = fcSession?.worktreePath;
             const watchRoot = wtPath ?? vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
             if (watchRoot) {
-              const baseRef = wtPath ? 'main' : 'HEAD';
+              const baseRef = wtPath ? (fcSession?.baseBranch || 'main') : 'HEAD';
               const tempDw = new DiffWatcher(watchRoot, baseRef);
               const files = await tempDw.refresh();
               tempDw.dispose();
@@ -808,10 +810,11 @@ export function activate(context: vscode.ExtensionContext): void {
           }
 
           try {
+            const baseBr = session?.baseBranch || 'main';
             // Get the branch name of the worktree
             const branch = await execPromise('git rev-parse --abbrev-ref HEAD', { cwd: wtPath });
-            // Use vscode.changes to show the multi-file diff between main and the worktree branch
-            const diffOutput = await execPromise(`git diff --name-status main...${branch.trim()}`, { cwd: repoRoot });
+            // Use vscode.changes to show the multi-file diff between base branch and the worktree branch
+            const diffOutput = await execPromise(`git diff --name-status ${baseBr}...${branch.trim()}`, { cwd: repoRoot });
             const files = diffOutput.trim().split('\n').filter(l => l).map(line => {
               const [statusChar, ...pathParts] = line.split('\t');
               const filePath = pathParts.join('\t');
@@ -821,7 +824,7 @@ export function activate(context: vscode.ExtensionContext): void {
               const absPath = path.join(repoRoot, f.filePath);
               const mainUri = vscode.Uri.file(absPath).with({
                 scheme: 'git',
-                query: JSON.stringify({ path: absPath, ref: 'main' }),
+                query: JSON.stringify({ path: absPath, ref: baseBr }),
               });
               const branchUri = f.statusChar === 'D'
                 ? vscode.Uri.file(absPath).with({ scheme: 'git', query: JSON.stringify({ path: absPath, ref: '' }) })
@@ -830,9 +833,9 @@ export function activate(context: vscode.ExtensionContext): void {
               return [vscode.Uri.file(absPath), mainUri, branchUri] as [vscode.Uri, vscode.Uri, vscode.Uri];
             });
             if (resources.length > 0) {
-              await vscode.commands.executeCommand('vscode.changes', `Review: ${branch.trim()} vs main`, resources);
+              await vscode.commands.executeCommand('vscode.changes', `Review: ${branch.trim()} vs ${baseBr}`, resources);
             } else {
-              vscode.window.showInformationMessage('Nessuna differenza tra il worktree e main.');
+              vscode.window.showInformationMessage(`Nessuna differenza tra il worktree e ${baseBr}.`);
             }
           } catch (err) {
             const errMsg = err instanceof Error ? err.message : String(err);
@@ -860,10 +863,11 @@ export function activate(context: vscode.ExtensionContext): void {
           };
 
           try {
+            const baseBr = session?.baseBranch || 'main';
             const branch = (await execPromise('git rev-parse --abbrev-ref HEAD', { cwd: wtPath })).trim();
 
             const answer = await vscode.window.showWarningMessage(
-              `${strategyLabels[strategy]} il branch "${branch}" in main?`,
+              `${strategyLabels[strategy]} il branch "${branch}" in ${baseBr}?`,
               { modal: true },
               'Merge',
               'Annulla',
@@ -875,7 +879,10 @@ export function activate(context: vscode.ExtensionContext): void {
               await execPromise('git add -A && git diff --cached --quiet || git commit -m "agent: auto-commit before merge"', { cwd: wtPath });
             } catch { /* ignore if nothing to commit */ }
 
-            // Merge into main using chosen strategy
+            // Ensure we're on the target branch before merging
+            await execPromise(`git checkout ${baseBr}`, { cwd: repoRoot });
+
+            // Merge into base branch using chosen strategy
             if (strategy === 'squash') {
               await execPromise(`git merge --squash ${branch}`, { cwd: repoRoot });
               await execPromise(`git commit --no-edit -m "squash: ${branch}"`, { cwd: repoRoot });
@@ -885,8 +892,8 @@ export function activate(context: vscode.ExtensionContext): void {
               await execPromise(`git merge ${branch} --no-edit`, { cwd: repoRoot });
             }
 
-            panel.postMessage({ type: 'mergeResult', sessionId: msg.sessionId, success: true, message: `Branch "${branch}" mergiato in main (${strategyLabels[strategy]}).` });
-            vscode.window.showInformationMessage(`✅ Branch "${branch}" mergiato in main (${strategyLabels[strategy]}).`);
+            panel.postMessage({ type: 'mergeResult', sessionId: msg.sessionId, success: true, message: `Branch "${branch}" mergiato in ${baseBr} (${strategyLabels[strategy]}).` });
+            vscode.window.showInformationMessage(`✅ Branch "${branch}" mergiato in ${baseBr} (${strategyLabels[strategy]}).`);
 
             // Move task to the next column after successful merge
             const mergeResolved = await providerRegistry.resolveTask(msg.sessionId);
@@ -938,19 +945,20 @@ export function activate(context: vscode.ExtensionContext): void {
           }
 
           try {
+            const baseBr = session?.baseBranch || 'main';
             const branch = (await execPromise('git rev-parse --abbrev-ref HEAD', { cwd: wtPath })).trim();
-            // Check if main has diverged from the worktree branch
-            const behindCount = (await execPromise(`git rev-list --count ${branch}..main`, { cwd: repoRoot })).trim();
-            const mainDiff = (await execPromise('git diff main --stat', { cwd: wtPath })).trim();
+            // Check if the base branch has diverged from the worktree branch
+            const behindCount = (await execPromise(`git rev-list --count ${branch}..${baseBr}`, { cwd: repoRoot })).trim();
+            const baseDiff = (await execPromise(`git diff ${baseBr} --stat`, { cwd: wtPath })).trim();
 
             const alignPrompt =
-              `## Align Worktree from main\n\n` +
+              `## Align Worktree from ${baseBr}\n\n` +
               `You are working in the worktree at **${wtPath}** on branch **${branch}**.\n` +
-              `The branch is **${behindCount}** commit(s) behind main.\n\n` +
-              `### Current diff vs main\n\`\`\`\n${mainDiff}\n\`\`\`\n\n` +
+              `The branch is **${behindCount}** commit(s) behind ${baseBr}.\n\n` +
+              `### Current diff vs ${baseBr}\n\`\`\`\n${baseDiff}\n\`\`\`\n\n` +
               `### Instructions\n` +
-              `1. From the worktree directory (${wtPath}), rebase or merge from main to align the branch:\n` +
-              `   - Run: cd ${wtPath} && git fetch origin main && git rebase main\n` +
+              `1. From the worktree directory (${wtPath}), rebase or merge from ${baseBr} to align the branch:\n` +
+              `   - Run: cd ${wtPath} && git fetch origin ${baseBr} && git rebase ${baseBr}\n` +
               `2. If there are merge conflicts, resolve them intelligently by understanding both sides\n` +
               `3. After resolving conflicts, ensure the code compiles and tests pass\n` +
               `4. Commit the resolution if needed\n` +
@@ -960,8 +968,8 @@ export function activate(context: vscode.ExtensionContext): void {
             await sendTasksToPanel(panel, providerRegistry, genAiRegistry, squadManager, sessionStateManager);
           } catch (err) {
             const errMsg = err instanceof Error ? err.message : String(err);
-            logger.error('Align from main failed:', errMsg);
-            vscode.window.showErrorMessage(`Align from main fallito: ${errMsg}`);
+            logger.error('Align from base branch failed:', errMsg);
+            vscode.window.showErrorMessage(`Align from ${session?.baseBranch || 'main'} fallito: ${errMsg}`);
           }
           break;
         }
@@ -991,12 +999,13 @@ export function activate(context: vscode.ExtensionContext): void {
           }
 
           try {
+            const baseBr = session?.baseBranch || 'main';
             const branch = (await execPromise('git rev-parse --abbrev-ref HEAD', { cwd: wtPath })).trim();
-            const diffSummary = (await execPromise(`git diff main --stat`, { cwd: wtPath })).trim();
+            const diffSummary = (await execPromise(`git diff ${baseBr} --stat`, { cwd: wtPath })).trim();
 
             const mergePrompt =
               `## Merge Task\n\n` +
-              `You are reviewing and merging branch "${branch}" into main.\n` +
+              `You are reviewing and merging branch "${branch}" into ${baseBr}.\n` +
               `Strategy: **${strategyLabels[strategy]}**.\n\n` +
               `### Changed files\n\`\`\`\n${diffSummary}\n\`\`\`\n\n` +
               `### Instructions\n` +
@@ -1004,10 +1013,10 @@ export function activate(context: vscode.ExtensionContext): void {
               `2. Ensure code quality, check for bugs, security issues, and style\n` +
               `3. If changes are acceptable, perform the merge using the "${strategyLabels[strategy]}" strategy:\n` +
               (strategy === 'squash'
-                ? `   - Run: git checkout main && git merge --squash ${branch} && git commit -m "squash: ${branch}"\n`
+                ? `   - Run: git checkout ${baseBr} && git merge --squash ${branch} && git commit -m "squash: ${branch}"\n`
                 : strategy === 'rebase'
-                  ? `   - Run: git checkout main && git rebase ${branch}\n`
-                  : `   - Run: git checkout main && git merge ${branch} --no-edit\n`) +
+                  ? `   - Run: git checkout ${baseBr} && git rebase ${branch}\n`
+                  : `   - Run: git checkout ${baseBr} && git merge ${branch} --no-edit\n`) +
               `4. If changes need fixes, apply them first, then merge\n` +
               `5. Report what you found and whether the merge was successful\n`;
 
@@ -1074,10 +1083,12 @@ export function activate(context: vscode.ExtensionContext): void {
           const diffSummary = changedFiles.length > 0
             ? `### Files changed\n\n${changedFiles.map(f => `- \`${f.path}\``).join('\n')}`
             : '';
+          const prSession = sessionStateManager.getSession(taskId);
           const pr = await prManager.createPR({
             title: task.title,
             body: `Closes #${task.nativeId}\n\n${diffSummary}`,
             headBranch: worktreeBranch,
+            baseBranch: prSession?.baseBranch,
             isAzureDevOps: isAzure,
           });
           if (pr) {
@@ -1424,8 +1435,8 @@ async function sendTasksToPanel(panel: KanbanPanel, registry: ProviderRegistry, 
 /**
  * Handle starting a squad session — shared between command and WebView handler.
  */
-async function handleStartSquad(squadManager: SquadManager, agentSlug?: string, genAiProviderId?: string): Promise<void> {
-  const launched = await squadManager.startSquad(agentSlug, genAiProviderId);
+async function handleStartSquad(squadManager: SquadManager, agentSlug?: string, genAiProviderId?: string, baseBranch?: string): Promise<void> {
+  const launched = await squadManager.startSquad(agentSlug, genAiProviderId, baseBranch);
   vscode.window.showInformationMessage(
     `Squad: launched ${launched} session${launched === 1 ? '' : 's'}.`,
   );
@@ -1434,8 +1445,8 @@ async function handleStartSquad(squadManager: SquadManager, agentSlug?: string, 
 /**
  * Handle toggling auto-squad — shared between command and WebView handler.
  */
-function handleToggleAutoSquad(squadManager: SquadManager, agentSlug?: string, genAiProviderId?: string): void {
-  const enabled = squadManager.toggleAutoSquad(agentSlug, genAiProviderId);
+function handleToggleAutoSquad(squadManager: SquadManager, agentSlug?: string, genAiProviderId?: string, baseBranch?: string): void {
+  const enabled = squadManager.toggleAutoSquad(agentSlug, genAiProviderId, baseBranch);
   vscode.window.showInformationMessage(
     `Auto-squad ${enabled ? 'enabled' : 'disabled'}.`,
   );
@@ -1508,6 +1519,33 @@ function shellCheck(cmd: string, cwd: string): Promise<boolean> {
       resolve(stdout.trim().length > 0);
     });
   });
+}
+
+/**
+ * List local git branches for the workspace, returning branch names
+ * and the current branch. Returns empty arrays when not a git repo.
+ */
+async function listGitBranches(): Promise<{ branches: string[]; current: string }> {
+  const root = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
+  if (!root || !(await isGitRepository())) { return { branches: [], current: '' }; }
+  try {
+    const raw = await execPromise('git branch --format="%(refname:short)"', { cwd: root });
+    const current = (await execPromise('git rev-parse --abbrev-ref HEAD', { cwd: root })).trim();
+
+    // Exclude worktree branches (prefixed "agent-board/")
+    const branches = raw.split('\n').map(b => b.trim()).filter(b => b && !b.startsWith('agent-board/'));
+    return { branches, current };
+  } catch {
+    return { branches: [], current: '' };
+  }
+}
+
+/** Send available branches to the panel. */
+async function sendBranchesToPanel(panel: import('./kanban/KanbanPanel').KanbanPanel): Promise<void> {
+  const { branches, current } = await listGitBranches();
+  if (branches.length > 0) {
+    panel.postMessage({ type: 'branchesAvailable', branches, current });
+  }
 }
 
 async function isGitRepository(): Promise<boolean> {

@@ -58,6 +58,7 @@ export type HostToWebView =
   | { type: 'themeChange'; kind: 'dark' | 'light' | 'hc' }
   | { type: 'squadStatus'; status: SquadStatus }
   | { type: 'agentsAvailable'; agents: AgentOption[] }
+  | { type: 'branchesAvailable'; branches: string[]; current: string }
   | { type: 'mcpStatus'; enabled: boolean }
   | { type: 'showTaskForm'; columns: Column[]; currentUser?: string }
   | { type: 'streamOutput'; sessionId: string; text: string; ts: string; role?: 'user' | 'assistant' | 'tool' }
@@ -86,19 +87,19 @@ export interface NewTaskData {
 
 export type WebViewToHost =
   | { type: 'taskMoved'; taskId: string; providerId: string; toCol: ColumnId; index: number }
-  | { type: 'openCopilot'; taskId: string; providerId: string; agentSlug?: string }
+  | { type: 'openCopilot'; taskId: string; providerId: string; agentSlug?: string; baseBranch?: string }
   | { type: 'cancelSession'; taskId: string }
   | { type: 'refreshRequest'; providerId?: string }
   | { type: 'ready' }
   | { type: 'addTask' }
   | { type: 'saveTask'; data: NewTaskData }
   | { type: 'editTask'; taskId: string; providerId: string; data: NewTaskData }
-  | { type: 'launchProvider'; taskId: string; providerId: string; genAiProviderId: string }
+  | { type: 'launchProvider'; taskId: string; providerId: string; genAiProviderId: string; baseBranch?: string }
   | { type: 'reopenSession'; taskId: string }
   | { type: 'cancelTaskForm' }
   | { type: 'openWorktree'; worktreePath: string }
-  | { type: 'startSquad'; agentSlug?: string; genAiProviderId?: string }
-  | { type: 'toggleAutoSquad'; agentSlug?: string; genAiProviderId?: string }
+  | { type: 'startSquad'; agentSlug?: string; genAiProviderId?: string; baseBranch?: string }
+  | { type: 'toggleAutoSquad'; agentSlug?: string; genAiProviderId?: string; baseBranch?: string }
   | { type: 'toggleMcp' }
   | { type: 'toggleMobileServer' }
   | { type: 'setMobileTunnelEnabled'; enabled: boolean }

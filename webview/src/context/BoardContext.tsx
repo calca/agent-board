@@ -12,6 +12,8 @@ export interface BoardState {
   availableAgents: AgentOption[];
   selectedAgentSlug: string;
   selectedSquadProviderId: string;
+  availableBranches: string[];
+  selectedBaseBranch: string;
   squadStatus: SquadStatus;
   mcpEnabled: boolean;
   mobileServerRunning: boolean;
@@ -54,6 +56,8 @@ export const initialState: BoardState = {
   availableAgents: [],
   selectedAgentSlug: '',
   selectedSquadProviderId: '',
+  availableBranches: [],
+  selectedBaseBranch: '',
   squadStatus: { activeCount: 0, maxSessions: 10, autoSquadEnabled: false },
   mcpEnabled: false,
   mobileServerRunning: false,
@@ -91,6 +95,7 @@ export const initialState: BoardState = {
 export type BoardAction =
   | { type: 'TASKS_UPDATE'; tasks: KanbanTask[]; columns: Column[]; editableProviderIds: string[]; genAiProviders: GenAiProviderOption[] }
   | { type: 'AGENTS_AVAILABLE'; agents: AgentOption[] }
+  | { type: 'BRANCHES_AVAILABLE'; branches: string[]; current: string }
   | { type: 'SQUAD_STATUS'; status: SquadStatus }
   | { type: 'MCP_STATUS'; enabled: boolean }
   | { type: 'MOBILE_STATUS'; running: boolean; url: string; devices: MobileDeviceInfo[]; qrSvg?: string; tunnelEnabled?: boolean; tunnelActive?: boolean; tunnelUrl?: string; refreshing?: boolean }
@@ -112,6 +117,7 @@ export type BoardAction =
   | { type: 'CLOSE_SESSION_PANEL' }
   | { type: 'SET_SELECTED_AGENT'; slug: string }
   | { type: 'SET_SELECTED_SQUAD_PROVIDER'; id: string }
+  | { type: 'SET_SELECTED_BASE_BRANCH'; branch: string }
   | { type: 'SHOW_CLEAN_CONFIRM' }
   | { type: 'HIDE_CLEAN_CONFIRM' }
   | { type: 'START_SYNC' }
@@ -217,6 +223,14 @@ export function boardReducer(state: BoardState, action: BoardAction): BoardState
       return { ...state, selectedAgentSlug: action.slug };
     case 'SET_SELECTED_SQUAD_PROVIDER':
       return { ...state, selectedSquadProviderId: action.id };
+    case 'SET_SELECTED_BASE_BRANCH':
+      return { ...state, selectedBaseBranch: action.branch };
+    case 'BRANCHES_AVAILABLE': {
+      const selected = state.selectedBaseBranch && action.branches.includes(state.selectedBaseBranch)
+        ? state.selectedBaseBranch
+        : action.current;
+      return { ...state, availableBranches: action.branches, selectedBaseBranch: selected };
+    }
     case 'START_SYNC':
       return { ...state, syncing: true };
     case 'SET_CONNECTION_ERROR':

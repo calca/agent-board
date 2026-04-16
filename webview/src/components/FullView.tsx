@@ -177,6 +177,8 @@ export function FullView() {
                 repoIsAzureDevOps={repoIsAzureDevOps}
                 columns={columns}
                 dispatch={dispatch}
+                availableBranches={state.availableBranches}
+                selectedBaseBranch={state.selectedBaseBranch}
               />
             </div>
           </div>
@@ -316,7 +318,7 @@ function FvSessionPanel({ sessionInfo, task, isMerged, workspaceRoot }: {
   );
 }
 
-function FvActions({ task, sessionInfo, isRunning, isMerged, hasWorktree, activeProviderId, genAiProviders, repoIsGitHub, repoIsAzureDevOps, columns, dispatch }: {
+function FvActions({ task, sessionInfo, isRunning, isMerged, hasWorktree, activeProviderId, genAiProviders, repoIsGitHub, repoIsAzureDevOps, columns, dispatch, availableBranches, selectedBaseBranch }: {
   task: KanbanTask;
   sessionInfo: KanbanTask['copilotSession'];
   isRunning: boolean;
@@ -328,6 +330,8 @@ function FvActions({ task, sessionInfo, isRunning, isMerged, hasWorktree, active
   repoIsAzureDevOps: boolean;
   columns: Column[];
   dispatch: React.Dispatch<any>;
+  availableBranches: string[];
+  selectedBaseBranch: string;
 }) {
   const isCompleteOrDone = sessionInfo?.state === 'completed' || task.status === 'done';
 
@@ -361,10 +365,27 @@ function FvActions({ task, sessionInfo, isRunning, isMerged, hasWorktree, active
         </>
       ) : sessionInfo?.state !== 'completed' && !isMerged ? (
         <>
+          {availableBranches.length >= 1 && (
+            <div className="fv-branch-selector">
+              <label className="fv-branch-selector__label">Branch</label>
+              {availableBranches.length === 1
+                ? <span className="fv-branch-selector__readonly">{availableBranches[0]}</span>
+                : <select
+                    className="fv-merge-select"
+                    value={selectedBaseBranch}
+                    onChange={e => dispatch({ type: 'SET_SELECTED_BASE_BRANCH', branch: e.target.value })}
+                  >
+                    {availableBranches.map(b => (
+                      <option key={b} value={b}>{b}</option>
+                    ))}
+                  </select>
+              }
+            </div>
+          )}
           <div className="fv-actions__providers">
             {genAiProviders.filter(p => !p.disabled).length > 0
               ? genAiProviders.filter(p => !p.disabled).map(p => (
-                <button key={p.id} className="fv-action-btn fv-launch-provider" onClick={() => postMessage({ type: 'launchProvider', taskId: task.id, providerId: task.providerId, genAiProviderId: p.id })} title={p.displayName}>
+                <button key={p.id} className="fv-action-btn fv-launch-provider" onClick={() => postMessage({ type: 'launchProvider', taskId: task.id, providerId: task.providerId, genAiProviderId: p.id, baseBranch: selectedBaseBranch || undefined })} title={p.displayName}>
                   <svg className="fv-icon" width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M6 3.5L12 8l-6 4.5v-9Z"/></svg>
                   {' '}{p.displayName}
                 </button>
@@ -397,9 +418,9 @@ function FvActions({ task, sessionInfo, isRunning, isMerged, hasWorktree, active
             {!isRunning && (
               <>
                 <hr className="fv-actions__separator" />
-                <button className="fv-action-btn" onClick={() => postMessage({ type: 'alignWorktree', sessionId: task.id })} title="Align worktree from main with AI">
+                <button className="fv-action-btn" onClick={() => postMessage({ type: 'alignWorktree', sessionId: task.id })} title={`Align worktree from ${selectedBaseBranch || 'main'} with AI`}>
                   <svg className="fv-icon" width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M8 1a.75.75 0 0 1 .75.75v2.5a.75.75 0 0 1-1.5 0v-2.5A.75.75 0 0 1 8 1ZM3.1 3.1a.75.75 0 0 1 1.06 0l1.77 1.77a.75.75 0 0 1-1.06 1.06L3.1 4.16a.75.75 0 0 1 0-1.06Zm9.8 0a.75.75 0 0 1 0 1.06l-1.77 1.77a.75.75 0 1 1-1.06-1.06l1.77-1.77a.75.75 0 0 1 1.06 0ZM8 6a2 2 0 1 0 0 4 2 2 0 0 0 0-4ZM1 8a.75.75 0 0 1 .75-.75h2.5a.75.75 0 0 1 0 1.5h-2.5A.75.75 0 0 1 1 8Zm10 0a.75.75 0 0 1 .75-.75h2.5a.75.75 0 0 1 0 1.5h-2.5A.75.75 0 0 1 11 8Z"/></svg>
-                  {' '}Align from main with AI
+                  {' '}Align from {selectedBaseBranch || 'main'} with AI
                 </button>
               </>
             )}
@@ -423,10 +444,10 @@ function FvActions({ task, sessionInfo, isRunning, isMerged, hasWorktree, active
                   postMessage({ type: 'agentMerge', sessionId: task.id, mergeStrategy: 'squash', providerId });
                 }} title="Launch AI to review and merge">
                   <svg className="fv-icon" width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M5 3.25a2.25 2.25 0 1 1 4.5 0A2.25 2.25 0 0 1 8 5.37V7h2.75A2.25 2.25 0 0 1 13 9.25v.38a2.25 2.25 0 1 1-1.5 0v-.38a.75.75 0 0 0-.75-.75h-5.5a.75.75 0 0 0-.75.75v.38a2.25 2.25 0 1 1-1.5 0v-.38A2.25 2.25 0 0 1 5.25 7H8V5.37A2.25 2.25 0 0 1 5 3.25Z"/></svg>
-                  {' '}Merge to main with AI
+                  {' '}Merge to {selectedBaseBranch || 'main'} with AI
                 </button>
                 <hr className="fv-actions__separator" />
-                <MergePanel taskId={task.id} />
+                <MergePanel taskId={task.id} targetBranch={selectedBaseBranch || 'main'} />
               </>
             )}
           </>
@@ -438,12 +459,16 @@ function FvActions({ task, sessionInfo, isRunning, isMerged, hasWorktree, active
   );
 }
 
-function MergePanel({ taskId }: { taskId: string }) {
+function MergePanel({ taskId, targetBranch }: { taskId: string; targetBranch: string }) {
   const selectRef = useRef<HTMLSelectElement>(null);
 
   return (
     <div className="fv-merge-panel">
       <label className="fv-merge-panel__label">Manual merge</label>
+      <div className="fv-merge-panel__target">
+        <span className="fv-merge-panel__target-label">Into:</span>
+        <code className="fv-merge-panel__target-branch">{targetBranch}</code>
+      </div>
       <select className="fv-merge-select" ref={selectRef} defaultValue="squash">
         <option value="squash">Squash and merge</option>
         <option value="merge">Create a merge commit</option>

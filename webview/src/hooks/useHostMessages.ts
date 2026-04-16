@@ -70,6 +70,9 @@ export function useHostMessages(): void {
         case 'agentsAvailable':
           dispatch({ type: 'AGENTS_AVAILABLE', agents: msg.agents ?? [] });
           break;
+        case 'branchesAvailable':
+          dispatch({ type: 'BRANCHES_AVAILABLE', branches: msg.branches ?? [], current: msg.current ?? '' });
+          break;
         case 'squadStatus':
           dispatch({ type: 'SQUAD_STATUS', status: msg.status });
           break;
@@ -277,6 +280,9 @@ export function useHostMessages(): void {
         }
         if (info.agents) {
           dispatch({ type: 'AGENTS_AVAILABLE', agents: info.agents });
+        }
+        if (info.branches) {
+          dispatch({ type: 'BRANCHES_AVAILABLE', branches: info.branches, current: info.currentBranch ?? '' });
         }
         if (info.providers) {
           // Merge into next TASKS_UPDATE as genAiProviders

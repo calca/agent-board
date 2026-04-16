@@ -7,7 +7,8 @@ export function Toolbar() {
   const {
     workspaceName, mcpEnabled, squadStatus, repoIsGit,
     genAiProviders, availableAgents, selectedSquadProviderId,
-    selectedAgentSlug, searchText, showSearchInput, syncing,
+    selectedAgentSlug, selectedBaseBranch, availableBranches,
+    searchText, showSearchInput, syncing,
     mobileServerRunning, mobileDevices, mobileRefreshing,
   } = state;
   const isVsCodeWebview = Boolean(getVsCodeApi());
@@ -31,6 +32,7 @@ export function Toolbar() {
     const payload = {
       agentSlug: selectedAgentSlug || undefined,
       genAiProviderId: selectedSquadProviderId || undefined,
+      baseBranch: selectedBaseBranch || undefined,
     };
     if (isVsCodeWebview) {
       postMessage({ type: action, ...payload });
@@ -96,6 +98,20 @@ export function Toolbar() {
             <span className="mcp-toggle__dot" />
             <span className="mcp-toggle__label">Auto</span>
           </button>
+          {availableBranches.length === 1
+            ? <span className="toolbar__branch-pill" title="Base branch">{availableBranches[0]}</span>
+            : availableBranches.length > 1 && (
+            <select
+              className="toolbar__select"
+              title="Base branch"
+              value={selectedBaseBranch}
+              onChange={e => dispatch({ type: 'SET_SELECTED_BASE_BRANCH', branch: e.target.value })}
+            >
+              {availableBranches.map(b => (
+                <option key={b} value={b}>{b}</option>
+              ))}
+            </select>
+          )}
           <select
             className="toolbar__select"
             title="Provider"
@@ -224,6 +240,22 @@ export function Toolbar() {
               ? <option value="">No agents</option>
               : squadAgents.map(a => <option key={a.slug} value={a.slug}>{a.displayName}</option>)}
           </select>
+
+          {availableBranches.length >= 1 && (
+            <>
+              <label className="squad-sheet__label">Branch</label>
+              {availableBranches.length === 1
+                ? <span className="squad-sheet__branch-readonly">{availableBranches[0]}</span>
+                : <select
+                    className="squad-sheet__select"
+                    value={selectedBaseBranch}
+                    onChange={e => dispatch({ type: 'SET_SELECTED_BASE_BRANCH', branch: e.target.value })}
+                  >
+                    {availableBranches.map(b => <option key={b} value={b}>{b}</option>)}
+                  </select>
+              }
+            </>
+          )}
 
           <div className="squad-sheet__toggle-row">
             <span>Auto-Squad</span>

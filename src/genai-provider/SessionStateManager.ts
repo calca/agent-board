@@ -55,13 +55,14 @@ export class SessionStateManager {
   // ── Public API ──────────────────────────────────────────────────────
 
   /** Register a new session in `starting` state. */
-  startSession(taskId: string, providerId: string, worktreePath?: string, logPath?: string): void {
+  startSession(taskId: string, providerId: string, worktreePath?: string, logPath?: string, baseBranch?: string): void {
     const session: PersistedSession = {
       taskId,
       state: 'starting',
       providerId,
       worktreePath,
       logPath,
+      baseBranch,
       startedAt: new Date().toISOString(),
     };
     this.sessions.set(taskId, session);
