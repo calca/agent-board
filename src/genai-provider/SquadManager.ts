@@ -349,6 +349,8 @@ export class SquadManager {
    */
   private launchSessionInBackground(task: KanbanTask, cfg: SquadConfig, agentSlug?: string, genAiProviderId?: string, baseBranch?: string): void {
     const providerId = genAiProviderId ?? this.genAiProviderId();
+    const provider = this.genAiRegistry?.get(providerId);
+    const autoAdvance = !provider?.disableAutoAdvance;
     const session: CopilotSessionInfo = {
       state: 'starting',
       providerId,
@@ -373,20 +375,24 @@ export class SquadManager {
 
       return runPromise
         .then(async () => {
-          await this.moveTask(task, cfg.doneColumn);
-          if (cfg.notifyTaskDone) {
-            vscode.window.showInformationMessage(`Task "${task.title}" moved to ${cfg.doneColumn}`);
+          if (autoAdvance) {
+            await this.moveTask(task, cfg.doneColumn);
+            if (cfg.notifyTaskDone) {
+              vscode.window.showInformationMessage(`Task "${task.title}" moved to ${cfg.doneColumn}`);
+            }
           }
           this.completeSession(task.id);
         })
         .catch(async () => {
           vscode.window.showErrorMessage(`Task "${task.title}" failed`);
           this.failSession(task.id);
-          const attempt = this.retryCount.get(task.id) ?? 0;
-          if (canRetry(attempt, cfg.maxRetries)) {
-            this.retryCount.set(task.id, attempt + 1);
-            this.logger.info('SquadManager: retrying task "%s" (attempt %d/%d)', task.title, attempt + 1, cfg.maxRetries);
-            await this.moveTask(task, cfg.sourceColumn);
+          if (autoAdvance) {
+            const attempt = this.retryCount.get(task.id) ?? 0;
+            if (canRetry(attempt, cfg.maxRetries)) {
+              this.retryCount.set(task.id, attempt + 1);
+              this.logger.info('SquadManager: retrying task "%s" (attempt %d/%d)', task.title, attempt + 1, cfg.maxRetries);
+              await this.moveTask(task, cfg.sourceColumn);
+            }
           }
         });
     });
@@ -410,6 +416,8 @@ export class SquadManager {
 
   private async launchSession(task: KanbanTask, cfg: SquadConfig, agentSlug?: string, genAiProviderId?: string, baseBranch?: string): Promise<void> {
     const providerId = genAiProviderId ?? this.genAiProviderId();
+    const provider = this.genAiRegistry?.get(providerId);
+    const autoAdvance = !provider?.disableAutoAdvance;
     const session: CopilotSessionInfo = {
       state: 'starting',
       providerId,
@@ -457,13 +465,15 @@ export class SquadManager {
       }
 
       // Move task to "done" column (e.g. review)
-      await this.moveTask(task, cfg.doneColumn);
+      if (autoAdvance) {
+        await this.moveTask(task, cfg.doneColumn);
 
-      // Notify on automatic state change → done
-      if (cfg.notifyTaskDone) {
-        vscode.window.showInformationMessage(
-          `Task "${task.title}" moved to ${cfg.doneColumn}`,
-        );
+        // Notify on automatic state change → done
+        if (cfg.notifyTaskDone) {
+          vscode.window.showInformationMessage(
+            `Task "${task.title}" moved to ${cfg.doneColumn}`,
+          );
+        }
       }
 
       this.completeSession(task.id);
@@ -477,18 +487,20 @@ export class SquadManager {
       );
       this.failSession(task.id);
 
-      // Auto-retry when configured
-      const attempt = this.retryCount.get(task.id) ?? 0;
-      if (canRetry(attempt, cfg.maxRetries)) {
-        this.retryCount.set(task.id, attempt + 1);
-        this.logger.info(
-          'SquadManager: retrying task "%s" (attempt %d/%d)',
-          task.title,
-          attempt + 1,
-          cfg.maxRetries,
-        );
-        // Move back to source column so the next poll picks it up
-        await this.moveTask(task, cfg.sourceColumn);
+      if (autoAdvance) {
+        // Auto-retry when configured
+        const attempt = this.retryCount.get(task.id) ?? 0;
+        if (canRetry(attempt, cfg.maxRetries)) {
+          this.retryCount.set(task.id, attempt + 1);
+          this.logger.info(
+            'SquadManager: retrying task "%s" (attempt %d/%d)',
+            task.title,
+            attempt + 1,
+            cfg.maxRetries,
+          );
+          // Move back to source column so the next poll picks it up
+          await this.moveTask(task, cfg.sourceColumn);
+        }
       }
     }
   }

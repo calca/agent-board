@@ -198,6 +198,7 @@ export class CopilotLauncher {
 
     this.sessionStateManager?.markRunning(taskId);
     this.activeProviders.set(taskId, provider);
+    const autoAdvance = !provider.disableAutoAdvance;
 
     // ── CLI session resume ────────────────────────────────────────────
     // If a previous CLI session ID is stored, tell the provider to resume it.
@@ -242,8 +243,10 @@ export class CopilotLauncher {
       // ── Update session state ──────────────────────────────────────
       if (sessionSucceeded) {
         this.sessionStateManager?.markCompleted(taskId);
-        // Move task to review column on successful completion
-        await this.moveTaskToReview(task);
+        // Move task to review column unless the provider disables auto-advance
+        if (autoAdvance) {
+          await this.moveTaskToReview(task);
+        }
       } else {
         this.sessionStateManager?.markError(taskId, sessionError);
       }
