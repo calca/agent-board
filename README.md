@@ -264,7 +264,15 @@ registry?.register(myCustomProvider);
 
 Providers that declare `supportsWorktree` (e.g. **Copilot CLI**, **LM API**) automatically create an isolated git worktree before the session runs. Each task gets its own branch (`agent-board/<taskId>`) outside the repo root, so agents never conflict with each other or with your working tree.
 
-From the board you can: **open** the worktree in a new window, **review** changes (multi-file diff), **create a PR** (GitHub or Azure DevOps), **merge** (squash/merge/rebase), **align** from main, run **agent-merge**, or **delete** the worktree.
+From the board you can: **open** the worktree in a new window, **review** changes (multi-file diff), **create a PR** (GitHub or Azure DevOps), **merge** (squash/merge/rebase), **align** from the base branch, run **agent-merge**, or **delete** the worktree.
+
+### Base Branch Selection
+
+The board shows a **branch selector** in the squad toolbar and in the full-view actions panel. You can choose which branch to use as the base for worktree creation and merge targets.
+
+- **Single branch** — displayed as a read-only pill (same style as the Auto toggle).
+- **Multiple branches** — dropdown selector. Worktree branches (`agent-board/*`) are automatically filtered out.
+- The selected branch is propagated to worktree creation, diff watchers, merge operations, align prompts, and PR creation.
 
 **Worktree creation is enabled by default.** To disable it:
 
@@ -289,12 +297,12 @@ The Copilot integration uses an extensible provider architecture (`IGenAiProvide
 
 ### Global Providers (VS Code integrated)
 
-| Provider | Description | Worktree | Tool Calling |
-| ---------- | ------------- | :--------: | :------------: |
-| **Chat** (`chat`) | Opens VS Code native chat with task context pre-filled | — | Yes |
-| **Cloud** (`cloud`) | Autopilot mode via VS Code agent chat (auto-submits) | — | — |
-| **Copilot CLI** (`copilot-cli`) | Background subprocess, streams output, saves to `.kanban-notes/` | Yes | — |
-| **LM API** (`copilot-lm`) | Direct `vscode.lm` calls with full tool-calling loop (up to 100 rounds) | Yes | Yes |
+| Provider | Description | Worktree | Tool Calling | Auto-Advance |
+| ---------- | ------------- | :--------: | :------------: | :------------: |
+| **Chat** (`chat`) | Opens VS Code native chat with task context pre-filled | — | Yes | Manual |
+| **Cloud** (`cloud`) | Autopilot mode via VS Code agent chat (auto-submits) | — | — | Automatic |
+| **Copilot CLI** (`copilot-cli`) | Background subprocess, streams output, saves to `.kanban-notes/` | Yes | — | Automatic |
+| **LM API** (`copilot-lm`) | Direct `vscode.lm` calls with full tool-calling loop (up to 100 rounds) | Yes | Yes | Automatic |
 
 #### Copilot CLI Optimisations
 
@@ -389,6 +397,15 @@ The **squad** launches multiple parallel GenAI sessions, one per task:
 - **Auto Squad** — continuously monitors and fills slots as sessions complete.
 
 Tasks flow: **Source** → **Active** → **Done** (all three columns are configurable).
+
+### Auto-Advance
+
+Each GenAI provider declares whether task progression is automatic or manual:
+
+- **Automatic** (default) — when the session completes successfully the task moves to the done column; on failure it is retried or moved back to the source column.
+- **Manual** (`disableAutoAdvance: true`) — the task moves to the active column on launch but stays there when the session ends. The user decides when to advance it.
+
+The **Chat** provider is manual by default (interactive session). All other built-in providers (Cloud, Copilot CLI, LM API) use automatic advancement.
 
 ### Squad Autonomy Features
 
