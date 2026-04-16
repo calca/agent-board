@@ -359,7 +359,20 @@ When `.github/agents/` contains Markdown files, Agent Board automatically discov
 
 ### Agent file format
 
-Each `.md` file in `.github/agents/` defines an agent. The filename (without extension) becomes the **slug**. The first `# Heading` is the display name; no heading → auto title-cased. Supports `canSquad: true` frontmatter.
+Each `.md` file in `.github/agents/` defines an agent. The filename (without extension) becomes the **slug**. The first `# Heading` is the display name; no heading → auto title-cased.
+
+To make an agent available in the **squad selector**, add `agent-board-squad: true` to the frontmatter:
+
+```markdown
+---
+agent-board-squad: true
+---
+# Code Reviewer
+
+Review pull requests and suggest improvements.
+```
+
+Agents **without** `agent-board-squad: true` are still discovered and available for single-task launches, but they will not appear in the squad agent dropdown.
 
 ```text
 .github/agents/
