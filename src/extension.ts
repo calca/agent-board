@@ -778,10 +778,9 @@ export function activate(context: vscode.ExtensionContext): void {
             // Recreate a one-shot diff from the session's worktree path.
             const fcSession = sessionStateManager.getSession(msg.sessionId);
             const wtPath = fcSession?.worktreePath;
-            const watchRoot = wtPath ?? vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
-            if (watchRoot) {
-              const baseRef = wtPath ? (fcSession?.baseBranch || 'main') : 'HEAD';
-              const tempDw = new DiffWatcher(watchRoot, baseRef);
+            if (wtPath) {
+              const baseRef = fcSession?.baseBranch || 'main';
+              const tempDw = new DiffWatcher(wtPath, baseRef);
               const files = await tempDw.refresh();
               tempDw.dispose();
               panel.updateFileChanges(msg.sessionId, files);
