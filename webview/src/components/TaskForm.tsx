@@ -16,10 +16,10 @@ export function TaskForm() {
   const task = editingTask;
   const savedNotes = isEdit ? ((task?.meta as Record<string, unknown>)?.localNotes as string | undefined) : undefined;
 
-  // Reset notesOpen when task changes; auto-open if notes already exist
+  // Reset notesOpen when task changes — always start closed
   useEffect(() => {
-    setNotesOpen(!!savedNotes);
-  }, [task?.id]); // eslint-disable-line react-hooks/exhaustive-deps
+    setNotesOpen(false);
+  }, [task?.id]);
   const cols = formColumns.length > 0 ? formColumns : columns;
   const remoteProviders = ['github', 'azure-devops', 'beads'];
   const isRemote = task ? remoteProviders.includes(task.providerId) : false;
@@ -87,7 +87,7 @@ export function TaskForm() {
         <button className="task-form-panel__close" onClick={handleClose} title="Close">✕</button>
         <div className="task-form-panel__heading">
           {isEdit
-            ? <>Edit Issue{savedNotes && <span className="task-card__details-icon" title="Has local details" style={{ marginLeft: 8 }}><svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M4 0a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V4.5L9.5 0H4Zm5 1v3.5A1.5 1.5 0 0 0 10.5 6H14v8a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1h5ZM5 8.5a.5.5 0 0 1 .5-.5h5a.5.5 0 0 1 0 1h-5a.5.5 0 0 1-.5-.5Zm.5 1.5a.5.5 0 0 0 0 1h3a.5.5 0 0 0 0-1h-3Z"/></svg></span>}{isRemote && <span style={{ opacity: 0.45, fontSize: '0.75em', fontWeight: 400, marginLeft: 8 }}>(remote — read-only fields)</span>}</>
+            ? <>Edit Issue{savedNotes && <span className="task-card__details-icon" title="Has technical notes" style={{ marginLeft: 8 }}><svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M4 0a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V4.5L9.5 0H4Zm5 1v3.5A1.5 1.5 0 0 0 10.5 6H14v8a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1h5ZM5 8.5a.5.5 0 0 1 .5-.5h5a.5.5 0 0 1 0 1h-5a.5.5 0 0 1-.5-.5Zm.5 1.5a.5.5 0 0 0 0 1h3a.5.5 0 0 0 0-1h-3Z"/></svg></span>}{isRemote && <span style={{ opacity: 0.45, fontSize: '0.75em', fontWeight: 400, marginLeft: 8 }}>(remote — read-only fields)</span>}</>
             : 'New Issue'}
         </div>
         <form id="task-form" className="task-form" onSubmit={handleSubmit}>
@@ -115,22 +115,24 @@ export function TaskForm() {
           {isEdit && isRemote && (notesOpen ? (
               <div className="task-form__section task-form__section--grow task-form__local-notes-inline">
                 <div className="task-form__local-notes-header">
-                  <label className="task-form__label">Details</label>
-                  <button type="button" className="task-form__local-notes-close" onClick={() => setNotesOpen(false)} title="Close details">−</button>
+                  <label className="task-form__label"><svg className="task-form__notes-icon" width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M4 0a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V4.5L9.5 0H4Zm5 1v3.5A1.5 1.5 0 0 0 10.5 6H14v8a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1h5ZM5 8.5a.5.5 0 0 1 .5-.5h5a.5.5 0 0 1 0 1h-5a.5.5 0 0 1-.5-.5Zm.5 1.5a.5.5 0 0 0 0 1h3a.5.5 0 0 0 0-1h-3Z"/></svg> Technical Notes</label>
+                  <button type="button" className="task-form__local-notes-close" onClick={() => setNotesOpen(false)} title="Close technical notes">−</button>
                 </div>
                 <div className="task-form__desc-group">
                   <MarkdownEditor
                     ref={notesRef}
                     editorKey={`tf-notes-${task!.id}`}
                     markdown={savedNotes ?? ''}
-                    placeholder="Add details to enrich this task…"
+                    placeholder="Add technical notes to enrich this task…"
                   />
                 </div>
               </div>
             ) : (
               <div className="task-form__section task-form__local-notes">
                 <button type="button" className="task-form__local-notes-cta" onClick={() => setNotesOpen(true)}>
-                  + Details
+                  {savedNotes
+                    ? <><svg className="task-form__notes-icon" width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M4 0a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V4.5L9.5 0H4Zm5 1v3.5A1.5 1.5 0 0 0 10.5 6H14v8a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1h5ZM5 8.5a.5.5 0 0 1 .5-.5h5a.5.5 0 0 1 0 1h-5a.5.5 0 0 1-.5-.5Zm.5 1.5a.5.5 0 0 0 0 1h3a.5.5 0 0 0 0-1h-3Z"/></svg> Technical Notes</>
+                    : <><svg className="task-form__notes-icon" width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1"><path d="M4 0a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V4.5L9.5 0H4Zm5 1v3.5A1.5 1.5 0 0 0 10.5 6H14v8a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1h5ZM5 8.5a.5.5 0 0 1 .5-.5h5a.5.5 0 0 1 0 1h-5a.5.5 0 0 1-.5-.5Zm.5 1.5a.5.5 0 0 0 0 1h3a.5.5 0 0 0 0-1h-3Z"/></svg> + Technical Notes</>}
                 </button>
               </div>
             ))}

@@ -2934,6 +2934,10 @@ html, body, #root {
   background: var(--vscode-list-hoverBackground, rgba(255,255,255,0.04));
   border-color: var(--vscode-textLink-foreground, #3794ff);
 }
+.task-form__notes-icon {
+  vertical-align: -2px;
+  flex-shrink: 0;
+}
 .fv-local-notes__preview,
 .task-form__local-notes-preview {
   margin-top: 6px;

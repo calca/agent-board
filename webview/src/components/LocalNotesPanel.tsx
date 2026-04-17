@@ -34,7 +34,7 @@ export function LocalNotesPanel({ taskId, providerId, markdown, onClose }: Local
     <div className="local-notes-overlay" onClick={handleOverlay}>
       <div className="local-notes-panel">
         <div className="local-notes-panel__header">
-          <span className="local-notes-panel__title">Details</span>
+          <span className="local-notes-panel__title">Technical Notes</span>
           <button className="local-notes-panel__close" onClick={handleSave} title="Save & Close">✕</button>
         </div>
         <div className="local-notes-panel__body">

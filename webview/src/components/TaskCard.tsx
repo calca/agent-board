@@ -121,7 +121,7 @@ export function TaskCard({ task }: { task: KanbanTask }) {
           {assigneeEl}
           {priorityHtml}
           {hasDetails && (
-            <span className="task-card__details-icon" title="Has local details">
+            <span className="task-card__details-icon" title="Has technical notes">
               <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor"><path d="M4 0a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V4.5L9.5 0H4Zm5 1v3.5A1.5 1.5 0 0 0 10.5 6H14v8a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1h5ZM5 8.5a.5.5 0 0 1 .5-.5h5a.5.5 0 0 1 0 1h-5a.5.5 0 0 1-.5-.5Zm.5 1.5a.5.5 0 0 0 0 1h3a.5.5 0 0 0 0-1h-3Z"/></svg>
             </span>
           )}
