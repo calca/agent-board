@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useBoard } from '../context/BoardContext';
-import { transport } from '../transport';
 import { postMessage } from '../hooks/useVsCodeApi';
+import { transport } from '../transport';
 import { MarkdownBody } from './MarkdownBody';
 import { MarkdownEditor, type MDXEditorMethods } from './MarkdownEditor';
 
@@ -87,7 +87,7 @@ export function TaskForm() {
         <button className="task-form-panel__close" onClick={handleClose} title="Close">✕</button>
         <div className="task-form-panel__heading">
           {isEdit
-            ? <>Edit Issue{isRemote && <span style={{ opacity: 0.45, fontSize: '0.75em', fontWeight: 400, marginLeft: 8 }}>(remote — read-only fields)</span>}</>
+            ? <>Edit Issue{savedNotes && <span className="task-card__details-icon" title="Has local details" style={{ marginLeft: 8 }}><svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M4 0a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V4.5L9.5 0H4Zm5 1v3.5A1.5 1.5 0 0 0 10.5 6H14v8a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1h5ZM5 8.5a.5.5 0 0 1 .5-.5h5a.5.5 0 0 1 0 1h-5a.5.5 0 0 1-.5-.5Zm.5 1.5a.5.5 0 0 0 0 1h3a.5.5 0 0 0 0-1h-3Z"/></svg></span>}{isRemote && <span style={{ opacity: 0.45, fontSize: '0.75em', fontWeight: 400, marginLeft: 8 }}>(remote — read-only fields)</span>}</>
             : 'New Issue'}
         </div>
         <form id="task-form" className="task-form" onSubmit={handleSubmit}>
@@ -132,7 +132,6 @@ export function TaskForm() {
                 <button type="button" className="task-form__local-notes-cta" onClick={() => setNotesOpen(true)}>
                   + Details
                 </button>
-                {savedNotes && <MarkdownBody body={savedNotes} className="task-form__local-notes-preview" />}
               </div>
             ))}
 
