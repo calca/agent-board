@@ -91,7 +91,8 @@ export function Toolbar() {
       </div>
 
       <div className="toolbar__row toolbar__row--main">
-        <div className="toolbar__group" data-label="Squad">
+        {(availableBranches.length > 0 || !repoIsGit) && (
+        <div className="toolbar__group toolbar__group--fade-in" data-label="Squad">
           <button
             className={`mcp-toggle mcp-toggle--toolbar${squadStatus.autoSquadEnabled ? ' mcp-toggle--on' : ''}`}
             title="Toggle Auto‑Squad"
@@ -154,6 +155,7 @@ export function Toolbar() {
             </span>
           )}
         </div>
+        )}
 
         <div className="toolbar__spacer" />
 
