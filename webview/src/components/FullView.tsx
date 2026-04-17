@@ -232,10 +232,7 @@ function FvReadOnlyDetails({ task, statusCol, columns }: { task: KanbanTask; sta
     <>
       <div className="fv-detail-grid">
         <div className="fv-detail-row fv-detail-row--status">
-          <span className="fv-detail-label">
-            {statusColor && <span className="fv-status-dot" style={{ background: `${statusColor}1A` }} />}
-            {' '}Status
-          </span>
+          <span className="fv-detail-label">Status</span>
           <select
             className="task-form__select fv-status-select"
             defaultValue={task.status}
@@ -253,18 +250,23 @@ function FvReadOnlyDetails({ task, statusCol, columns }: { task: KanbanTask; sta
         {task.assignee && (
           <div className="fv-detail-row">
             <span className="fv-detail-label">Assignee</span>
-            <span>{task.assignee}</span>
+            <span className="fv-assignee-chip">
+              {(task.meta as Record<string, unknown>)?.avatarUrl
+                ? <span className="fv-assignee-chip__avatar fv-assignee-chip__avatar--img"><img src={(task.meta as Record<string, unknown>).avatarUrl as string} alt={task.assignee} /></span>
+                : <span className="fv-assignee-chip__avatar">{task.assignee.slice(0, 2)}</span>}
+              {task.assignee}
+            </span>
           </div>
         )}
         {task.agent && (
           <div className="fv-detail-row">
             <span className="fv-detail-label">Agent</span>
-            <span>◆ {task.agent}</span>
+            <span className="fv-detail-value">◆ {task.agent}</span>
           </div>
         )}
       </div>
       {task.body && (
-        <MarkdownBody body={task.body} className="fv-description" snippet />
+        <MarkdownBody body={task.body} className="fv-description" />
       )}
       {!isLocalProvider && (
         <div className="fv-local-notes">

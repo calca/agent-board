@@ -2813,26 +2813,58 @@ html, body, #root {
   overflow: hidden;
 }
 
+/* ── Detail entry animation ─── */
+@keyframes fv-fade-up {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes fv-img-reveal {
+  from { opacity: 0; filter: blur(4px); }
+  to   { opacity: 1; filter: blur(0); }
+}
+
 /* ── Detail grid ─── */
 .fv-detail-grid,
 .fv-session-grid {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 2px;
 }
 .fv-detail-row {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
+  padding: 7px 10px;
+  border-radius: 6px;
+  transition: background 0.15s;
+  animation: fv-fade-up 0.35s ease both;
+}
+.fv-detail-row:nth-child(1) { animation-delay: 0.04s; }
+.fv-detail-row:nth-child(2) { animation-delay: 0.08s; }
+.fv-detail-row:nth-child(3) { animation-delay: 0.12s; }
+.fv-detail-row:nth-child(4) { animation-delay: 0.16s; }
+.fv-detail-row:hover {
+  background: var(--vscode-list-hoverBackground, rgba(255,255,255,0.04));
 }
 .fv-detail-row--status {
-  border-radius: 4px;
-  padding: 4px 8px;
-  margin: -4px -8px 0;
+  border-radius: 6px;
+  padding: 7px 10px;
+  margin: 0;
 }
 .fv-detail-row--status .fv-status-select {
   flex: 1 1 auto;
   min-width: 0;
+}
+.fv-status-select.fv-status-select {
+  padding: 5px 10px;
+  font-size: 0.88em;
+  font-weight: 500;
+  border-radius: 6px;
+  border: 1px solid color-mix(in srgb, var(--vscode-input-border, var(--vscode-panel-border)) 60%, transparent);
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+.fv-status-select.fv-status-select:focus {
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--vscode-focusBorder) 30%, transparent);
 }
 .fv-status-dot {
   display: inline-block;
@@ -2841,15 +2873,21 @@ html, body, #root {
   border-radius: 50%;
   flex-shrink: 0;
   vertical-align: middle;
+  box-shadow: 0 0 0 3px currentColor;
+  opacity: 0.7;
 }
 .fv-detail-label {
-  font-size: 0.78em;
+  font-size: 0.76em;
   font-weight: 600;
   text-transform: uppercase;
-  letter-spacing: 0.04em;
-  opacity: 0.55;
-  min-width: 70px;
+  letter-spacing: 0.06em;
+  opacity: 0.50;
+  min-width: 72px;
   flex-shrink: 0;
+}
+.fv-detail-value {
+  font-size: 0.9em;
+  font-weight: 500;
 }
 .fv-detail-labels {
   display: flex;
@@ -2860,18 +2898,53 @@ html, body, #root {
   font-size: 0.88em;
   opacity: 0.7;
 }
+/* Assignee chip */
+.fv-assignee-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 0.9em;
+  font-weight: 500;
+}
+.fv-assignee-chip__avatar {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--vscode-badge-background, #333);
+  color: var(--vscode-badge-foreground, #fff);
+  font-size: 0.65em;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+.fv-assignee-chip__avatar--img {
+  background: transparent;
+}
+.fv-assignee-chip__avatar--img img {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  object-fit: cover;
+}
 .fv-description {
-  margin-top: 10px;
-  padding-top: 10px;
-  border-top: 1px solid var(--vscode-panel-border);
-  line-height: 1.55;
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid color-mix(in srgb, var(--vscode-panel-border) 50%, transparent);
+  line-height: 1.6;
   word-break: break-word;
   font-size: 0.9em;
-  opacity: 0.85;
+  opacity: 0.88;
+  animation: fv-fade-up 0.4s ease 0.18s both;
 }
 .fv-description img {
   max-width: 100%;
   height: auto;
+  border-radius: 6px;
+  animation: fv-img-reveal 0.5s ease 0.35s both;
 }
 .fv-description a {
   color: var(--vscode-textLink-foreground);
@@ -2910,29 +2983,31 @@ html, body, #root {
 
 /* ── Local Notes ─── */
 .fv-local-notes {
-  margin-top: 10px;
-  padding-top: 10px;
-  border-top: 1px solid var(--vscode-panel-border, #333);
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px solid color-mix(in srgb, var(--vscode-panel-border, #333) 50%, transparent);
+  animation: fv-fade-up 0.4s ease 0.24s both;
 }
 .fv-local-notes__cta,
 .task-form__local-notes-cta {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
-  background: transparent;
-  border: 1px dashed var(--vscode-button-secondaryBackground, #444);
+  gap: 6px;
+  background: var(--vscode-textLink-foreground, #3794ff)0A;
+  border: 1px dashed color-mix(in srgb, var(--vscode-textLink-foreground, #3794ff) 40%, transparent);
   color: var(--vscode-textLink-foreground, #3794ff);
   font-size: 0.82em;
   font-weight: 500;
-  padding: 5px 12px;
-  border-radius: 4px;
+  padding: 6px 14px;
+  border-radius: 6px;
   cursor: pointer;
-  transition: background 0.15s, border-color 0.15s;
+  transition: background 0.2s, border-color 0.2s, transform 0.15s;
 }
 .fv-local-notes__cta:hover,
 .task-form__local-notes-cta:hover {
-  background: var(--vscode-list-hoverBackground, rgba(255,255,255,0.04));
+  background: var(--vscode-textLink-foreground, #3794ff)14;
   border-color: var(--vscode-textLink-foreground, #3794ff);
+  transform: translateY(-1px);
 }
 .task-form__notes-icon {
   vertical-align: -2px;
@@ -2940,12 +3015,17 @@ html, body, #root {
 }
 .fv-local-notes__preview,
 .task-form__local-notes-preview {
-  margin-top: 6px;
+  margin-top: 8px;
   font-size: 0.82em;
   color: var(--vscode-descriptionForeground, #888);
   opacity: 0.85;
   max-height: 80px;
   overflow: hidden;
+  padding: 8px 10px;
+  border-radius: 6px;
+  background: var(--vscode-textCodeBlock-background, rgba(0,0,0,0.08));
+  border-left: 2px solid var(--vscode-textLink-foreground, #3794ff);
+  animation: fv-fade-up 0.35s ease 0.3s both;
 }
 .task-form__local-notes {
   display: flex;
