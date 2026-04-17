@@ -1,3 +1,4 @@
+import { FlatButton } from './components/FlatButton';
 import { AboutSection } from './components/settings/AboutSection';
 import { GenAiSection } from './components/settings/GenAiSection';
 import { KanbanSection } from './components/settings/KanbanSection';
@@ -8,7 +9,6 @@ import { ProvidersSection } from './components/settings/ProvidersSection';
 import { SettingsPillNav } from './components/settings/SettingsPillNav';
 import { SquadSection } from './components/settings/SquadSection';
 import { WorktreeSection } from './components/settings/WorktreeSection';
-import { FlatButton } from './components/FlatButton';
 import { useSettings } from './context/SettingsContext';
 import { useSettingsMessages } from './hooks/useSettingsMessages';
 import type { SectionId } from './settingsTypes';

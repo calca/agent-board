@@ -2,9 +2,9 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useBoard } from '../context/BoardContext';
 import { postMessage } from '../hooks/useVsCodeApi';
 import { transport } from '../transport';
+import { FlatButton } from './FlatButton';
 import { MarkdownBody } from './MarkdownBody';
 import { MarkdownEditor, type MDXEditorMethods } from './MarkdownEditor';
-import { FlatButton } from './FlatButton';
 
 /** Normalize MDXEditor output: strip invisible chars and consider truly empty. */
 function normalizeMd(raw: string): string {

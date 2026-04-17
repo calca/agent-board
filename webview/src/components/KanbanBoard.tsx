@@ -3,8 +3,8 @@ import { useBoard } from '../context/BoardContext';
 import { DataProvider } from '../DataProvider';
 import { postMessage } from '../hooks/useVsCodeApi';
 import type { Column, KanbanTask } from '../types';
-import { TaskCard } from './TaskCard';
 import { FlatButton } from './FlatButton';
+import { TaskCard } from './TaskCard';
 
 export function KanbanBoard() {
   const { state } = useBoard();

@@ -1,8 +1,8 @@
 import React, { useCallback, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { postMessage } from '../hooks/useVsCodeApi';
-import { MarkdownEditor, type MDXEditorMethods } from './MarkdownEditor';
 import { FlatButton } from './FlatButton';
+import { MarkdownEditor, type MDXEditorMethods } from './MarkdownEditor';
 
 interface LocalNotesPanelProps {
   taskId: string;

@@ -1,6 +1,6 @@
 import { useBoard } from '../context/BoardContext';
-import { getNotifications } from './Toolbar';
 import { FlatButton } from './FlatButton';
+import { getNotifications } from './Toolbar';
 
 export function NotificationCenter() {
   const { state, dispatch } = useBoard();

@@ -2,8 +2,8 @@ import React, { useCallback } from 'react';
 import { useBoard } from '../context/BoardContext';
 import { postMessage } from '../hooks/useVsCodeApi';
 import type { KanbanTask } from '../types';
-import { MarkdownBody } from './MarkdownBody';
 import { FlatButton } from './FlatButton';
+import { MarkdownBody } from './MarkdownBody';
 
 const SESSION_LABELS: Record<string, string> = {
   idle: 'Idle', starting: 'Starting', running: 'Running',
