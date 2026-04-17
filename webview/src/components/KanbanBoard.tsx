@@ -95,7 +95,7 @@ function KanbanColumn({ column, tasks, allTasks, isActive }: { column: Column; t
       </div>
       <div className="kanban__column-body" data-col-id={column.id} onDragOver={handleDragOver} onDrop={handleDrop}>
         {tasks.length === 0
-          ? <div className="kanban__placeholder">No tasks</div>
+          ? <div className="kanban__placeholder">No issues</div>
           : tasks.map(t => <TaskCard key={t.id} task={t} />)}
       </div>
     </div>
