@@ -8,6 +8,7 @@ import { ProvidersSection } from './components/settings/ProvidersSection';
 import { SettingsPillNav } from './components/settings/SettingsPillNav';
 import { SquadSection } from './components/settings/SquadSection';
 import { WorktreeSection } from './components/settings/WorktreeSection';
+import { FlatButton } from './components/FlatButton';
 import { useSettings } from './context/SettingsContext';
 import { useSettingsMessages } from './hooks/useSettingsMessages';
 import type { SectionId } from './settingsTypes';
@@ -47,8 +48,8 @@ export function SettingsApp() {
             <p className="settings-header__subtitle">.agent-board/config.json</p>
           </div>
           <div className="settings-header__actions">
-            <button className="btn btn--secondary" onClick={resetToFile}>Reset to file</button>
-            <button className="btn btn--primary" onClick={save}>Save</button>
+            <FlatButton variant="secondary" onClick={resetToFile}>Reset to file</FlatButton>
+            <FlatButton variant="primary" onClick={save}>Save</FlatButton>
           </div>
         </div>
         <SettingsPillNav />

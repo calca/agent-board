@@ -223,7 +223,123 @@ html, body, #root {
   flex: 1 1 auto;
 }
 
-/* ── Buttons ─────────────────────────────── */
+/* ── Flat Button (unified) ────────────────── */
+
+.flat-btn {
+  cursor: pointer;
+  border: none;
+  border-radius: 4px;
+  font-size: 0.82em;
+  font-weight: 500;
+  padding: 5px 12px;
+  white-space: nowrap;
+  line-height: 1;
+  height: 28px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  transition: background 0.12s, opacity 0.12s;
+  font-family: inherit;
+}
+.flat-btn:focus-visible {
+  outline: 1px solid var(--vscode-focusBorder);
+  outline-offset: 1px;
+}
+
+.flat-btn--primary {
+  background: var(--vscode-button-background);
+  color: var(--vscode-button-foreground);
+}
+.flat-btn--primary:hover:not(:disabled) {
+  background: var(--vscode-button-hoverBackground);
+}
+.flat-btn--primary:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+.flat-btn--secondary {
+  background: var(--vscode-button-secondaryBackground, var(--vscode-input-background));
+  color: var(--vscode-button-secondaryForeground, var(--vscode-foreground));
+}
+.flat-btn--secondary:hover:not(:disabled) {
+  background: var(--vscode-button-secondaryHoverBackground, var(--vscode-toolbar-hoverBackground));
+}
+
+.flat-btn--danger {
+  background: rgba(244, 71, 71, 0.08);
+  color: var(--vscode-errorForeground, #f44747);
+}
+.flat-btn--danger:hover:not(:disabled) {
+  background: rgba(244, 71, 71, 0.18);
+}
+
+.flat-btn--ghost {
+  background: transparent;
+  color: var(--vscode-foreground);
+  opacity: 0.7;
+}
+.flat-btn--ghost:hover:not(:disabled) {
+  opacity: 1;
+  background: var(--vscode-toolbar-hoverBackground);
+}
+
+.flat-btn--icon {
+  background: transparent;
+  color: var(--vscode-foreground);
+  font-size: 1em;
+  padding: 4px 6px;
+  height: 28px;
+  opacity: 0.7;
+}
+.flat-btn--icon:hover:not(:disabled) {
+  opacity: 1;
+  background: var(--vscode-toolbar-hoverBackground);
+}
+
+.flat-btn--sm {
+  height: 24px;
+  padding: 4px 8px;
+  font-size: 0.78em;
+}
+
+.flat-btn--block {
+  width: 100%;
+  justify-content: flex-start;
+}
+
+.flat-btn__icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 14px;
+  height: 14px;
+}
+.flat-btn__icon svg {
+  width: 14px;
+  height: 14px;
+}
+
+.flat-btn:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+/* Card-level hover-reveal for flat buttons */
+.task-card .flat-btn--icon {
+  opacity: 0;
+  transition: opacity 0.12s, background 0.12s;
+}
+.task-card:hover .flat-btn--icon {
+  opacity: 0.6;
+}
+.task-card .flat-btn--icon:hover {
+  opacity: 1 !important;
+}
+
+/* ── Buttons (legacy) ────────────────────── */
 
 .toolbar__btn {
   cursor: pointer;
@@ -279,17 +395,8 @@ html, body, #root {
   pointer-events: none;
   opacity: 0.7;
 }
-.toolbar__btn--syncing::before {
-  content: '';
-  display: inline-block;
-  width: 12px;
-  height: 12px;
-  margin-right: 4px;
-  border: 2px solid currentColor;
-  border-top-color: transparent;
-  border-radius: 50%;
+.toolbar__btn--syncing .flat-btn__icon {
   animation: spin 0.8s linear infinite;
-  vertical-align: middle;
 }
 @keyframes spin {
   to { transform: rotate(360deg); }
@@ -2990,24 +3097,11 @@ html, body, #root {
 }
 .fv-local-notes__cta,
 .task-form__local-notes-cta {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  background: var(--vscode-textLink-foreground, #3794ff)0A;
-  border: 1px dashed color-mix(in srgb, var(--vscode-textLink-foreground, #3794ff) 40%, transparent);
   color: var(--vscode-textLink-foreground, #3794ff);
-  font-size: 0.82em;
-  font-weight: 500;
-  padding: 6px 14px;
-  border-radius: 6px;
-  cursor: pointer;
-  transition: background 0.2s, border-color 0.2s, transform 0.15s;
 }
 .fv-local-notes__cta:hover,
 .task-form__local-notes-cta:hover {
-  background: var(--vscode-textLink-foreground, #3794ff)14;
-  border-color: var(--vscode-textLink-foreground, #3794ff);
-  transform: translateY(-1px);
+  color: var(--vscode-textLink-foreground, #3794ff);
 }
 .task-form__notes-icon {
   vertical-align: -2px;
@@ -3279,7 +3373,8 @@ html, body, #root {
   background: #0078d40D;
   color: var(--vscode-foreground);
 }
-.fv-launch-provider .fv-icon { color: #0078d4; }
+.fv-launch-provider .fv-icon,
+.fv-launch-provider .flat-btn__icon { color: #0078d4; }
 .fv-launch-provider:hover:not(:disabled) {
   background: #0078d41A;
   border-color: #0078d466;
@@ -3290,7 +3385,8 @@ html, body, #root {
   border-color: #16825d33;
   background: #16825d0D;
 }
-.fv-open-worktree .fv-icon { color: #16825d; }
+.fv-open-worktree .fv-icon,
+.fv-open-worktree .flat-btn__icon { color: #16825d; }
 .fv-open-worktree:hover:not(:disabled) {
   background: #16825d1A;
   border-color: #16825d66;
@@ -3301,7 +3397,8 @@ html, body, #root {
   border-color: #d9a50033;
   background: #d9a5000D;
 }
-.fv-review-wt .fv-icon { color: #d9a500; }
+.fv-review-wt .fv-icon,
+.fv-review-wt .flat-btn__icon { color: #d9a500; }
 .fv-review-wt:hover:not(:disabled) {
   background: #d9a5001A;
   border-color: #d9a50066;
@@ -3312,7 +3409,8 @@ html, body, #root {
   border-color: #9b59b633;
   background: #9b59b60D;
 }
-.fv-align-wt .fv-icon { color: #9b59b6; }
+.fv-align-wt .fv-icon,
+.fv-align-wt .flat-btn__icon { color: #9b59b6; }
 .fv-align-wt:hover:not(:disabled) {
   background: #9b59b61A;
   border-color: #9b59b666;
@@ -3323,7 +3421,8 @@ html, body, #root {
   border-color: #0078d433;
   background: #0078d40D;
 }
-.fv-agent-merge .fv-icon { color: #0078d4; }
+.fv-agent-merge .fv-icon,
+.fv-agent-merge .flat-btn__icon { color: #0078d4; }
 .fv-agent-merge:hover:not(:disabled) {
   background: #0078d41A;
   border-color: #0078d466;
@@ -3334,7 +3433,8 @@ html, body, #root {
   border-color: #88888833;
   background: #8888880D;
 }
-.fv-reset-session .fv-icon { color: #888888; }
+.fv-reset-session .fv-icon,
+.fv-reset-session .flat-btn__icon { color: #888888; }
 .fv-reset-session:hover:not(:disabled) {
   background: #8888881A;
   border-color: #88888866;
@@ -4159,10 +4259,6 @@ body.vscode-high-contrast .md-editor-container {
     min-width: 44px;
     padding: 10px;
     font-size: 1.1em;
-  }
-
-  .toolbar__mobile-summary .toolbar__btn--syncing::before {
-    display: none;
   }
 
   .toolbar__mobile-summary .toolbar__btn--syncing {

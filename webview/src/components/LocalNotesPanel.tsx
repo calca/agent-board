@@ -2,6 +2,7 @@ import React, { useCallback, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { postMessage } from '../hooks/useVsCodeApi';
 import { MarkdownEditor, type MDXEditorMethods } from './MarkdownEditor';
+import { FlatButton } from './FlatButton';
 
 interface LocalNotesPanelProps {
   taskId: string;
@@ -36,7 +37,7 @@ export function LocalNotesPanel({ taskId, providerId, markdown, onClose }: Local
       <div className="local-notes-panel">
         <div className="local-notes-panel__header">
           <span className="local-notes-panel__title">Technical Notes</span>
-          <button className="local-notes-panel__close" onClick={handleSave} title="Save & Close">✕</button>
+          <FlatButton variant="icon" icon="✕" onClick={handleSave} title="Save & Close" />
         </div>
         <div className="local-notes-panel__body">
           <MarkdownEditor
@@ -47,7 +48,7 @@ export function LocalNotesPanel({ taskId, providerId, markdown, onClose }: Local
           />
         </div>
         <div className="local-notes-panel__actions">
-          <button className="local-notes-panel__btn local-notes-panel__btn--save" onClick={handleSave}>Save & Close</button>
+          <FlatButton variant="primary" size="sm" onClick={handleSave}>Save & Close</FlatButton>
         </div>
       </div>
     </div>,

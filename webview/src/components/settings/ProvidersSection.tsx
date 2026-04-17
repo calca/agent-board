@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { postSettingsMessage, useSettings } from '../../context/SettingsContext';
 import type { ProviderInfo } from '../../settingsTypes';
+import { FlatButton } from '../FlatButton';
 
 function escHtml(val: string): string {
   return val.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
@@ -78,7 +79,7 @@ function ProviderCard({ provider, onRemove }: { provider: ProviderInfo; onRemove
     <>
       <div className="provider-header">
         <h3>{provider.displayName}</h3>
-        <button className="btn--remove" onClick={onRemove}>Remove</button>
+        <FlatButton variant="danger" size="sm" onClick={onRemove}>Remove</FlatButton>
       </div>
       {provider.fields.length > 0 && (
         <div className="cols-2">
@@ -282,7 +283,7 @@ export function ProvidersSection() {
                 >
                   <h4>{p.displayName}</h4>
                   <DiagBadge diagnostic={p.diagnostic} />
-                  <button className="btn--add" onClick={() => handleEnable(p)}>Enable</button>
+                  <FlatButton variant="primary" size="sm" onClick={() => handleEnable(p)}>Enable</FlatButton>
                 </div>
               );
             })}
@@ -290,13 +291,13 @@ export function ProvidersSection() {
         </>
       )}
 
-      <button
-        className="btn btn--secondary"
+      <FlatButton
+        variant="secondary"
         style={{ marginTop: 12 }}
         onClick={refreshDiagnostics}
       >
         Re-check providers
-      </button>
+      </FlatButton>
     </div>
   );
 }

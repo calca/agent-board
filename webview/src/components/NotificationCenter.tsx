@@ -1,5 +1,6 @@
 import { useBoard } from '../context/BoardContext';
 import { getNotifications } from './Toolbar';
+import { FlatButton } from './FlatButton';
 
 export function NotificationCenter() {
   const { state, dispatch } = useBoard();
@@ -11,7 +12,7 @@ export function NotificationCenter() {
     <div className="notification-center" id="notification-center">
       <div className="notification-center__header">
         <span className="notification-center__title">Notifications</span>
-        <button className="notification-center__close" onClick={() => dispatch({ type: 'TOGGLE_NOTIFICATION_CENTER' })}>✕</button>
+        <FlatButton variant="icon" icon="✕" onClick={() => dispatch({ type: 'TOGGLE_NOTIFICATION_CENTER' })} />
       </div>
       <div className="notification-center__body">
         {items.length === 0

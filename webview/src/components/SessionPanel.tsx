@@ -3,6 +3,7 @@ import { useBoard } from '../context/BoardContext';
 import { postMessage } from '../hooks/useVsCodeApi';
 import type { FileChangeInfo } from '../types';
 import { escapeHtml } from '../utils';
+import { FlatButton } from './FlatButton';
 
 const statusIcons: Record<string, string> = { added: '＋', modified: '✎', deleted: '✕' };
 
@@ -110,9 +111,9 @@ export function SessionPanel() {
       <div className="session-panel__header">
         <span className="session-panel__title">{task?.title ?? sessionPanelTaskId}</span>
         <div className="session-panel__action-bar">
-          <button className="toolbar__btn toolbar__btn--small" title="Full Diff" onClick={() => postMessage({ type: 'openFullDiff', sessionId: sessionPanelTaskId })}>Diff</button>
-          <button className="toolbar__btn toolbar__btn--small" title="Export Log" onClick={() => postMessage({ type: 'exportLog', sessionId: sessionPanelTaskId })}>Export</button>
-          <button className="session-panel__close" onClick={handleClose}>✕</button>
+          <FlatButton variant="secondary" size="sm" icon={<svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor"><path d="M2 3.5A1.5 1.5 0 0 1 3.5 2h5.586a1.5 1.5 0 0 1 1.06.44l3.415 3.414A1.5 1.5 0 0 1 14 6.914V12.5a1.5 1.5 0 0 1-1.5 1.5h-9A1.5 1.5 0 0 1 2 12.5v-9Z"/></svg>} title="Full Diff" onClick={() => postMessage({ type: 'openFullDiff', sessionId: sessionPanelTaskId })}>Diff</FlatButton>
+          <FlatButton variant="secondary" size="sm" icon={<svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor"><path d="M4.5 3a.5.5 0 0 0 0 1h7a.5.5 0 0 0 0-1h-7ZM4 6.5a.5.5 0 0 1 .5-.5h7a.5.5 0 0 1 0 1h-7a.5.5 0 0 1-.5-.5Zm.5 2.5a.5.5 0 0 0 0 1h4a.5.5 0 0 0 0-1h-4Z"/></svg>} title="Export Log" onClick={() => postMessage({ type: 'exportLog', sessionId: sessionPanelTaskId })}>Export</FlatButton>
+          <FlatButton variant="icon" icon="✕" onClick={handleClose} title="Close" />
         </div>
       </div>
       {isInterrupted && <div className="session-interrupted-banner">↯ Sessione interrotta al riavvio di VS Code. Il log precedente è mostrato sotto (sola lettura).</div>}
@@ -167,7 +168,7 @@ export function SessionPanel() {
           placeholder={isInterrupted ? 'Sessione interrotta — riavvia per inviare messaggi' : "Invia messaggio all'agente…"}
           disabled={isInterrupted}
         />
-        <button type="submit" className="toolbar__btn toolbar__btn--primary" disabled={isInterrupted}>Invia</button>
+        <FlatButton type="submit" variant="primary" disabled={isInterrupted}>Invia</FlatButton>
       </form>
     </div>
   );

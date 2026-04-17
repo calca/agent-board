@@ -4,6 +4,7 @@ import { postMessage } from '../hooks/useVsCodeApi';
 import { transport } from '../transport';
 import { MarkdownBody } from './MarkdownBody';
 import { MarkdownEditor, type MDXEditorMethods } from './MarkdownEditor';
+import { FlatButton } from './FlatButton';
 
 /** Normalize MDXEditor output: strip invisible chars and consider truly empty. */
 function normalizeMd(raw: string): string {
@@ -95,7 +96,7 @@ export function TaskForm() {
   return (
     <div className="task-form-overlay" id="task-form-overlay" onClick={handleOverlayClick}>
       <div className="task-form-panel">
-        <button className="task-form-panel__close" onClick={handleClose} title="Close">✕</button>
+        <FlatButton variant="icon" icon="✕" className="task-form-panel__close" onClick={handleClose} title="Close" />
         <div className="task-form-panel__heading">
           {isEdit
             ? <>Edit Issue{savedNotes && <span className="task-card__details-icon" title="Has technical notes" style={{ marginLeft: 8 }}><svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M4 0a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V4.5L9.5 0H4Zm5 1v3.5A1.5 1.5 0 0 0 10.5 6H14v8a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1h5ZM5 8.5a.5.5 0 0 1 .5-.5h5a.5.5 0 0 1 0 1h-5a.5.5 0 0 1-.5-.5Zm.5 1.5a.5.5 0 0 0 0 1h3a.5.5 0 0 0 0-1h-3Z"/></svg></span>}{isRemote && <span style={{ opacity: 0.45, fontSize: '0.75em', fontWeight: 400, marginLeft: 8 }}>(remote — read-only fields)</span>}</>
@@ -127,13 +128,13 @@ export function TaskForm() {
               <div className="task-form__section task-form__section--grow task-form__local-notes-inline">
                 <div className="task-form__local-notes-header">
                   <label className="task-form__label"><svg className="task-form__notes-icon" width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M4 0a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V4.5L9.5 0H4Zm5 1v3.5A1.5 1.5 0 0 0 10.5 6H14v8a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1h5ZM5 8.5a.5.5 0 0 1 .5-.5h5a.5.5 0 0 1 0 1h-5a.5.5 0 0 1-.5-.5Zm.5 1.5a.5.5 0 0 0 0 1h3a.5.5 0 0 0 0-1h-3Z"/></svg> Technical Notes</label>
-                  <button type="button" className="task-form__local-notes-close" onClick={() => {
+                  <FlatButton type="button" variant="icon" icon="−" onClick={() => {
                     if (task && notesRef.current) {
                       const md = normalizeMd(notesRef.current.getMarkdown());
                       postMessage({ type: 'saveLocalNotes', taskId: task.id, providerId: task.providerId, notes: md });
                     }
                     setNotesOpen(false);
-                  }} title="Close technical notes">−</button>
+                  }} title="Close technical notes" />
                 </div>
                 <div className="task-form__desc-group">
                   <MarkdownEditor
@@ -146,11 +147,10 @@ export function TaskForm() {
               </div>
             ) : (
               <div className="task-form__section task-form__local-notes">
-                <button type="button" className="task-form__local-notes-cta" onClick={() => { notesTouched.current = true; setNotesOpen(true); }}>
-                  {savedNotes
-                    ? <><svg className="task-form__notes-icon" width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M4 0a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V4.5L9.5 0H4Zm5 1v3.5A1.5 1.5 0 0 0 10.5 6H14v8a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1h5ZM5 8.5a.5.5 0 0 1 .5-.5h5a.5.5 0 0 1 0 1h-5a.5.5 0 0 1-.5-.5Zm.5 1.5a.5.5 0 0 0 0 1h3a.5.5 0 0 0 0-1h-3Z"/></svg> Technical Notes</>
-                    : <><svg className="task-form__notes-icon" width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1"><path d="M4 0a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V4.5L9.5 0H4Zm5 1v3.5A1.5 1.5 0 0 0 10.5 6H14v8a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1h5ZM5 8.5a.5.5 0 0 1 .5-.5h5a.5.5 0 0 1 0 1h-5a.5.5 0 0 1-.5-.5Zm.5 1.5a.5.5 0 0 0 0 1h3a.5.5 0 0 0 0-1h-3Z"/></svg> + Technical Notes</>}
-                </button>
+                <FlatButton type="button" variant="ghost" className="task-form__local-notes-cta" onClick={() => { notesTouched.current = true; setNotesOpen(true); }} icon={savedNotes
+                    ? <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M4 0a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V4.5L9.5 0H4Zm5 1v3.5A1.5 1.5 0 0 0 10.5 6H14v8a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1h5ZM5 8.5a.5.5 0 0 1 .5-.5h5a.5.5 0 0 1 0 1h-5a.5.5 0 0 1-.5-.5Zm.5 1.5a.5.5 0 0 0 0 1h3a.5.5 0 0 0 0-1h-3Z"/></svg>
+                    : <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1"><path d="M4 0a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V4.5L9.5 0H4Zm5 1v3.5A1.5 1.5 0 0 0 10.5 6H14v8a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1h5ZM5 8.5a.5.5 0 0 1 .5-.5h5a.5.5 0 0 1 0 1h-5a.5.5 0 0 1-.5-.5Zm.5 1.5a.5.5 0 0 0 0 1h3a.5.5 0 0 0 0-1h-3Z"/></svg>
+                  }>{savedNotes ? 'Technical Notes' : '+ Technical Notes'}</FlatButton>
               </div>
             ))}
 
@@ -190,14 +190,16 @@ export function TaskForm() {
           </div>
 
           <div className="task-form__actions">
-            <button type="submit" className="task-form__btn task-form__btn--save">{isRemote ? 'Update Status' : 'Save'}</button>
-            <button type="button" className="task-form__btn task-form__btn--cancel" onClick={handleClose}>
+            <FlatButton type="submit" variant="primary">
+              {isRemote ? 'Update Status' : 'Save'}
+            </FlatButton>
+            <FlatButton type="button" variant="secondary" onClick={handleClose}>
               {isEdit ? 'Close' : 'Cancel'}
-            </button>
+            </FlatButton>
             {isEdit && !isRemote && editableProviderIds.includes(task!.providerId) && (
-              <button type="button" className="task-form__btn task-form__btn--delete" onClick={handleDelete}>
-                ⊘ Delete
-              </button>
+              <FlatButton type="button" variant="danger" icon="⊘" onClick={handleDelete} style={{ marginLeft: 'auto' }}>
+                Delete
+              </FlatButton>
             )}
           </div>
         </form>
