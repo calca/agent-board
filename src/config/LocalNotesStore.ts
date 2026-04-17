@@ -57,7 +57,10 @@ export class LocalNotesStore {
     const fp = LocalNotesStore.notePath(providerId, taskId);
     if (!fp) { return; }
     const trimmed = notes.trim();
-    if (!trimmed) { return; }
+    if (!trimmed) {
+      LocalNotesStore.delete(providerId, taskId);
+      return;
+    }
     const dir = path.dirname(fp);
     if (!fs.existsSync(dir)) { fs.mkdirSync(dir, { recursive: true }); }
     fs.writeFileSync(fp, JSON.stringify({ taskId, notes: trimmed }, null, 2), 'utf-8');

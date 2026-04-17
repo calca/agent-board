@@ -43,7 +43,7 @@ export class Logger {
   private fileStream: fs.WriteStream | undefined;
 
   private constructor() {
-    this.channel = vscode.window.createOutputChannel('Task Kanban');
+    this.channel = vscode.window.createOutputChannel('Agent Board');
     this.level = this.readLevel();
   }
 
