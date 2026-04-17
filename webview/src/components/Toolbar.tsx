@@ -143,10 +143,10 @@ export function Toolbar() {
             variant="primary"
             icon={<svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor"><path d="M6 3.5L12 8l-6 4.5v-9Z"/></svg>}
             disabled={squadStatus.activeCount >= squadStatus.maxSessions}
-            title="Start Squad"
+            title={squadStatus.autoSquadEnabled ? 'Launch squad and keep auto-polling' : 'Launch squad once'}
             onClick={() => squadAction('startSquad')}
           >
-            Start
+            {squadStatus.autoSquadEnabled ? 'Start Squad & Auto' : 'Start Squad'}
           </FlatButton>
           {squadStatus.activeCount > 0 && (
             <span className="toolbar__badge toolbar__badge--live">
@@ -285,7 +285,7 @@ export function Toolbar() {
             disabled={squadStatus.activeCount >= squadStatus.maxSessions}
             onClick={() => { squadAction('startSquad'); squadSheetRef.current?.close(); }}
           >
-            Start Squad
+            {squadStatus.autoSquadEnabled ? 'Start Squad & Auto' : 'Start Squad'}
           </FlatButton>
 
           <button className="squad-sheet__close" onClick={() => squadSheetRef.current?.close()}>Cancel</button>

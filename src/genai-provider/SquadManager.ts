@@ -78,7 +78,19 @@ export class SquadManager {
     }
     this.launching = true;
     try {
-      return await this.doStartSquad(agentSlug, genAiProviderId, baseBranch);
+      const launched = await this.doStartSquad(agentSlug, genAiProviderId, baseBranch);
+
+      // If auto-squad is enabled and no polling timer is running yet, start it
+      if (this.autoSquadEnabled && !this.autoSquadTimer) {
+        const cfg = this.getConfig();
+        this.autoSquadTimer = setInterval(
+          () => void this.startSquad(this.autoSquadAgentSlug, this.autoSquadGenAiProviderId, this.autoSquadBaseBranch),
+          cfg.autoSquadInterval,
+        );
+        this.logger.info('SquadManager: auto-squad polling started (interval=%dms)', cfg.autoSquadInterval);
+      }
+
+      return launched;
     } finally {
       this.launching = false;
     }
@@ -119,11 +131,7 @@ export class SquadManager {
       this.autoSquadAgentSlug = agentSlug;
       this.autoSquadGenAiProviderId = genAiProviderId;
       this.autoSquadBaseBranch = baseBranch;
-      this.logger.info('SquadManager: auto-squad ENABLED');
-      // Immediately try to fill slots, then poll
-      void this.startSquad(agentSlug, genAiProviderId, baseBranch);
-      const cfg = this.getConfig();
-      this.autoSquadTimer = setInterval(() => void this.startSquad(this.autoSquadAgentSlug, this.autoSquadGenAiProviderId, this.autoSquadBaseBranch), cfg.autoSquadInterval);
+      this.logger.info('SquadManager: auto-squad ENABLED (waiting for Start)');
     } else {
       this.autoSquadAgentSlug = undefined;
       this.autoSquadGenAiProviderId = undefined;
