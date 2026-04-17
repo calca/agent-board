@@ -57,7 +57,7 @@ export class ContextBuilder {
     const localNotes = (task.meta as Record<string, unknown>)?.localNotes;
     if (typeof localNotes === 'string' && localNotes.trim()) {
       parts.push('');
-      parts.push('## Local Notes');
+      parts.push('## Technical Details');
       parts.push(localNotes);
     }
 
