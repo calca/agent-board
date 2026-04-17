@@ -1,6 +1,7 @@
-import React, { useCallback, useRef } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useBoard } from '../context/BoardContext';
 import { transport } from '../transport';
+import { postMessage } from '../hooks/useVsCodeApi';
 import { MarkdownBody } from './MarkdownBody';
 import { MarkdownEditor, type MDXEditorMethods } from './MarkdownEditor';
 
@@ -8,17 +9,32 @@ export function TaskForm() {
   const { state, dispatch } = useBoard();
   const { showTaskForm, editingTask, columns, formColumns, editableProviderIds, genAiProviders, currentUser } = state;
   const bodyRef = useRef<MDXEditorMethods>(null);
+  const notesRef = useRef<MDXEditorMethods>(null);
+  const [notesOpen, setNotesOpen] = useState(false);
 
   const isEdit = !!editingTask;
   const task = editingTask;
+  const savedNotes = isEdit ? ((task?.meta as Record<string, unknown>)?.localNotes as string | undefined) : undefined;
+
+  // Reset notesOpen when task changes; auto-open if notes already exist
+  useEffect(() => {
+    setNotesOpen(!!savedNotes);
+  }, [task?.id]); // eslint-disable-line react-hooks/exhaustive-deps
   const cols = formColumns.length > 0 ? formColumns : columns;
   const remoteProviders = ['github', 'azure-devops', 'beads'];
   const isRemote = task ? remoteProviders.includes(task.providerId) : false;
 
-  const handleClose = useCallback(() => dispatch({ type: 'CLOSE_TASK_FORM' }), [dispatch]);
+  const handleClose = useCallback(() => {
+    // Flush any pending local notes before closing
+    if (task && isRemote && notesOpen && notesRef.current) {
+      const md = notesRef.current.getMarkdown().trim();
+      if (md) { postMessage({ type: 'saveLocalNotes', taskId: task.id, providerId: task.providerId, notes: md }); }
+    }
+    dispatch({ type: 'CLOSE_TASK_FORM' });
+  }, [task, isRemote, notesOpen, dispatch]);
   const handleOverlayClick = useCallback((e: React.MouseEvent) => {
-    if ((e.target as HTMLElement).id === 'task-form-overlay') { dispatch({ type: 'CLOSE_TASK_FORM' }); }
-  }, [dispatch]);
+    if ((e.target as HTMLElement).id === 'task-form-overlay') { handleClose(); }
+  }, [handleClose]);
 
   const handleDelete = useCallback(() => {
     if (task) {
@@ -31,6 +47,12 @@ export function TaskForm() {
   const handleSubmit = useCallback((e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const form = e.currentTarget;
+
+    // Flush any pending local notes before closing
+    if (task && isRemote && notesOpen && notesRef.current) {
+      const md = notesRef.current.getMarkdown().trim();
+      if (md) { postMessage({ type: 'saveLocalNotes', taskId: task.id, providerId: task.providerId, notes: md }); }
+    }
 
     const titleEl = form.querySelector('#tf-title') as HTMLInputElement | null;
     const labelsEl = form.querySelector('#tf-labels') as HTMLInputElement | null;
@@ -55,7 +77,7 @@ export function TaskForm() {
       transport.send({ type: 'saveTask', data: { title, body, status, labels, assignee } });
     }
     dispatch({ type: 'CLOSE_TASK_FORM' });
-  }, [task, cols, isRemote, dispatch]);
+  }, [task, cols, isRemote, notesOpen, dispatch]);
 
   if (!showTaskForm && !editingTask) { return null; }
 
@@ -76,7 +98,7 @@ export function TaskForm() {
               : <input className="task-form__input" id="tf-title" type="text" defaultValue={task?.title ?? ''} required autoFocus={!isEdit} placeholder={isEdit ? undefined : 'What needs to be done?'} />}
           </div>
 
-          <div className="task-form__section task-form__section--grow">
+          <div className={`task-form__section ${isEdit && isRemote && notesOpen ? 'task-form__section--desc-third' : 'task-form__section--grow'}`}>
             <label className="task-form__label">Description</label>
             <div className="task-form__desc-group">
               {isEdit && isRemote
@@ -89,6 +111,30 @@ export function TaskForm() {
                   />}
             </div>
           </div>
+
+          {isEdit && isRemote && (notesOpen ? (
+              <div className="task-form__section task-form__section--grow task-form__local-notes-inline">
+                <div className="task-form__local-notes-header">
+                  <label className="task-form__label">Details</label>
+                  <button type="button" className="task-form__local-notes-close" onClick={() => setNotesOpen(false)} title="Close details">−</button>
+                </div>
+                <div className="task-form__desc-group">
+                  <MarkdownEditor
+                    ref={notesRef}
+                    editorKey={`tf-notes-${task!.id}`}
+                    markdown={savedNotes ?? ''}
+                    placeholder="Add details to enrich this task…"
+                  />
+                </div>
+              </div>
+            ) : (
+              <div className="task-form__section task-form__local-notes">
+                <button type="button" className="task-form__local-notes-cta" onClick={() => setNotesOpen(true)}>
+                  + Details
+                </button>
+                {savedNotes && <MarkdownBody body={savedNotes} className="task-form__local-notes-preview" />}
+              </div>
+            ))}
 
           <div className="task-form__row">
             <div className="task-form__field">

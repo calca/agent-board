@@ -9,6 +9,7 @@ import { AgentManager } from './agentManager';
 import { AgentsTreeProvider, AgentTreeItem } from './agentsTreeProvider';
 import { refreshTasksCommand } from './commands/refreshTasks';
 import { HiddenTasksStore } from './config/HiddenTasksStore';
+import { LocalNotesStore } from './config/LocalNotesStore';
 import { ProjectConfig } from './config/ProjectConfig';
 import { DiffWatcher, GIT_REF_SCHEME, GitRefContentProvider, gitRefUri } from './diff/DiffWatcher';
 import { AgentInfo, discoverAgents } from './genai-provider/agentDiscovery';
@@ -618,6 +619,11 @@ export function activate(context: vscode.ExtensionContext): void {
         }
         case 'hideTask': {
           HiddenTasksStore.hide(msg.taskId);
+          await sendTasksToPanel(panel, providerRegistry, genAiRegistry, squadManager, sessionStateManager);
+          break;
+        }
+        case 'saveLocalNotes': {
+          LocalNotesStore.set(msg.providerId, msg.taskId, msg.notes);
           await sendTasksToPanel(panel, providerRegistry, genAiRegistry, squadManager, sessionStateManager);
           break;
         }
@@ -1422,6 +1428,15 @@ async function sendTasksToPanel(panel: KanbanPanel, registry: ProviderRegistry, 
       if (session) {
         task.copilotSession = session;
       }
+    }
+  }
+
+  // Inject local notes into task.meta so the webview has them without round-trips
+  const localNotes = LocalNotesStore.getAll();
+  for (const task of allTasks) {
+    const notes = localNotes[task.id];
+    if (notes) {
+      (task.meta as Record<string, unknown>).localNotes = notes;
     }
   }
 

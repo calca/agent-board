@@ -72,7 +72,8 @@ export type HostToWebView =
   | { type: 'deleteWorktreeResult'; sessionId: string; success: boolean; message?: string }
   | { type: 'createPullRequestResult'; sessionId: string; success: boolean; prUrl?: string; prNumber?: number; message?: string }
   | { type: 'agentLog'; taskId: string; chunk: string; done: boolean }
-  | { type: 'agentError'; taskId: string; error: string };
+  | { type: 'agentError'; taskId: string; error: string }
+  | { type: 'localNotes'; taskId: string; notes: string };
 
 // ── WebView → Host ──────────────────────────────────────────────────────────
 
@@ -123,4 +124,5 @@ export type WebViewToHost =
   | { type: 'exportDoneMd' }
   | { type: 'cleanDone' }
   | { type: 'startAgent'; taskId: string; provider: string; prompt: string }
-  | { type: 'cancelAgent'; taskId: string };
+  | { type: 'cancelAgent'; taskId: string }
+  | { type: 'saveLocalNotes'; taskId: string; providerId: string; notes: string };

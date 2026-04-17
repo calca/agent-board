@@ -53,6 +53,14 @@ export class ContextBuilder {
       parts.push(task.body);
     }
 
+    // Local notes (user-added enrichment for read-only provider tasks)
+    const localNotes = (task.meta as Record<string, unknown>)?.localNotes;
+    if (typeof localNotes === 'string' && localNotes.trim()) {
+      parts.push('');
+      parts.push('## Local Notes');
+      parts.push(localNotes);
+    }
+
     if (depth === 'minimal') {
       return parts.join('\n');
     }

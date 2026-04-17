@@ -1649,6 +1649,25 @@ html, body, #root {
   flex-direction: column;
   overflow: hidden;
 }
+/* When notes are open, description shrinks to ~1/3 */
+.task-form__section--desc-third {
+  flex: 0 0 33%;
+  max-height: 33%;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.task-form__section--desc-third .task-form__readonly-body {
+  overflow-y: auto;
+  flex: 1 1 auto;
+  min-height: 0;
+}
+/* Inline local-notes editor section */
+.task-form__local-notes-inline {
+  border-top: 1px solid var(--vscode-panel-border, #333);
+  padding-top: 6px;
+}
 
 .task-form__desc-group {
   flex: 1 1 auto;
@@ -2880,6 +2899,138 @@ html, body, #root {
 .fv-save-btn {
   margin-top: 8px;
   width: 100%;
+}
+
+/* ── Local Notes ─── */
+.fv-local-notes {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid var(--vscode-panel-border, #333);
+}
+.fv-local-notes__cta,
+.task-form__local-notes-cta {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: transparent;
+  border: 1px dashed var(--vscode-button-secondaryBackground, #444);
+  color: var(--vscode-textLink-foreground, #3794ff);
+  font-size: 0.82em;
+  font-weight: 500;
+  padding: 5px 12px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+}
+.fv-local-notes__cta:hover,
+.task-form__local-notes-cta:hover {
+  background: var(--vscode-list-hoverBackground, rgba(255,255,255,0.04));
+  border-color: var(--vscode-textLink-foreground, #3794ff);
+}
+.fv-local-notes__preview,
+.task-form__local-notes-preview {
+  margin-top: 6px;
+  font-size: 0.82em;
+  color: var(--vscode-descriptionForeground, #888);
+  opacity: 0.85;
+  max-height: 80px;
+  overflow: hidden;
+}
+.task-form__local-notes {
+  display: flex;
+  flex-direction: column;
+}
+.task-form__local-notes-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 4px;
+}
+.task-form__local-notes-close {
+  background: transparent;
+  border: 1px solid var(--vscode-panel-border, #444);
+  color: var(--vscode-foreground);
+  font-size: 1.1em;
+  line-height: 1;
+  width: 22px;
+  height: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+.task-form__local-notes-close:hover {
+  background: var(--vscode-list-hoverBackground, rgba(255,255,255,0.06));
+}
+/* ── Local Notes Panel (overlay) ─── */
+.local-notes-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  background: rgba(0,0,0,0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.local-notes-panel {
+  width: min(680px, 90vw);
+  max-height: 80vh;
+  display: flex;
+  flex-direction: column;
+  background: var(--vscode-editor-background);
+  border: 1px solid var(--vscode-panel-border, #333);
+  border-radius: 8px;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.35);
+  overflow: hidden;
+}
+.local-notes-panel__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--vscode-panel-border, #333);
+}
+.local-notes-panel__title {
+  font-weight: 600;
+  font-size: 0.95em;
+}
+.local-notes-panel__close {
+  background: transparent;
+  border: none;
+  color: var(--vscode-foreground);
+  font-size: 1.1em;
+  cursor: pointer;
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+.local-notes-panel__close:hover {
+  background: var(--vscode-list-hoverBackground, rgba(255,255,255,0.06));
+}
+.local-notes-panel__body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 12px 16px;
+  min-height: 200px;
+}
+.local-notes-panel__actions {
+  display: flex;
+  justify-content: flex-end;
+  padding: 8px 16px;
+  border-top: 1px solid var(--vscode-panel-border, #333);
+}
+.local-notes-panel__btn--save {
+  background: var(--vscode-button-background);
+  color: var(--vscode-button-foreground);
+  border: none;
+  font-size: 0.82em;
+  padding: 5px 16px;
+  border-radius: 4px;
+  cursor: pointer;
+}
+.local-notes-panel__btn--save:hover {
+  background: var(--vscode-button-hoverBackground);
 }
 
 /* ── Session panel in full view ─── */

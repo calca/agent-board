@@ -6,6 +6,7 @@ import { postMessage } from '../hooks/useVsCodeApi';
 import type { Column, KanbanTask } from '../types';
 import { relativeWorktreePath } from '../utils';
 import { AgentChatLog } from './AgentChatLog';
+import { LocalNotesPanel } from './LocalNotesPanel';
 import { MarkdownBody } from './MarkdownBody';
 
 const statusIcons: Record<string, string> = { added: '＋', modified: '✎', deleted: '✕' };
@@ -223,6 +224,9 @@ export function FullView() {
 
 function FvReadOnlyDetails({ task, statusCol, columns }: { task: KanbanTask; statusCol: Column | undefined; columns: Column[] }) {
   const statusColor = statusCol?.color ?? '';
+  const isLocalProvider = task.providerId === 'json';
+  const savedNotes = (task.meta as Record<string, unknown>)?.localNotes as string | undefined;
+  const [notesOpen, setNotesOpen] = useState(false);
 
   return (
     <>
@@ -261,6 +265,22 @@ function FvReadOnlyDetails({ task, statusCol, columns }: { task: KanbanTask; sta
       </div>
       {task.body && (
         <MarkdownBody body={task.body} className="fv-description" snippet />
+      )}
+      {!isLocalProvider && (
+        <div className="fv-local-notes">
+          <button className="fv-local-notes__cta" onClick={() => setNotesOpen(true)}>
+            {savedNotes ? 'Edit Details' : '+ Details'}
+          </button>
+          {savedNotes && <MarkdownBody body={savedNotes} className="fv-local-notes__preview" />}
+          {notesOpen && (
+            <LocalNotesPanel
+              taskId={task.id}
+              providerId={task.providerId}
+              markdown={savedNotes ?? ''}
+              onClose={() => setNotesOpen(false)}
+            />
+          )}
+        </div>
       )}
     </>
   );

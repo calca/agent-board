@@ -69,10 +69,12 @@ interface MarkdownEditorProps {
   placeholder?: string;
   /** If true, make the editor compact (fewer rows). */
   compact?: boolean;
+  /** Called on every content change with the current markdown string. */
+  onChange?: (markdown: string) => void;
 }
 
 export const MarkdownEditor = forwardRef<MDXEditorMethods, MarkdownEditorProps>(
-  function MarkdownEditor({ editorKey, markdown, placeholder, compact }, ref) {
+  function MarkdownEditor({ editorKey, markdown, placeholder, compact, onChange }, ref) {
     injectEditorStyles();
 
     return (
@@ -82,6 +84,7 @@ export const MarkdownEditor = forwardRef<MDXEditorMethods, MarkdownEditorProps>(
           key={editorKey}
           markdown={markdown}
           placeholder={placeholder}
+          onChange={onChange}
           plugins={[
             headingsPlugin(),
             listsPlugin(),
