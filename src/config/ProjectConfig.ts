@@ -81,6 +81,7 @@ export class ProjectConfig {
       fs.mkdirSync(dir, { recursive: true });
     }
     fs.writeFileSync(filePath, JSON.stringify(merged, null, 2), 'utf-8');
+    ProjectConfig.invalidateCache();
   }
 
   /**
@@ -101,16 +102,31 @@ export class ProjectConfig {
 
   // ── internal ──────────────────────────────────────────────────────
 
+  /** Cached config + mtime to avoid re-reading on every call. */
+  private static _cache: { data: ProjectConfigData; mtimeMs: number; filePath: string } | undefined;
+
+  /** Invalidate the read cache (called automatically after updateConfig). */
+  static invalidateCache(): void {
+    ProjectConfig._cache = undefined;
+  }
+
   private static readConfigFile(): ProjectConfigData | undefined {
     const filePath = ProjectConfig.configFilePath();
     if (!filePath) {
       return undefined;
     }
     try {
+      const stat = fs.statSync(filePath);
+      if (ProjectConfig._cache && ProjectConfig._cache.filePath === filePath && ProjectConfig._cache.mtimeMs === stat.mtimeMs) {
+        return ProjectConfig._cache.data;
+      }
       const raw = fs.readFileSync(filePath, 'utf-8');
-      return JSON.parse(raw) as ProjectConfigData;
+      const data = JSON.parse(raw) as ProjectConfigData;
+      ProjectConfig._cache = { data, mtimeMs: stat.mtimeMs, filePath };
+      return data;
     } catch {
       // File doesn't exist or is invalid JSON — fall through
+      ProjectConfig._cache = undefined;
       return undefined;
     }
   }

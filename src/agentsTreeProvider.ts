@@ -1,6 +1,6 @@
 import * as vscode from 'vscode';
-import { Agent } from './types';
 import { AgentManager } from './agentManager';
+import type { Agent } from './types/Agent';
 
 export class AgentTreeItem extends vscode.TreeItem {
   constructor(public readonly agent: Agent) {

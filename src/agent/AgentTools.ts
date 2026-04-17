@@ -209,6 +209,7 @@ export class AgentTools {
   /**
    * Resolve a relative path against the workspace root.
    * Returns `undefined` if the resolved path escapes the root.
+   * Uses realpath to prevent symlink-based bypass.
    */
   private resolveSafe(relativePath: string): string | undefined {
     const resolved = path.resolve(this.workspaceRoot, relativePath);
@@ -216,6 +217,17 @@ export class AgentTools {
     if (!normalised.startsWith(this.workspaceRoot)) {
       this.logger.warn('AgentTools: path traversal attempt blocked: %s', relativePath);
       return undefined;
+    }
+    // Resolve symlinks so that a symlink inside the workspace pointing outside is caught
+    try {
+      const real = fs.realpathSync(normalised);
+      const realRoot = fs.realpathSync(this.workspaceRoot);
+      if (!real.startsWith(realRoot)) {
+        this.logger.warn('AgentTools: symlink escape blocked: %s → %s', relativePath, real);
+        return undefined;
+      }
+    } catch {
+      // File doesn't exist yet (write_file case) — fall through to the normalised check
     }
     return normalised;
   }

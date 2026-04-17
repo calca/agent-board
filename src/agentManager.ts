@@ -1,6 +1,6 @@
 import * as vscode from 'vscode';
 import { ProviderRegistry } from './providers/ProviderRegistry';
-import { Agent, AgentStatus } from './types';
+import type { Agent, AgentStatus } from './types/Agent';
 import { Logger } from './utils/logger';
 
 export class AgentManager {

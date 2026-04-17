@@ -117,6 +117,11 @@ export class LocalApiServer {
     }
   }
 
+  /** Alias for stop() — allows use as a disposable resource. */
+  dispose(): void {
+    this.stop();
+  }
+
   /**
    * Check if server is running.
    */
@@ -348,7 +353,10 @@ export class LocalApiServer {
       // Use pre-built HTML — inject session token
       let html = fs.readFileSync(htmlPath, 'utf-8');
       html = this.injectSessionToken(html);
-      res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
+      res.writeHead(200, {
+        'Content-Type': 'text/html; charset=utf-8',
+        'Cache-Control': 'no-store',
+      });
       res.end(html);
     } else {
       // Generate minimal HTML (fallback)
@@ -683,9 +691,17 @@ export class LocalApiServer {
   // ── Utilities ───────────────────────────────────────────────────────
 
   private async readJsonBody(req: http.IncomingMessage): Promise<Record<string, unknown> | null> {
+    const MAX_BODY_SIZE = 1_048_576; // 1 MB
     return new Promise((resolve, reject) => {
       let data = '';
-      req.on('data', (chunk) => {
+      let size = 0;
+      req.on('data', (chunk: Buffer | string) => {
+        size += typeof chunk === 'string' ? Buffer.byteLength(chunk) : chunk.length;
+        if (size > MAX_BODY_SIZE) {
+          req.destroy();
+          resolve(null);
+          return;
+        }
         data += chunk.toString();
       });
       req.on('end', () => {

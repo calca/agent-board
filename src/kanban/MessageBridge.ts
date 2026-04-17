@@ -40,11 +40,6 @@ export class MessageBridge {
   // ── private ─────────────────────────────────────────────────────────
 
   private isWebViewMessage(msg: unknown): msg is WebViewToHost {
-    if (typeof msg !== 'object' || msg === null) {
-      return false;
-    }
-    const typed = msg as Record<string, unknown>;
-    const validTypes = ['taskMoved', 'openCopilot', 'refreshRequest', 'ready', 'startSquad', 'toggleAutoSquad', 'launchProvider', 'reopenSession', 'resetSession', 'openWorktree', 'reviewWorktree', 'mergeWorktree', 'agentMerge', 'deleteWorktree', 'createPullRequest', 'hideTask', 'requestFileChanges', 'toggleMobileServer', 'setMobileTunnelEnabled', 'refreshMobileStatus', 'openMobileCompanion', 'saveLocalNotes'];
-    return typeof typed.type === 'string' && validTypes.includes(typed.type);
+    return typeof msg === 'object' && msg !== null && typeof (msg as Record<string, unknown>).type === 'string';
   }
 }
