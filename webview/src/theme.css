@@ -3993,6 +3993,28 @@ body.vscode-high-contrast .md-editor-container {
   padding: 0 !important;
 }
 
+/* Lists inside MDXEditor — restore padding stripped by global reset */
+.md-editor-container ul,
+.md-editor-container ol,
+.md-viewer ul,
+.md-viewer ol,
+.fv-description ul,
+.fv-description ol,
+.fv-local-notes__preview ul,
+.fv-local-notes__preview ol,
+.markdown-body ul,
+.markdown-body ol {
+  padding-left: 1.6em;
+  margin: 0.25em 0;
+}
+.md-editor-container li,
+.md-viewer li,
+.fv-description li,
+.fv-local-notes__preview li,
+.markdown-body li {
+  margin: 0.15em 0;
+}
+
 /* ── Column selector (mobile only) ─────────────────────────────────── */
 
 .kanban-wrapper {
