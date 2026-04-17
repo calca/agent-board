@@ -90,6 +90,7 @@ export type WebViewToHost =
   | { type: 'taskMoved'; taskId: string; providerId: string; toCol: ColumnId; index: number }
   | { type: 'openCopilot'; taskId: string; providerId: string; agentSlug?: string; baseBranch?: string }
   | { type: 'cancelSession'; taskId: string }
+  | { type: 'resetSession'; sessionId: string }
   | { type: 'refreshRequest'; providerId?: string }
   | { type: 'ready' }
   | { type: 'addTask' }

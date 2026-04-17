@@ -691,6 +691,24 @@ export function activate(context: vscode.ExtensionContext): void {
           await sendTasksToPanel(panel, providerRegistry, genAiRegistry, squadManager, sessionStateManager);
           break;
         }
+        case 'resetSession': {
+          // Remove the session entirely
+          sessionStateManager.removeSession(msg.sessionId);
+          // Move the task back to the first column
+          const firstCol = buildColumnOrder(ProjectConfig.getProjectConfig()?.kanban?.intermediateColumns)[0];
+          for (const prov of providerRegistry.getAll()) {
+            const tasks = await prov.getTasks();
+            const found = tasks.find(t => t.id === msg.sessionId);
+            if (found) {
+              await prov.updateTask({ ...found, status: firstCol });
+              break;
+            }
+          }
+          squadManager.failSession(msg.sessionId);
+          panel.updateSquadStatus(squadManager.getStatus());
+          await sendTasksToPanel(panel, providerRegistry, genAiRegistry, squadManager, sessionStateManager);
+          break;
+        }
         case 'reopenSession': {
           // Focus the VS Code chat panel so the user can see the running session
           await vscode.commands.executeCommand('workbench.action.chat.open');
