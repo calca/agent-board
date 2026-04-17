@@ -5,12 +5,18 @@ import { transport } from '../transport';
 import { MarkdownBody } from './MarkdownBody';
 import { MarkdownEditor, type MDXEditorMethods } from './MarkdownEditor';
 
+/** Normalize MDXEditor output: strip invisible chars and consider truly empty. */
+function normalizeMd(raw: string): string {
+  return raw.replace(/[\u200b\u00a0]/g, '').replace(/^\s+$/, '').trim();
+}
+
 export function TaskForm() {
   const { state, dispatch } = useBoard();
   const { showTaskForm, editingTask, columns, formColumns, editableProviderIds, genAiProviders, currentUser } = state;
   const bodyRef = useRef<MDXEditorMethods>(null);
   const notesRef = useRef<MDXEditorMethods>(null);
   const [notesOpen, setNotesOpen] = useState(false);
+  const notesTouched = useRef(false);
 
   const isEdit = !!editingTask;
   const task = editingTask;
@@ -19,6 +25,7 @@ export function TaskForm() {
   // Reset notesOpen when task changes — always start closed
   useEffect(() => {
     setNotesOpen(false);
+    notesTouched.current = false;
   }, [task?.id]);
   const cols = formColumns.length > 0 ? formColumns : columns;
   const remoteProviders = ['github', 'azure-devops', 'beads'];
@@ -26,9 +33,11 @@ export function TaskForm() {
 
   const handleClose = useCallback(() => {
     // Flush any pending local notes before closing
-    if (task && isRemote && notesOpen && notesRef.current) {
-      const md = notesRef.current.getMarkdown().trim();
-      if (md) { postMessage({ type: 'saveLocalNotes', taskId: task.id, providerId: task.providerId, notes: md }); }
+    if (task && isRemote && notesTouched.current) {
+      const md = notesOpen && notesRef.current
+        ? normalizeMd(notesRef.current.getMarkdown())
+        : '';
+      postMessage({ type: 'saveLocalNotes', taskId: task.id, providerId: task.providerId, notes: md });
     }
     dispatch({ type: 'CLOSE_TASK_FORM' });
   }, [task, isRemote, notesOpen, dispatch]);
@@ -49,9 +58,11 @@ export function TaskForm() {
     const form = e.currentTarget;
 
     // Flush any pending local notes before closing
-    if (task && isRemote && notesOpen && notesRef.current) {
-      const md = notesRef.current.getMarkdown().trim();
-      if (md) { postMessage({ type: 'saveLocalNotes', taskId: task.id, providerId: task.providerId, notes: md }); }
+    if (task && isRemote && notesTouched.current) {
+      const md = notesOpen && notesRef.current
+        ? normalizeMd(notesRef.current.getMarkdown())
+        : '';
+      postMessage({ type: 'saveLocalNotes', taskId: task.id, providerId: task.providerId, notes: md });
     }
 
     const titleEl = form.querySelector('#tf-title') as HTMLInputElement | null;
@@ -116,7 +127,13 @@ export function TaskForm() {
               <div className="task-form__section task-form__section--grow task-form__local-notes-inline">
                 <div className="task-form__local-notes-header">
                   <label className="task-form__label"><svg className="task-form__notes-icon" width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M4 0a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V4.5L9.5 0H4Zm5 1v3.5A1.5 1.5 0 0 0 10.5 6H14v8a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1h5ZM5 8.5a.5.5 0 0 1 .5-.5h5a.5.5 0 0 1 0 1h-5a.5.5 0 0 1-.5-.5Zm.5 1.5a.5.5 0 0 0 0 1h3a.5.5 0 0 0 0-1h-3Z"/></svg> Technical Notes</label>
-                  <button type="button" className="task-form__local-notes-close" onClick={() => setNotesOpen(false)} title="Close technical notes">−</button>
+                  <button type="button" className="task-form__local-notes-close" onClick={() => {
+                    if (task && notesRef.current) {
+                      const md = normalizeMd(notesRef.current.getMarkdown());
+                      postMessage({ type: 'saveLocalNotes', taskId: task.id, providerId: task.providerId, notes: md });
+                    }
+                    setNotesOpen(false);
+                  }} title="Close technical notes">−</button>
                 </div>
                 <div className="task-form__desc-group">
                   <MarkdownEditor
@@ -129,7 +146,7 @@ export function TaskForm() {
               </div>
             ) : (
               <div className="task-form__section task-form__local-notes">
-                <button type="button" className="task-form__local-notes-cta" onClick={() => setNotesOpen(true)}>
+                <button type="button" className="task-form__local-notes-cta" onClick={() => { notesTouched.current = true; setNotesOpen(true); }}>
                   {savedNotes
                     ? <><svg className="task-form__notes-icon" width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M4 0a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V4.5L9.5 0H4Zm5 1v3.5A1.5 1.5 0 0 0 10.5 6H14v8a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1h5ZM5 8.5a.5.5 0 0 1 .5-.5h5a.5.5 0 0 1 0 1h-5a.5.5 0 0 1-.5-.5Zm.5 1.5a.5.5 0 0 0 0 1h3a.5.5 0 0 0 0-1h-3Z"/></svg> Technical Notes</>
                     : <><svg className="task-form__notes-icon" width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1"><path d="M4 0a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V4.5L9.5 0H4Zm5 1v3.5A1.5 1.5 0 0 0 10.5 6H14v8a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1h5ZM5 8.5a.5.5 0 0 1 .5-.5h5a.5.5 0 0 1 0 1h-5a.5.5 0 0 1-.5-.5Zm.5 1.5a.5.5 0 0 0 0 1h3a.5.5 0 0 0 0-1h-3Z"/></svg> + Technical Notes</>}

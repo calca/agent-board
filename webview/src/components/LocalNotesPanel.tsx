@@ -19,7 +19,8 @@ export function LocalNotesPanel({ taskId, providerId, markdown, onClose }: Local
   const editorRef = useRef<MDXEditorMethods>(null);
 
   const handleSave = useCallback(() => {
-    const md = editorRef.current?.getMarkdown().trim() ?? '';
+    const raw = editorRef.current?.getMarkdown() ?? '';
+    const md = raw.replace(/[\u200b\u00a0]/g, '').replace(/^\s+$/, '').trim();
     postMessage({ type: 'saveLocalNotes', taskId, providerId, notes: md });
     onClose();
   }, [taskId, providerId, onClose]);
