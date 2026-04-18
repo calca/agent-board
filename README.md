@@ -24,7 +24,7 @@ Modern AI coding assistants are powerful — but managing **multiple tasks acros
 - **One board to rule them all.** Drag tasks across columns. Each card can launch an autonomous AI session with one click.
 - **Parallel agent squads.** Spin up 10+ simultaneous Copilot sessions — each on its own git worktree, each streaming live output back to the board.
 - **From issue to PR in zero clicks.** Auto-squad picks tasks, launches agents, tracks diffs, and opens pull requests — all while you review the last batch.
-- **Works with your stack.** GitHub Issues, Azure DevOps, local JSON, Beads CLI, or your own provider. Copilot, Ollama, Mistral, or your own GenAI backend.
+- **Works with your stack.** GitHub Issues, Azure DevOps, local JSON, Beads CLI, or your own provider. Copilot, LM API, or your own GenAI backend.
 - **MCP-native.** External agents can list, create, update, and delete tasks via the built-in Model Context Protocol server.
 
 ---
@@ -57,7 +57,7 @@ Stdio-based Model Context Protocol server for full CRUD: `list_tasks`, `get_task
 
 ### Extensible Providers
 
-GitHub Issues (via `gh` CLI), Azure DevOps, Markdown files, local JSON, Beads CLI — or register your own via the extension API. GenAI providers: VS Code Chat, Cloud (vscode.lm), Copilot CLI, LM API with tool-calling, Ollama, Mistral — or register your own.
+GitHub Issues (via `gh` CLI), Azure DevOps, Markdown files, local JSON, Beads CLI — or register your own via the extension API. GenAI providers: VS Code Chat, Cloud (vscode.lm), Copilot CLI, LM API with tool-calling — or register your own.
 
 ---
 
@@ -113,8 +113,6 @@ Create a `.agent-board/config.json` file in the workspace root to override any V
   },
   "genAiProviders": {
     "copilot-cli": { "yolo": true, "fleet": true },
-    "ollama": { "enabled": true, "model": "codellama" },
-    "mistral": { "enabled": true, "model": "mistral-small-latest" }
   },
   "kanban": {
     "columns": ["backlog", "todo", "inprogress", "review", "done"]
@@ -319,31 +317,52 @@ The Copilot integration uses an extensible provider architecture (`IGenAiProvide
 }
 ```
 
-### Project Providers
+### Custom GenAI Providers
 
-Enabled per project in `.agent-board/config.json` under `genAiProviders`:
+Any extension can register its own GenAI provider at runtime via the extension API.
+A provider must implement the `IGenAiProvider` interface (see below) and register itself through the exported `genAiRegistry`.
 
-| Provider | Description |
-| ---------- | ------------- |
-| **Ollama** (`ollama`) | Local model (default: `llama3`, endpoint: `localhost:11434`) |
-| **Mistral** (`mistral`) | Mistral API (default: `mistral-small-latest`, key via `MISTRAL_API_KEY`) |
+```typescript
+import * as vscode from 'vscode';
+
+const agentBoard = vscode.extensions.getExtension('agent-board');
+const genAiRegistry = agentBoard?.exports?.genAiRegistry;
+
+genAiRegistry?.register({
+  id: 'my-provider',
+  displayName: 'My Provider',
+  icon: 'hubot',
+  scope: 'project',            // 'global' | 'project'
+  supportsWorktree: true,       // set to true if the provider can work inside a git worktree
+  async isAvailable() { return true; },
+  async run(prompt, task, worktreePath) {
+    // call your LLM here
+  },
+  dispose() {},
+});
+```
+
+Providers can optionally:
+
+| Field / Method | Purpose |
+| --- | --- |
+| `onDidStream` | `vscode.Event<string>` — stream chunks to the live session panel |
+| `onDidToolCall` | `vscode.Event<string>` — show tool-call status in the UI |
+| `sendFollowUp(text)` | Multi-turn conversations (e.g. chat-style providers) |
+| `cancel()` | Cancel a running request |
+| `disableAutoAdvance` | Prevent auto-moving the task to done/failed after `run()` |
+
+Per-provider settings can be stored in `.agent-board/config.json` under `genAiProviders.<id>`:
 
 ```jsonc
 {
   "genAiProviders": {
-    "ollama": { "enabled": true, "model": "codellama", "endpoint": "http://localhost:11434/api/generate" },
-    "mistral": { "enabled": true, "model": "mistral-small-latest" }
+    "my-provider": { "enabled": true, "model": "my-model", "endpoint": "http://localhost:8080" }
   }
 }
 ```
 
-### Custom GenAI Providers
-
-```typescript
-const agentBoard = vscode.extensions.getExtension('agent-board');
-const genAiRegistry = agentBoard?.exports?.genAiRegistry;
-genAiRegistry?.register(myCustomGenAiProvider);
-```
+Each entry supports `enabled`, `model`, `endpoint`, `yolo`, and `fleet` — all optional.
 
 ## Agent Tools
 

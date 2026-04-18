@@ -106,8 +106,8 @@ export interface ProjectConfigData {
    * Per-provider GenAI configuration.
    *
    * Global providers (chat, cloud, copilot-cli) have VS Code settings
-   * and can be overridden here.  Project providers (ollama, mistral) are
-   * enabled and configured **only** here.
+   * and can be overridden here.  Project providers are enabled and
+   * configured **only** here.
    */
   genAiProviders?: Record<string, GenAiProviderConfigEntry>;
   kanban?: {

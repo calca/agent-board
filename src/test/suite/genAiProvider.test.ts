@@ -58,7 +58,7 @@ suite('GenAiProviderRegistry', () => {
   test('getByScope filters by scope', () => {
     const reg = new GenAiProviderRegistry();
     reg.register(makeGenAiProvider('chat', 'Chat', 'global'));
-    reg.register(makeGenAiProvider('ollama', 'Ollama', 'project'));
+    reg.register(makeGenAiProvider('custom', 'Custom', 'project'));
     reg.register(makeGenAiProvider('cloud', 'Cloud', 'global'));
 
     const globals = reg.getByScope('global');
@@ -67,7 +67,7 @@ suite('GenAiProviderRegistry', () => {
 
     const projects = reg.getByScope('project');
     assert.strictEqual(projects.length, 1);
-    assert.strictEqual(projects[0].id, 'ollama');
+    assert.strictEqual(projects[0].id, 'custom');
   });
 
   test('getAvailable returns only available providers', async () => {
@@ -129,7 +129,7 @@ suite('IGenAiProvider interface shape', () => {
   });
 
   test('project scope providers have scope "project"', () => {
-    const p = makeGenAiProvider('ollama', 'Ollama', 'project');
+    const p = makeGenAiProvider('custom', 'Custom', 'project');
     assert.strictEqual(p.scope, 'project');
   });
 

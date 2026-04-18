@@ -166,7 +166,7 @@
     },
     "genAiProviders": {
       "type": "object",
-      "description": "Per-provider GenAI configuration. Global providers (chat, cloud, copilot-cli) can be overridden here. Project providers (ollama, mistral) are enabled and configured only here.",
+      "description": "Per-provider GenAI configuration. Global providers (chat, cloud, copilot-cli) can be overridden here. Project providers are enabled and configured only here.",
       "additionalProperties": {
         "type": "object",
         "properties": {

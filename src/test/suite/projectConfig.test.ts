@@ -115,8 +115,8 @@ suite('ProjectConfigData (full shape)', () => {
       beadsProvider: { executable: '/usr/local/bin/beads' },
       worktree: { enabled: true },
       genAiProviders: {
-        ollama: { enabled: true, model: 'llama3', endpoint: 'http://localhost:11434/api/generate' },
-        mistral: { enabled: true, model: 'mistral-small-latest' },
+        'my-provider': { enabled: true, model: 'my-model', endpoint: 'http://localhost:8080/api/generate' },
+        'another-provider': { enabled: true, model: 'another-model' },
       },
       kanban: { intermediateColumns: ['backlog', 'doing'] },
       logLevel: 'DEBUG',
@@ -126,10 +126,10 @@ suite('ProjectConfigData (full shape)', () => {
     assert.strictEqual(cfg.jsonProvider?.path, '.agent-board/tasks');
     assert.strictEqual(cfg.beadsProvider?.executable, '/usr/local/bin/beads');
     assert.strictEqual(cfg.worktree?.enabled, true);
-    assert.strictEqual(cfg.genAiProviders?.ollama?.enabled, true);
-    assert.strictEqual(cfg.genAiProviders?.ollama?.model, 'llama3');
-    assert.strictEqual(cfg.genAiProviders?.mistral?.enabled, true);
-    assert.strictEqual(cfg.genAiProviders?.mistral?.model, 'mistral-small-latest');
+    assert.strictEqual(cfg.genAiProviders?.['my-provider']?.enabled, true);
+    assert.strictEqual(cfg.genAiProviders?.['my-provider']?.model, 'my-model');
+    assert.strictEqual(cfg.genAiProviders?.['another-provider']?.enabled, true);
+    assert.strictEqual(cfg.genAiProviders?.['another-provider']?.model, 'another-model');
     assert.deepStrictEqual(cfg.kanban?.intermediateColumns, ['backlog', 'doing']);
     assert.strictEqual(cfg.logLevel, 'DEBUG');
   });
@@ -146,14 +146,14 @@ suite('ProjectConfigData (full shape)', () => {
   test('genAiProviders entries are independently optional', () => {
     const cfg: ProjectConfigData = {
       genAiProviders: {
-        ollama: { enabled: true },
-        mistral: { model: 'mistral-tiny' },
+        'my-provider': { enabled: true },
+        'another-provider': { model: 'small' },
       },
     };
-    assert.strictEqual(cfg.genAiProviders?.ollama?.enabled, true);
-    assert.strictEqual(cfg.genAiProviders?.ollama?.model, undefined);
-    assert.strictEqual(cfg.genAiProviders?.mistral?.enabled, undefined);
-    assert.strictEqual(cfg.genAiProviders?.mistral?.model, 'mistral-tiny');
+    assert.strictEqual(cfg.genAiProviders?.['my-provider']?.enabled, true);
+    assert.strictEqual(cfg.genAiProviders?.['my-provider']?.model, undefined);
+    assert.strictEqual(cfg.genAiProviders?.['another-provider']?.enabled, undefined);
+    assert.strictEqual(cfg.genAiProviders?.['another-provider']?.model, 'small');
   });
 
   test('genAiProviders supports yolo and fleet flags', () => {

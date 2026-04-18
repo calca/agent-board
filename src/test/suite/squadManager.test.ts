@@ -136,7 +136,7 @@ suite('CopilotSessionInfo shape', () => {
   test('failed session', () => {
     const session = {
       state: 'failed' as const,
-      providerId: 'ollama',
+      providerId: 'custom',
       finishedAt: '2026-01-01T00:01:00Z',
     };
     assert.strictEqual(session.state, 'failed');

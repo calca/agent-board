@@ -6,7 +6,7 @@ import { CopilotSessionInfo, KanbanTask } from '../types/KanbanTask';
  *
  * - `global` — integrates with VS Code APIs (chat, cloud, copilot-cli).
  *   Enabled by default via VS Code settings, overridable per project.
- * - `project` — per-project providers (e.g. Ollama, Mistral CLI).
+ * - `project` — per-project providers registered via the extension API.
  *   Enabled and configured only in `.agent-board/config.json`.
  */
 export type GenAiProviderScope = 'global' | 'project';
@@ -32,7 +32,7 @@ export interface GenAiProviderConfig {
  * `CopilotLauncher` / `ModelSelector` — never imported directly.
  */
 export interface IGenAiProvider {
-  /** Unique identifier, e.g. `'chat'`, `'cloud'`, `'ollama'`. */
+  /** Unique identifier, e.g. `'chat'`, `'cloud'`, `'my-provider'`. */
   readonly id: string;
   /** Human-readable name shown in the Quick Pick. */
   readonly displayName: string;
