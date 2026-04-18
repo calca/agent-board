@@ -196,9 +196,14 @@ export class CopilotLauncher {
       void dw.refresh();
     }
 
-    this.sessionStateManager?.markRunning(taskId);
     this.activeProviders.set(taskId, provider);
     const autoAdvance = !provider.disableAutoAdvance;
+
+    if (autoAdvance) {
+      this.sessionStateManager?.markRunning(taskId);
+    } else {
+      this.sessionStateManager?.markManual(taskId);
+    }
 
     // ── CLI session resume ────────────────────────────────────────────
     // If a previous CLI session ID is stored, tell the provider to resume it.
@@ -241,15 +246,15 @@ export class CopilotLauncher {
       }
 
       // ── Update session state ──────────────────────────────────────
-      if (sessionSucceeded) {
-        this.sessionStateManager?.markCompleted(taskId);
-        // Move task to review column unless the provider disables auto-advance
-        if (autoAdvance) {
+      if (autoAdvance) {
+        if (sessionSucceeded) {
+          this.sessionStateManager?.markCompleted(taskId);
           await this.moveTaskToReview(task);
+        } else {
+          this.sessionStateManager?.markError(taskId, sessionError);
         }
-      } else {
-        this.sessionStateManager?.markError(taskId, sessionError);
       }
+      // Manual sessions keep their 'manual' state — no transition.
 
 
       // Worktree cleanup is disabled by default: the worktree is kept so the

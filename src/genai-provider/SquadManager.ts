@@ -216,10 +216,10 @@ export class SquadManager {
     const provider = this.genAiRegistry?.get(providerId);
     const autoAdvance = !provider?.disableAutoAdvance;
 
-    // Transition to 'running' immediately
+    // Transition to the appropriate state immediately
     const session = this.activeSessions.get(taskId);
     if (session) {
-      session.state = 'running';
+      session.state = autoAdvance ? 'running' : 'manual';
       this.fireStatusChange();
     }
 
@@ -227,16 +227,18 @@ export class SquadManager {
       .then(async () => {
         if (autoAdvance) {
           await this.moveTask(task, cfg.doneColumn);
+          this.completeSession(taskId);
         }
-        this.completeSession(taskId);
-        this.logger.info('SquadManager: session %s for "%s"', autoAdvance ? 'completed' : 'opened', task.title);
+        // Manual sessions keep their 'manual' state — no transition.
+        this.logger.info('SquadManager: session %s for "%s"', autoAdvance ? 'completed' : 'opened (manual)', task.title);
       })
       .catch(async () => {
         if (autoAdvance) {
           await this.moveTask(task, cfg.sourceColumn);
+          this.failSession(taskId);
         }
-        this.failSession(taskId);
-        this.logger.error('SquadManager: session failed for "%s"', task.title);
+        // Manual sessions keep their 'manual' state — no transition.
+        this.logger.error('SquadManager: session %s for "%s"', autoAdvance ? 'failed' : 'error (manual)', task.title);
       });
   }
 
@@ -372,7 +374,7 @@ export class SquadManager {
       if (cfg.notifyTaskActive) {
         vscode.window.showInformationMessage(`Task "${task.title}" moved to ${cfg.activeColumn}`);
       }
-      session.state = 'running';
+      session.state = autoAdvance ? 'running' : 'manual';
       this.fireStatusChange();
 
       const launchPromise = this.copilotLauncher.launch(task.id, providerId, agentSlug, undefined, baseBranch);
@@ -388,13 +390,13 @@ export class SquadManager {
             if (cfg.notifyTaskDone) {
               vscode.window.showInformationMessage(`Task "${task.title}" moved to ${cfg.doneColumn}`);
             }
+            this.completeSession(task.id);
           }
-          this.completeSession(task.id);
         })
         .catch(async () => {
-          vscode.window.showErrorMessage(`Task "${task.title}" failed`);
-          this.failSession(task.id);
           if (autoAdvance) {
+            vscode.window.showErrorMessage(`Task "${task.title}" failed`);
+            this.failSession(task.id);
             const attempt = this.retryCount.get(task.id) ?? 0;
             if (canRetry(attempt, cfg.maxRetries)) {
               this.retryCount.set(task.id, attempt + 1);
@@ -445,8 +447,8 @@ export class SquadManager {
     }
 
     try {
-      // Transition to 'running' once the provider actually starts
-      session.state = 'running';
+      // Transition to 'running' or 'manual' once the provider starts
+      session.state = autoAdvance ? 'running' : 'manual';
       this.fireStatusChange();
 
       const launchPromise = this.copilotLauncher.launch(task.id, providerId, agentSlug, undefined, baseBranch);
@@ -484,7 +486,9 @@ export class SquadManager {
         }
       }
 
-      this.completeSession(task.id);
+      if (autoAdvance) {
+        this.completeSession(task.id);
+      }
 
       // Fire auto-PR event when configured
       this.onSessionCompletedEmitter.fire({ taskId: task.id, autoPR: cfg.autoPR });
@@ -493,9 +497,10 @@ export class SquadManager {
       vscode.window.showErrorMessage(
         `Task "${task.title}" failed`,
       );
-      this.failSession(task.id);
 
       if (autoAdvance) {
+        this.failSession(task.id);
+
         // Auto-retry when configured
         const attempt = this.retryCount.get(task.id) ?? 0;
         if (canRetry(attempt, cfg.maxRetries)) {

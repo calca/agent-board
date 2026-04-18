@@ -4,7 +4,7 @@ import { CopilotSessionInfo, CopilotSessionState } from '../types/KanbanTask';
  * Extended session state that includes `starting` and `paused`
  * beyond the existing `CopilotSessionState`.
  */
-export type SessionState = 'idle' | 'starting' | 'running' | 'paused' | 'completed' | 'error' | 'interrupted';
+export type SessionState = 'idle' | 'starting' | 'running' | 'paused' | 'completed' | 'error' | 'interrupted' | 'manual';
 
 /** Persisted session record stored in `workspaceState`. */
 export interface PersistedSession {
@@ -37,6 +37,7 @@ export function badgeColor(state: SessionState): string {
     case 'completed': return 'charts.blue';
     case 'error': return 'charts.red';
     case 'interrupted': return 'charts.orange';
+    case 'manual': return 'charts.green';
   }
 }
 
@@ -50,6 +51,7 @@ export function badgeIcon(state: SessionState): string {
     case 'completed': return 'check';
     case 'error': return 'error';
     case 'interrupted': return 'warning';
+    case 'manual': return 'person';
   }
 }
 
@@ -64,6 +66,7 @@ export function mapStateToCopilot(state: SessionState): CopilotSessionState {
     case 'completed': return 'completed';
     case 'error': return 'error';
     case 'interrupted': return 'interrupted';
+    case 'manual': return 'manual';
     default: return 'completed'; // legacy 'done' or unknown → completed
   }
 }
@@ -83,7 +86,7 @@ export function toCopilotSessionInfo(session: PersistedSession): CopilotSessionI
 
 /** Return true if the state means "active" (starting / running / paused). */
 export function isActive(state: SessionState): boolean {
-  return state === 'starting' || state === 'running' || state === 'paused';
+  return state === 'starting' || state === 'running' || state === 'paused' || state === 'manual';
 }
 
 /**

@@ -89,6 +89,23 @@ export class SessionStateManager {
     this.fireChange(taskId, 'running', prev);
   }
 
+  /**
+   * Transition a session to `manual`.
+   *
+   * Used for providers whose `disableAutoAdvance` is `true` — the task
+   * is in-progress but all further state changes are user-driven.
+   * No timeout is armed because there is nothing to time-out.
+   */
+  markManual(taskId: string): void {
+    const session = this.sessions.get(taskId);
+    if (!session) { return; }
+    const prev = session.state;
+    session.state = 'manual';
+    this.clearTimer(taskId);
+    this.persist();
+    this.fireChange(taskId, 'manual', prev);
+  }
+
   /** Pause a running session (e.g. user requested pause). */
   markPaused(taskId: string): void {
     const session = this.sessions.get(taskId);
