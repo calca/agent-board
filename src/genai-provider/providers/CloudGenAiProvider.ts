@@ -17,6 +17,8 @@ export class CloudGenAiProvider implements IGenAiProvider {
   readonly description = 'Autopilot via VS Code agent chat (auto-submits)';
   readonly icon = 'cloud';
   readonly scope: GenAiProviderScope = 'global';
+  readonly requiresGit = true;
+  readonly requiresGitHub = true;
 
   async isAvailable(): Promise<boolean> {
     const commands = await vscode.commands.getCommands(true);

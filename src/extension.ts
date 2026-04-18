@@ -222,9 +222,9 @@ export function activate(context: vscode.ExtensionContext): void {
     const isGH = cachedIsGitHub;
     const providers = genAiRegistry.getAll().map(p => {
       const entry: { id: string; displayName: string; disabled?: boolean } = { id: p.id, displayName: p.displayName };
-      if (!isGit && (p.id === 'github-copilot' || p.id === 'github-cloud' || p.id === 'vscode-api')) {
+      if (!isGit && p.requiresGit) {
         entry.disabled = true;
-      } else if (!isGH && p.id === 'github-cloud') {
+      } else if (!isGH && p.requiresGitHub) {
         entry.disabled = true;
       }
       return entry;
@@ -783,9 +783,8 @@ async function pickGenAiProvider(
   const items = registry.getAll()
     .filter(p => {
       if (p.canSquad === false) { return false; }
-      const noGitRequired = p.id === 'github-copilot' || p.id === 'github-cloud' || p.id === 'vscode-api';
-      if (!isGit && noGitRequired) { return false; }
-      if (!isGitHub && p.id === 'github-cloud') { return false; }
+      if (!isGit && p.requiresGit) { return false; }
+      if (!isGitHub && p.requiresGitHub) { return false; }
       return true;
     })
     .map(p => ({

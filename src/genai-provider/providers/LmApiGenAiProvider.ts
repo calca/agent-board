@@ -27,6 +27,7 @@ export class LmApiGenAiProvider implements IGenAiProvider {
   readonly icon = 'copilot';
   readonly scope: GenAiProviderScope = 'global';
   readonly supportsWorktree = true;
+  readonly requiresGit = true;
 
   private readonly logger = Logger.getInstance();
   private yolo: boolean;

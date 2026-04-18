@@ -76,8 +76,7 @@ export async function buildGenAiOptions(registry: GenAiProviderRegistry): Promis
   const filtered = registry.getAll()
     .filter(p => {
       const entry = genAiCfg[p.id];
-      // 'vscode-chat' provider requires explicit opt-in (like project-scoped providers)
-      if (p.id === 'vscode-chat') { return entry?.enabled === true; }
+      if (p.optIn) { return entry?.enabled === true; }
       if (p.scope === 'global') { return entry?.enabled !== false; }
       return entry?.enabled === true;
     });
@@ -95,10 +94,10 @@ export async function buildGenAiOptions(registry: GenAiProviderRegistry): Promis
       if (!availability[i]) {
         option.disabled = true;
         option.disabledReason = 'Not available in this environment';
-      } else if (!isGit && (p.id === 'github-copilot' || p.id === 'github-cloud' || p.id === 'vscode-api')) {
+      } else if (!isGit && p.requiresGit) {
         option.disabled = true;
         option.disabledReason = 'Requires a git repository';
-      } else if (!isGitHub && p.id === 'github-cloud') {
+      } else if (!isGitHub && p.requiresGitHub) {
         option.disabled = true;
         option.disabledReason = 'Requires a GitHub repository';
       }

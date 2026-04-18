@@ -100,6 +100,25 @@ export interface IGenAiProvider {
   readonly canSquad?: boolean;
 
   /**
+   * When `true`, the provider is disabled if the workspace is not
+   * inside a git repository.  Defaults to `false` when not set.
+   */
+  readonly requiresGit?: boolean;
+
+  /**
+   * When `true`, the provider is disabled if the workspace is not
+   * inside a GitHub-hosted repository.  Defaults to `false` when not set.
+   */
+  readonly requiresGitHub?: boolean;
+
+  /**
+   * When `true`, the provider requires an explicit `enabled: true` entry
+   * in the project config to appear in the provider list — just like
+   * project-scoped providers.  Defaults to `false` when not set.
+   */
+  readonly optIn?: boolean;
+
+  /**
    * Optional streaming event. When present, `CopilotLauncher` automatically
    * subscribes and forwards chunks to the `StreamController` / KanbanPanel.
    */
