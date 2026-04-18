@@ -28,7 +28,6 @@ export class ChatGenAiProvider implements IGenAiProvider {
    */
   readonly disableAutoAdvance = true;
   readonly canSquad = false;
-  readonly optIn = true;
 
   private agentTools: AgentTools | undefined;
 

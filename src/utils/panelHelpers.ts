@@ -76,7 +76,6 @@ export async function buildGenAiOptions(registry: GenAiProviderRegistry): Promis
   const filtered = registry.getAll()
     .filter(p => {
       const entry = genAiCfg[p.id];
-      if (p.optIn) { return entry?.enabled === true; }
       if (p.scope === 'global') { return entry?.enabled !== false; }
       return entry?.enabled === true;
     });

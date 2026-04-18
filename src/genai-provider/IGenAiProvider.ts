@@ -112,13 +112,6 @@ export interface IGenAiProvider {
   readonly requiresGitHub?: boolean;
 
   /**
-   * When `true`, the provider requires an explicit `enabled: true` entry
-   * in the project config to appear in the provider list — just like
-   * project-scoped providers.  Defaults to `false` when not set.
-   */
-  readonly optIn?: boolean;
-
-  /**
    * Optional streaming event. When present, `CopilotLauncher` automatically
    * subscribes and forwards chunks to the `StreamController` / KanbanPanel.
    */

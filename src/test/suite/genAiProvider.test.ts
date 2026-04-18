@@ -167,11 +167,6 @@ suite('IGenAiProvider interface shape', () => {
     assert.strictEqual(p.requiresGitHub, undefined);
   });
 
-  test('optIn defaults to undefined when not set', () => {
-    const p = makeGenAiProvider('test', 'Test');
-    assert.strictEqual(p.optIn, undefined);
-  });
-
   test('requiresGit can be set to true', () => {
     const p: IGenAiProvider = { ...makeGenAiProvider('cli', 'CLI'), requiresGit: true };
     assert.strictEqual(p.requiresGit, true);
@@ -180,11 +175,6 @@ suite('IGenAiProvider interface shape', () => {
   test('requiresGitHub can be set to true', () => {
     const p: IGenAiProvider = { ...makeGenAiProvider('cloud', 'Cloud'), requiresGitHub: true };
     assert.strictEqual(p.requiresGitHub, true);
-  });
-
-  test('optIn can be set to true', () => {
-    const p: IGenAiProvider = { ...makeGenAiProvider('chat', 'Chat'), optIn: true };
-    assert.strictEqual(p.optIn, true);
   });
 
   test('canSquad defaults to undefined when not set', () => {
