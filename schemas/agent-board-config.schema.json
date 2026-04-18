@@ -191,6 +191,11 @@
             "type": "boolean",
             "default": false,
             "description": "Enable /fleet mode — optimise prompt for parallel fleet execution (copilot-cli only)."
+          },
+          "silent": {
+            "type": "boolean",
+            "default": true,
+            "description": "Enable --silent mode — suppress interactive prompts and progress output (copilot-cli only)."
           }
         },
         "additionalProperties": false

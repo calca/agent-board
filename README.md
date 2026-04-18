@@ -167,6 +167,7 @@ All settings can also be configured globally through **File > Preferences > Sett
 | `agentBoard.worktree.enabled` | `true` | Create an isolated git worktree for providers that support it |
 | `agentBoard.copilotCli.yolo` | `true` | Enable `/yolo` mode — auto-approve all changes without confirmation |
 | `agentBoard.copilotCli.fleet` | `false` | Enable `/fleet` mode — optimise prompt for parallel fleet execution |
+| `agentBoard.copilotCli.silent` | `true` | Enable `--silent` mode — suppress interactive prompts and progress output |
 | `agentBoard.kanban.intermediateColumns` | `["inprogress","review"]` | Intermediate column IDs between todo and done |
 | `agentBoard.copilotModel` | `""` | Preferred Copilot model family (e.g. `gpt-4o`). Empty = default |
 | `agentBoard.contextDepth` | `"standard"` | Context depth: `minimal`, `standard`, `full` (file tree + git) |
@@ -308,11 +309,12 @@ The Copilot integration uses an extensible provider architecture (`IGenAiProvide
 | ------ | ----------- | --------- | ------------- |
 | `/yolo` | `genAiProviders.copilot-cli.yolo` | `true` | Auto-approve all changes — the model applies changes autonomously |
 | `/fleet` | `genAiProviders.copilot-cli.fleet` | `false` | Optimise for parallel execution — focus on assigned task, avoid conflicts |
+| `--silent` | `genAiProviders.copilot-cli.silent` | `true` | Suppress interactive prompts and progress output |
 
 ```jsonc
 {
   "genAiProviders": {
-    "copilot-cli": { "yolo": true, "fleet": true }
+    "copilot-cli": { "yolo": true, "fleet": true, "silent": true }
   }
 }
 ```

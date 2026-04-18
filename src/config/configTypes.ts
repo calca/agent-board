@@ -10,6 +10,8 @@ export interface GenAiProviderConfigEntry {
   yolo?: boolean;
   /** Enable /fleet mode — optimise prompt for parallel fleet execution. */
   fleet?: boolean;
+  /** Enable --silent mode — suppress interactive prompts and progress output. */
+  silent?: boolean;
 }
 
 /**

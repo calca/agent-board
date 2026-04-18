@@ -156,17 +156,18 @@ suite('ProjectConfigData (full shape)', () => {
     assert.strictEqual(cfg.genAiProviders?.['another-provider']?.model, 'small');
   });
 
-  test('genAiProviders supports yolo and fleet flags', () => {
+  test('genAiProviders supports yolo, fleet and silent flags', () => {
     const cfg: ProjectConfigData = {
       genAiProviders: {
-        'copilot-cli': { yolo: true, fleet: true },
+        'copilot-cli': { yolo: true, fleet: true, silent: true },
       },
     };
     assert.strictEqual(cfg.genAiProviders?.['copilot-cli']?.yolo, true);
     assert.strictEqual(cfg.genAiProviders?.['copilot-cli']?.fleet, true);
+    assert.strictEqual(cfg.genAiProviders?.['copilot-cli']?.silent, true);
   });
 
-  test('genAiProviders yolo and fleet default to undefined', () => {
+  test('genAiProviders yolo, fleet and silent default to undefined', () => {
     const cfg: ProjectConfigData = {
       genAiProviders: {
         'copilot-cli': { enabled: true },
@@ -174,6 +175,7 @@ suite('ProjectConfigData (full shape)', () => {
     };
     assert.strictEqual(cfg.genAiProviders?.['copilot-cli']?.yolo, undefined);
     assert.strictEqual(cfg.genAiProviders?.['copilot-cli']?.fleet, undefined);
+    assert.strictEqual(cfg.genAiProviders?.['copilot-cli']?.silent, undefined);
   });
 
   test('worktree can be explicitly enabled', () => {
