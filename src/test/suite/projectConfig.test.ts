@@ -127,9 +127,9 @@ suite('ProjectConfigData (full shape)', () => {
     assert.strictEqual(cfg.beadsProvider?.executable, '/usr/local/bin/beads');
     assert.strictEqual(cfg.worktree?.enabled, true);
     assert.strictEqual(cfg.genAiProviders?.['my-provider']?.enabled, true);
-    assert.strictEqual(cfg.genAiProviders?.['my-provider']?.model, 'my-model');
+    assert.strictEqual(cfg.genAiProviders?.['my-provider']?.['model'], 'my-model');
     assert.strictEqual(cfg.genAiProviders?.['another-provider']?.enabled, true);
-    assert.strictEqual(cfg.genAiProviders?.['another-provider']?.model, 'another-model');
+    assert.strictEqual(cfg.genAiProviders?.['another-provider']?.['model'], 'another-model');
     assert.deepStrictEqual(cfg.kanban?.intermediateColumns, ['backlog', 'doing']);
     assert.strictEqual(cfg.logLevel, 'DEBUG');
   });
@@ -151,9 +151,9 @@ suite('ProjectConfigData (full shape)', () => {
       },
     };
     assert.strictEqual(cfg.genAiProviders?.['my-provider']?.enabled, true);
-    assert.strictEqual(cfg.genAiProviders?.['my-provider']?.model, undefined);
+    assert.strictEqual(cfg.genAiProviders?.['my-provider']?.['model'], undefined);
     assert.strictEqual(cfg.genAiProviders?.['another-provider']?.enabled, undefined);
-    assert.strictEqual(cfg.genAiProviders?.['another-provider']?.model, 'small');
+    assert.strictEqual(cfg.genAiProviders?.['another-provider']?.['model'], 'small');
   });
 
   test('genAiProviders supports yolo, fleet and silent flags', () => {
@@ -162,9 +162,9 @@ suite('ProjectConfigData (full shape)', () => {
         'copilot-cli': { yolo: true, fleet: true, silent: true },
       },
     };
-    assert.strictEqual(cfg.genAiProviders?.['copilot-cli']?.yolo, true);
-    assert.strictEqual(cfg.genAiProviders?.['copilot-cli']?.fleet, true);
-    assert.strictEqual(cfg.genAiProviders?.['copilot-cli']?.silent, true);
+    assert.strictEqual(cfg.genAiProviders?.['copilot-cli']?.['yolo'], true);
+    assert.strictEqual(cfg.genAiProviders?.['copilot-cli']?.['fleet'], true);
+    assert.strictEqual(cfg.genAiProviders?.['copilot-cli']?.['silent'], true);
   });
 
   test('genAiProviders yolo, fleet and silent default to undefined', () => {
@@ -173,9 +173,9 @@ suite('ProjectConfigData (full shape)', () => {
         'copilot-cli': { enabled: true },
       },
     };
-    assert.strictEqual(cfg.genAiProviders?.['copilot-cli']?.yolo, undefined);
-    assert.strictEqual(cfg.genAiProviders?.['copilot-cli']?.fleet, undefined);
-    assert.strictEqual(cfg.genAiProviders?.['copilot-cli']?.silent, undefined);
+    assert.strictEqual(cfg.genAiProviders?.['copilot-cli']?.['yolo'], undefined);
+    assert.strictEqual(cfg.genAiProviders?.['copilot-cli']?.['fleet'], undefined);
+    assert.strictEqual(cfg.genAiProviders?.['copilot-cli']?.['silent'], undefined);
   });
 
   test('worktree can be explicitly enabled', () => {

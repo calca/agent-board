@@ -1,6 +1,6 @@
 import * as assert from 'assert';
 import { GenAiProviderRegistry } from '../../genai-provider/GenAiProviderRegistry';
-import { GenAiProviderScope, IGenAiProvider } from '../../genai-provider/IGenAiProvider';
+import { GenAiProviderConfig, GenAiProviderScope, GenAiSettingDescriptor, IGenAiProvider } from '../../genai-provider/IGenAiProvider';
 import { buildOptimisationPrefix, FLEET_PREFIX, YOLO_PREFIX } from '../../genai-provider/copilotCliUtils';
 
 /** Minimal stub GenAI provider for testing the registry. */
@@ -14,10 +14,13 @@ function makeGenAiProvider(
   return {
     id,
     displayName,
+    description: `${displayName} provider`,
     icon: 'beaker',
     scope,
     async isAvailable(): Promise<boolean> { return available; },
     async run(): Promise<void> { /* noop */ },
+    getSettingsDescriptors(): GenAiSettingDescriptor[] { return []; },
+    applyConfig(): void { /* noop */ },
     dispose(): void { disposed = true; },
     get isDisposed() { return disposed; },
   };
@@ -184,5 +187,70 @@ suite('buildOptimisationPrefix (CopilotCliGenAiProvider)', () => {
     const yoloIdx = result.indexOf('/yolo');
     const fleetIdx = result.indexOf('/fleet');
     assert.ok(yoloIdx < fleetIdx, 'yolo should appear before fleet');
+  });
+});
+
+// ── getSettingsDescriptors & applyConfig ─────────────────────────────────
+
+suite('IGenAiProvider.getSettingsDescriptors', () => {
+  test('stub provider returns empty descriptors', () => {
+    const p = makeGenAiProvider('stub', 'Stub');
+    assert.deepStrictEqual(p.getSettingsDescriptors(), []);
+  });
+
+  test('descriptor with boolean type has correct shape', () => {
+    const descriptor: GenAiSettingDescriptor = {
+      key: 'yolo',
+      title: 'Yolo mode',
+      description: 'Auto-approve changes',
+      type: 'boolean',
+      defaultValue: true,
+    };
+    assert.strictEqual(descriptor.type, 'boolean');
+    assert.strictEqual(descriptor.defaultValue, true);
+    assert.strictEqual(descriptor.options, undefined);
+  });
+
+  test('descriptor with select type includes options', () => {
+    const descriptor: GenAiSettingDescriptor = {
+      key: 'level',
+      title: 'Log level',
+      description: 'Logging verbosity',
+      type: 'select',
+      defaultValue: 'info',
+      options: [
+        { label: 'Debug', value: 'debug' },
+        { label: 'Info', value: 'info' },
+        { label: 'Warn', value: 'warn' },
+      ],
+    };
+    assert.strictEqual(descriptor.type, 'select');
+    assert.strictEqual(descriptor.options?.length, 3);
+  });
+});
+
+suite('IGenAiProvider.applyConfig', () => {
+  test('applyConfig on stub provider is a no-op', () => {
+    const p = makeGenAiProvider('stub', 'Stub');
+    assert.doesNotThrow(() => p.applyConfig({ yolo: true }));
+  });
+
+  test('provider with custom applyConfig updates internal state', () => {
+    let capturedYolo = false;
+    const p: IGenAiProvider = {
+      ...makeGenAiProvider('custom', 'Custom'),
+      applyConfig(config: GenAiProviderConfig): void {
+        if (config.yolo !== undefined) { capturedYolo = Boolean(config.yolo); }
+      },
+    };
+    p.applyConfig({ yolo: true });
+    assert.strictEqual(capturedYolo, true);
+    p.applyConfig({ yolo: false });
+    assert.strictEqual(capturedYolo, false);
+  });
+
+  test('applyConfig ignores unknown keys gracefully', () => {
+    const p = makeGenAiProvider('stub', 'Stub');
+    assert.doesNotThrow(() => p.applyConfig({ unknownKey: 42 }));
   });
 });

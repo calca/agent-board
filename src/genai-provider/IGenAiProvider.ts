@@ -11,21 +11,45 @@ import { CopilotSessionInfo, KanbanTask } from '../types/KanbanTask';
  */
 export type GenAiProviderScope = 'global' | 'project';
 
-/**
- * Per-provider configuration stored in `genAiProviders.<id>` inside
- * `.agent-board/config.json` (or VS Code settings for global providers).
- */
-export interface GenAiProviderConfig {
-  enabled?: boolean;
-  model?: string;
-  endpoint?: string;
-  /** Enable /yolo mode — auto-approve all changes without confirmation. */
-  yolo?: boolean;
-  /** Enable /fleet mode — optimise prompt for parallel fleet execution. */
-  fleet?: boolean;
-  /** Enable --silent mode — suppress interactive prompts and progress output. */
-  silent?: boolean;
+// ── Setting descriptors ─────────────────────────────────────────────────
+
+/** Allowed types for a GenAI provider setting. */
+export type GenAiSettingType = 'boolean' | 'string' | 'number' | 'select';
+
+/** Option for a `select` setting. */
+export interface GenAiSettingOption {
+  label: string;
+  value: string | number | boolean;
 }
+
+/**
+ * Describes a single configurable setting exposed by a GenAI provider.
+ *
+ * The Settings UI renders form controls dynamically from these descriptors
+ * so each provider only shows its own relevant settings.
+ */
+export interface GenAiSettingDescriptor {
+  /** Config key stored in `genAiProviders.<providerId>.<key>`. */
+  key: string;
+  /** Short human-readable label shown in the Settings UI. */
+  title: string;
+  /** Longer explanation shown as hint text below the control. */
+  description: string;
+  /** Control type rendered in the UI. */
+  type: GenAiSettingType;
+  /** Default value when neither project config nor VS Code settings override it. */
+  defaultValue: string | number | boolean;
+  /** Available choices — only used when `type` is `'select'`. */
+  options?: GenAiSettingOption[];
+}
+
+/**
+ * Bag of per-provider configuration values.
+ *
+ * The keys correspond to {@link GenAiSettingDescriptor.key} entries
+ * declared by each provider via `getSettingsDescriptors()`.
+ */
+export type GenAiProviderConfig = Record<string, unknown>;
 
 /**
  * Contract that every GenAI provider must implement.
@@ -38,6 +62,8 @@ export interface IGenAiProvider {
   readonly id: string;
   /** Human-readable name shown in the Quick Pick. */
   readonly displayName: string;
+  /** Short description shown in the Settings UI below the provider name. */
+  readonly description: string;
   /** `vscode.ThemeIcon` codicon identifier, e.g. `'comment-discussion'`. */
   readonly icon: string;
   /** Whether this is a VS Code–integrated (`global`) or per-project (`project`) provider. */
@@ -98,6 +124,23 @@ export interface IGenAiProvider {
    * Optional — providers that don't support session tracking can omit this.
    */
   getSessionInfo?(task: KanbanTask): CopilotSessionInfo | undefined;
+
+  /**
+   * Return the list of configurable settings this provider exposes.
+   *
+   * The Settings UI renders form controls dynamically from these
+   * descriptors. Providers with no configurable settings return `[]`.
+   */
+  getSettingsDescriptors(): GenAiSettingDescriptor[];
+
+  /**
+   * Apply a (possibly partial) configuration bag at runtime.
+   *
+   * Called by `SettingsPanel` after the user saves settings so the
+   * provider can update its internal state without requiring a restart.
+   */
+  applyConfig(config: GenAiProviderConfig): void;
+
   /** Clean up resources. */
   dispose(): void;
 }

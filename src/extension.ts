@@ -138,20 +138,22 @@ export function activate(context: vscode.ExtensionContext): void {
   // Global providers (VS Code integrated) — always registered
   genAiRegistry.register(new ChatGenAiProvider());
   genAiRegistry.register(new CloudGenAiProvider());
-  const copilotLmCfg = ProjectConfig.getProjectConfig()?.genAiProviders?.['copilot-lm'];
-  const lmYolo = copilotLmCfg?.yolo ?? vscode.workspace.getConfiguration('agentBoard').get<boolean>('copilotCli.yolo', true);
+
+  // LmApiGenAiProvider — reads initial config from project file / VS Code settings
+  const copilotLmCfg = ProjectConfig.getProjectConfig()?.genAiProviders?.['copilot-lm'] ?? {};
+  const lmYolo = (copilotLmCfg.yolo as boolean | undefined) ?? vscode.workspace.getConfiguration('agentBoard').get<boolean>('copilotCli.yolo', true);
   genAiRegistry.register(new LmApiGenAiProvider({
     yolo: lmYolo,
     autopilot: lmYolo,
   }));
 
-  // Copilot CLI — pass per-project config (yolo / fleet), falling back to VS Code settings
-  const copilotCliCfg = ProjectConfig.getProjectConfig()?.genAiProviders?.['copilot-cli'];
-  const copilotCliConfig = {
+  // Copilot CLI — reads initial config from project file / VS Code settings
+  const copilotCliCfg = ProjectConfig.getProjectConfig()?.genAiProviders?.['copilot-cli'] ?? {};
+  const copilotCliConfig: Record<string, unknown> = {
     ...copilotCliCfg,
-    yolo: copilotCliCfg?.yolo ?? vscode.workspace.getConfiguration('agentBoard').get<boolean>('copilotCli.yolo', true),
-    fleet: copilotCliCfg?.fleet ?? vscode.workspace.getConfiguration('agentBoard').get<boolean>('copilotCli.fleet', false),
-    silent: copilotCliCfg?.silent ?? vscode.workspace.getConfiguration('agentBoard').get<boolean>('copilotCli.silent', true),
+    yolo: (copilotCliCfg.yolo as boolean | undefined) ?? vscode.workspace.getConfiguration('agentBoard').get<boolean>('copilotCli.yolo', true),
+    fleet: (copilotCliCfg.fleet as boolean | undefined) ?? vscode.workspace.getConfiguration('agentBoard').get<boolean>('copilotCli.fleet', false),
+    silent: (copilotCliCfg.silent as boolean | undefined) ?? vscode.workspace.getConfiguration('agentBoard').get<boolean>('copilotCli.silent', true),
   };
   const copilotCliGenAi = new CopilotCliGenAiProvider(copilotCliConfig);
   genAiRegistry.register(copilotCliGenAi);
@@ -629,7 +631,7 @@ export function activate(context: vscode.ExtensionContext): void {
   });
 
   const openSettings = vscode.commands.registerCommand('agentBoard.openSettings', () => {
-    SettingsPanel.createOrShow(context.extensionUri, providerRegistry);
+    SettingsPanel.createOrShow(context.extensionUri, providerRegistry, genAiRegistry);
   });
 
   const openMobileCompanion = vscode.commands.registerCommand('agentBoard.openMobileCompanion', async () => {

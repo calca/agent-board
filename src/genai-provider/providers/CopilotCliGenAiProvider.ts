@@ -7,7 +7,7 @@ import { KanbanTask } from '../../types/KanbanTask';
 import { formatError } from '../../utils/errorUtils';
 import { Logger } from '../../utils/logger';
 import { buildOptimisationPrefix } from '../copilotCliUtils';
-import { GenAiProviderConfig, GenAiProviderScope, IGenAiProvider } from '../IGenAiProvider';
+import { GenAiProviderConfig, GenAiProviderScope, GenAiSettingDescriptor, IGenAiProvider } from '../IGenAiProvider';
 
 /** Directory where the copilot CLI persists session state. */
 const CLI_SESSION_STATE_DIR = path.join(os.homedir(), '.copilot', 'session-state');
@@ -16,14 +16,15 @@ const CLI_SESSION_STATE_DIR = path.join(os.homedir(), '.copilot', 'session-state
 export class CopilotCliGenAiProvider implements IGenAiProvider {
   readonly id = 'copilot-cli';
   readonly displayName = 'Copilot - cli';
+  readonly description = 'GitHub Copilot CLI in terminal';
   readonly icon = 'terminal';
   readonly scope: GenAiProviderScope = 'global';
   readonly supportsWorktree = true;
 
   private readonly logger = Logger.getInstance();
-  private readonly yolo: boolean;
-  private readonly fleet: boolean;
-  private readonly silent: boolean;
+  private yolo: boolean;
+  private fleet: boolean;
+  private silent: boolean;
   private _proc: ChildProcess | undefined;
   private _resumeSessionId: string | undefined;
   private _lastSessionId: string | undefined;
@@ -32,9 +33,23 @@ export class CopilotCliGenAiProvider implements IGenAiProvider {
   readonly onDidStream: vscode.Event<string> = this._onDidStreamEmitter.event;
 
   constructor(config?: GenAiProviderConfig) {
-    this.yolo   = config?.yolo   ?? true;
-    this.fleet  = config?.fleet  ?? false;
-    this.silent = config?.silent ?? true;
+    this.yolo   = (config?.yolo   as boolean | undefined) ?? true;
+    this.fleet  = (config?.fleet  as boolean | undefined) ?? false;
+    this.silent = (config?.silent as boolean | undefined) ?? true;
+  }
+
+  getSettingsDescriptors(): GenAiSettingDescriptor[] {
+    return [
+      { key: 'yolo', title: 'Yolo mode', description: 'Auto-approve all changes without confirmation', type: 'boolean', defaultValue: true },
+      { key: 'fleet', title: 'Fleet mode', description: 'Optimise prompt for parallel fleet execution', type: 'boolean', defaultValue: false },
+      { key: 'silent', title: 'Silent mode', description: 'Suppress interactive prompts and progress output', type: 'boolean', defaultValue: true },
+    ];
+  }
+
+  applyConfig(config: GenAiProviderConfig): void {
+    if (config.yolo !== undefined)   { this.yolo   = Boolean(config.yolo); }
+    if (config.fleet !== undefined)  { this.fleet  = Boolean(config.fleet); }
+    if (config.silent !== undefined) { this.silent = Boolean(config.silent); }
   }
 
   /** Set-up a resume session ID so the next `run()` adds `--resume=<id>`. */

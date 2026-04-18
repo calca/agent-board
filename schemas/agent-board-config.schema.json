@@ -173,32 +173,9 @@
           "enabled": {
             "type": "boolean",
             "description": "Whether this provider is enabled."
-          },
-          "model": {
-            "type": "string",
-            "description": "Model name to use with this provider."
-          },
-          "endpoint": {
-            "type": "string",
-            "description": "API endpoint URL for this provider."
-          },
-          "yolo": {
-            "type": "boolean",
-            "default": false,
-            "description": "Enable /yolo mode — auto-approve all changes without confirmation (copilot-cli only)."
-          },
-          "fleet": {
-            "type": "boolean",
-            "default": false,
-            "description": "Enable /fleet mode — optimise prompt for parallel fleet execution (copilot-cli only)."
-          },
-          "silent": {
-            "type": "boolean",
-            "default": true,
-            "description": "Enable --silent mode — suppress interactive prompts and progress output (copilot-cli only)."
           }
         },
-        "additionalProperties": false
+        "additionalProperties": true
       }
     },
     "kanban": {

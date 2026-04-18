@@ -1,17 +1,14 @@
 /**
  * Per-provider configuration for a GenAI provider stored in
  * `genAiProviders.<id>` inside `.agent-board/config.json`.
+ *
+ * Only `enabled` is structural — every other key is defined by the
+ * provider's {@link GenAiSettingDescriptor} entries and stored as
+ * arbitrary key/value pairs.
  */
 export interface GenAiProviderConfigEntry {
   enabled?: boolean;
-  model?: string;
-  endpoint?: string;
-  /** Enable /yolo mode — auto-approve all changes without confirmation. */
-  yolo?: boolean;
-  /** Enable /fleet mode — optimise prompt for parallel fleet execution. */
-  fleet?: boolean;
-  /** Enable --silent mode — suppress interactive prompts and progress output. */
-  silent?: boolean;
+  [key: string]: unknown;
 }
 
 /**

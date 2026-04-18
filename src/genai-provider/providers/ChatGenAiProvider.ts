@@ -3,7 +3,7 @@ import { AgentTools } from '../../agent/AgentTools';
 import { KanbanTask } from '../../types/KanbanTask';
 import { Logger } from '../../utils/logger';
 import { ChatSessionFactory } from '../ChatSessionFactory';
-import { GenAiProviderScope, IGenAiProvider } from '../IGenAiProvider';
+import { GenAiProviderConfig, GenAiProviderScope, GenAiSettingDescriptor, IGenAiProvider } from '../IGenAiProvider';
 
 /**
  * GenAI provider that opens a **new** VS Code chat session in agent
@@ -18,6 +18,7 @@ import { GenAiProviderScope, IGenAiProvider } from '../IGenAiProvider';
 export class ChatGenAiProvider implements IGenAiProvider {
   readonly id = 'chat';
   readonly displayName = 'Copilot - chat';
+  readonly description = 'VS Code agent chat panel';
   readonly icon = 'comment-discussion';
   readonly scope: GenAiProviderScope = 'global';
   /**
@@ -79,6 +80,9 @@ export class ChatGenAiProvider implements IGenAiProvider {
     const result = await this.agentTools.execute(name, args);
     return result.content;
   }
+
+  getSettingsDescriptors(): GenAiSettingDescriptor[] { return []; }
+  applyConfig(_config: GenAiProviderConfig): void { /* no configurable settings */ }
 
   dispose(): void {
     // Nothing to clean up

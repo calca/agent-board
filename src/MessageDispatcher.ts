@@ -62,6 +62,9 @@ export function wireMessageDispatcher(deps: MessageDispatcherDeps): void {
 
   const logger = Logger.getInstance();
 
+  // Clear any previously registered handlers to avoid duplicates on re-wire.
+  panel.clearMessageHandlers();
+
   panel.onMessage(async (msg) => {
     switch (msg.type) {
       case 'ready':

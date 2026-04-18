@@ -3,7 +3,7 @@ import { AgentTools, ToolResult } from '../../agent/AgentTools';
 import { KanbanTask } from '../../types/KanbanTask';
 import { Logger } from '../../utils/logger';
 import { ContextBuilder } from '../ContextBuilder';
-import { GenAiProviderScope, IGenAiProvider } from '../IGenAiProvider';
+import { GenAiProviderConfig, GenAiProviderScope, GenAiSettingDescriptor, IGenAiProvider } from '../IGenAiProvider';
 
 /**
  * GenAI provider that calls the **`vscode.lm`** Language Model API
@@ -23,22 +23,35 @@ import { GenAiProviderScope, IGenAiProvider } from '../IGenAiProvider';
 export class LmApiGenAiProvider implements IGenAiProvider {
   readonly id = 'copilot-lm';
   readonly displayName = 'Copilot - lm';
+  readonly description = 'VS Code Language Model API with tool-calling';
   readonly icon = 'copilot';
   readonly scope: GenAiProviderScope = 'global';
   readonly supportsWorktree = true;
 
   private readonly logger = Logger.getInstance();
-  private readonly yolo: boolean;
-  private readonly autopilot: boolean;
+  private yolo: boolean;
+  private autopilot: boolean;
   private cts: vscode.CancellationTokenSource | undefined;
   /** Conversation history for multi-turn sessions. */
   private messages: vscode.LanguageModelChatMessage[] = [];
   /** Root path of the active worktree or workspace. */
   private activeRoot: string | undefined;
 
-  constructor(config?: { yolo?: boolean; autopilot?: boolean }) {
-    this.yolo = config?.yolo ?? false;
-    this.autopilot = config?.autopilot ?? config?.yolo ?? false;
+  constructor(config?: GenAiProviderConfig) {
+    this.yolo = (config?.yolo as boolean | undefined) ?? false;
+    this.autopilot = (config?.autopilot as boolean | undefined) ?? this.yolo;
+  }
+
+  getSettingsDescriptors(): GenAiSettingDescriptor[] {
+    return [
+      { key: 'yolo', title: 'Yolo mode', description: 'Auto-approve all changes without confirmation', type: 'boolean', defaultValue: false },
+      { key: 'autopilot', title: 'Autopilot', description: 'Continuous agent loop until task complete', type: 'boolean', defaultValue: false },
+    ];
+  }
+
+  applyConfig(config: GenAiProviderConfig): void {
+    if (config.yolo !== undefined)      { this.yolo      = Boolean(config.yolo); }
+    if (config.autopilot !== undefined) { this.autopilot  = Boolean(config.autopilot); }
   }
 
   /** Event emitter for streaming chunks (consumed by StreamController). */

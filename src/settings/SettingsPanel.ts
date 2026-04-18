@@ -1,7 +1,9 @@
 import * as vscode from 'vscode';
 import { ProjectConfig, ProjectConfigData } from '../config/ProjectConfig';
+import { GenAiProviderRegistry } from '../genai-provider/GenAiProviderRegistry';
 import { ProviderDiagnosticSeverity } from '../providers/ITaskProvider';
 import { ProviderRegistry } from '../providers/ProviderRegistry';
+import { GenAiProviderInfo } from '../types/Messages';
 import { Logger } from '../utils/logger';
 
 /** Serialisable provider info sent to the webview. */
@@ -26,6 +28,7 @@ export class SettingsPanel {
   private readonly panel: vscode.WebviewPanel;
   private disposables: vscode.Disposable[] = [];
   private registry: ProviderRegistry | undefined;
+  private genAiRegistry: GenAiProviderRegistry | undefined;
   private reloadTimer: ReturnType<typeof setTimeout> | undefined;
   /** Debounce timer for config-file watcher reloads. */
   private configDebounce: ReturnType<typeof setTimeout> | undefined;
@@ -36,9 +39,11 @@ export class SettingsPanel {
     panel: vscode.WebviewPanel,
     private readonly extensionUri: vscode.Uri,
     registry?: ProviderRegistry,
+    genAiRegistry?: GenAiProviderRegistry,
   ) {
     this.panel = panel;
     this.registry = registry;
+    this.genAiRegistry = genAiRegistry;
     this.panel.webview.html = this.getHtml(this.panel.webview);
 
     this.panel.onDidDispose(() => this.dispose(), null, this.disposables);
@@ -47,9 +52,10 @@ export class SettingsPanel {
     this.setupDevWatcher();
   }
 
-  static createOrShow(extensionUri: vscode.Uri, registry?: ProviderRegistry): SettingsPanel {
+  static createOrShow(extensionUri: vscode.Uri, registry?: ProviderRegistry, genAiRegistry?: GenAiProviderRegistry): SettingsPanel {
     if (SettingsPanel.instance) {
       SettingsPanel.instance.registry = registry;
+      SettingsPanel.instance.genAiRegistry = genAiRegistry;
       SettingsPanel.instance.panel.reveal();
       return SettingsPanel.instance;
     }
@@ -66,7 +72,7 @@ export class SettingsPanel {
         ],
       },
     );
-    SettingsPanel.instance = new SettingsPanel(panel, extensionUri, registry);
+    SettingsPanel.instance = new SettingsPanel(panel, extensionUri, registry, genAiRegistry);
     return SettingsPanel.instance;
   }
 
@@ -121,6 +127,7 @@ export class SettingsPanel {
     switch (msg.type) {
       case 'ready':
         this.sendConfig();
+        this.sendGenAiProviderInfo();
         void this.sendProviderDiagnostics();
         break;
       case 'save':
@@ -146,11 +153,22 @@ export class SettingsPanel {
               void p.refresh();
             }
           }
+          // Apply updated config to GenAI providers at runtime
+          if (this.genAiRegistry) {
+            const genAiCfg = merged.genAiProviders ?? {};
+            for (const p of this.genAiRegistry.getAll()) {
+              const providerCfg = genAiCfg[p.id];
+              if (providerCfg) {
+                p.applyConfig(providerCfg as Record<string, unknown>);
+              }
+            }
+          }
           void this.sendProviderDiagnostics();
         }
         break;
       case 'requestConfig':
         this.sendConfig();
+        this.sendGenAiProviderInfo();
         void this.sendProviderDiagnostics();
         break;
       case 'refreshDiagnostics':
@@ -168,6 +186,19 @@ export class SettingsPanel {
   private sendConfig(): void {
     const config = ProjectConfig.getProjectConfig() ?? {};
     this.panel.webview.postMessage({ type: 'configData', config });
+  }
+
+  /** Send GenAI provider metadata (ids, names, setting descriptors) to the webview. */
+  private sendGenAiProviderInfo(): void {
+    if (!this.genAiRegistry) { return; }
+    const infos: GenAiProviderInfo[] = this.genAiRegistry.getAll().map(p => ({
+      id: p.id,
+      displayName: p.displayName,
+      icon: p.icon,
+      description: p.description,
+      settings: p.getSettingsDescriptors(),
+    }));
+    this.panel.webview.postMessage({ type: 'genAiProviderInfo', providers: infos });
   }
 
   private sendLogContent(fileName?: string): void {

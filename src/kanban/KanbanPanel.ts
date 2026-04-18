@@ -21,7 +21,7 @@ export class KanbanPanel {
   private readonly isDev: boolean;
   private reloadTimer: ReturnType<typeof setTimeout> | undefined;
 
-  private onMessageCallback: ((msg: WebViewToHost) => void) | undefined;
+  private onMessageCallbacks: ((msg: WebViewToHost) => void)[] = [];
 
   private constructor(
     panel: vscode.WebviewPanel,
@@ -36,7 +36,7 @@ export class KanbanPanel {
 
     this.panel.webview.onDidReceiveMessage(
       (msg: WebViewToHost) => {
-        this.onMessageCallback?.(msg);
+        for (const cb of this.onMessageCallbacks) { cb(msg); }
       },
       null,
       this.disposables,
@@ -91,9 +91,14 @@ export class KanbanPanel {
     };
   }
 
+  /** Remove all message callbacks (use before re-wiring handlers). */
+  clearMessageHandlers(): void {
+    this.onMessageCallbacks = [];
+  }
+
   /** Register a callback for messages from the WebView. */
   onMessage(callback: (msg: WebViewToHost) => void): void {
-    this.onMessageCallback = callback;
+    this.onMessageCallbacks.push(callback);
   }
 
   /** Register a callback invoked when the panel is disposed. */

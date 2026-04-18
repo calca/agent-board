@@ -52,6 +52,25 @@ export interface GenAiProviderOption {
   disabledReason?: string;
 }
 
+/** Setting descriptor for a single GenAI provider config field (host → settings webview). */
+export interface GenAiSettingDescriptorMsg {
+  key: string;
+  title: string;
+  description: string;
+  type: 'boolean' | 'string' | 'number' | 'select';
+  defaultValue: string | number | boolean;
+  options?: Array<{ label: string; value: string | number | boolean }>;
+}
+
+/** Full GenAI provider metadata sent to the settings webview. */
+export interface GenAiProviderInfo {
+  id: string;
+  displayName: string;
+  icon: string;
+  description: string;
+  settings: GenAiSettingDescriptorMsg[];
+}
+
 export type HostToWebView =
   | { type: 'tasksUpdate'; tasks: KanbanTask[]; columns: Column[]; editableProviderIds: string[]; genAiProviders: GenAiProviderOption[] }
   | { type: 'providerStatus'; providerId: string; status: 'ok' | 'error' | 'loading'; message?: string }

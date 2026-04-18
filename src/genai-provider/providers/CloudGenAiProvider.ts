@@ -2,7 +2,7 @@ import * as vscode from 'vscode';
 import { KanbanTask } from '../../types/KanbanTask';
 import { Logger } from '../../utils/logger';
 import { ChatSessionFactory } from '../ChatSessionFactory';
-import { GenAiProviderScope, IGenAiProvider } from '../IGenAiProvider';
+import { GenAiProviderConfig, GenAiProviderScope, GenAiSettingDescriptor, IGenAiProvider } from '../IGenAiProvider';
 
 /**
  * GenAI provider that opens a VS Code agent chat session in autopilot
@@ -14,6 +14,7 @@ import { GenAiProviderScope, IGenAiProvider } from '../IGenAiProvider';
 export class CloudGenAiProvider implements IGenAiProvider {
   readonly id = 'cloud';
   readonly displayName = 'Cloud';
+  readonly description = 'Autopilot via VS Code agent chat (auto-submits)';
   readonly icon = 'cloud';
   readonly scope: GenAiProviderScope = 'global';
 
@@ -40,6 +41,9 @@ export class CloudGenAiProvider implements IGenAiProvider {
       logger.error('CloudGenAiProvider error:', String(err));
     }
   }
+
+  getSettingsDescriptors(): GenAiSettingDescriptor[] { return []; }
+  applyConfig(_config: GenAiProviderConfig): void { /* no configurable settings */ }
 
   dispose(): void {}
 }
