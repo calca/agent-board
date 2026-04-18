@@ -195,6 +195,11 @@
           "default": false,
           "description": "Enable /fleet mode for Copilot CLI — optimise prompt for parallel fleet execution. Overridable in .agent-board/config.json under genAiProviders.copilot-cli.fleet."
         },
+        "agentBoard.copilotCli.silent": {
+          "type": "boolean",
+          "default": true,
+          "description": "Enable --silent mode for Copilot CLI — suppress interactive prompts and progress output. Overridable in .agent-board/config.json under genAiProviders.copilot-cli.silent."
+        },
         "agentBoard.kanban.intermediateColumns": {
           "type": "array",
           "items": {
