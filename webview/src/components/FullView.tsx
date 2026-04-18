@@ -234,7 +234,7 @@ function FvReadOnlyDetails({ task, statusCol, columns }: { task: KanbanTask; sta
           <span className="fv-detail-label">Status</span>
           <select
             className="task-form__select fv-status-select"
-            defaultValue={task.status}
+            value={task.status}
             onChange={e => DataProvider.updateTaskStatus(task.id, e.target.value as any, task.providerId).catch(err => console.error('Error updating task status:', err))}
           >
             {columns.map(c => <option key={c.id} value={c.id}>{c.label}</option>)}
