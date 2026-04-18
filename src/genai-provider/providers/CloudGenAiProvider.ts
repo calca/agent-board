@@ -12,8 +12,8 @@ import { GenAiProviderConfig, GenAiProviderScope, GenAiSettingDescriptor, IGenAi
  * Scope: **global** — integrates with VS Code Chat API.
  */
 export class CloudGenAiProvider implements IGenAiProvider {
-  readonly id = 'cloud';
-  readonly displayName = 'Cloud';
+  readonly id = 'github-cloud';
+  readonly displayName = 'GitHub Cloud';
   readonly description = 'Autopilot via VS Code agent chat (auto-submits)';
   readonly icon = 'cloud';
   readonly scope: GenAiProviderScope = 'global';

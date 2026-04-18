@@ -21,8 +21,8 @@ import { GenAiProviderConfig, GenAiProviderScope, GenAiSettingDescriptor, IGenAi
  * Requires VS Code >= 1.90 and GitHub Copilot Chat extension.
  */
 export class LmApiGenAiProvider implements IGenAiProvider {
-  readonly id = 'copilot-lm';
-  readonly displayName = 'Copilot - lm';
+  readonly id = 'vscode-api';
+  readonly displayName = 'VS Code API';
   readonly description = 'VS Code Language Model API with tool-calling';
   readonly icon = 'copilot';
   readonly scope: GenAiProviderScope = 'global';

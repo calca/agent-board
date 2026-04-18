@@ -4,7 +4,7 @@ import { CopilotSessionInfo, KanbanTask } from '../types/KanbanTask';
 /**
  * Scope of a GenAI provider.
  *
- * - `global` — integrates with VS Code APIs (chat, cloud, copilot-cli).
+ * - `global` — integrates with VS Code APIs (VS Code Chat, GitHub Cloud, GitHub Copilot, VS Code API).
  *   Enabled by default via VS Code settings, overridable per project.
  * - `project` — per-project providers registered via the extension API.
  *   Enabled and configured only in `.agent-board/config.json`.
@@ -58,7 +58,7 @@ export type GenAiProviderConfig = Record<string, unknown>;
  * `CopilotLauncher` / `ModelSelector` — never imported directly.
  */
 export interface IGenAiProvider {
-  /** Unique identifier, e.g. `'chat'`, `'cloud'`, `'my-provider'`. */
+  /** Unique identifier, e.g. `'vscode-chat'`, `'github-cloud'`, `'my-provider'`. */
   readonly id: string;
   /** Human-readable name shown in the Quick Pick. */
   readonly displayName: string;
@@ -92,6 +92,14 @@ export interface IGenAiProvider {
   readonly disableAutoAdvance?: boolean;
 
   /**
+   * Whether this provider can participate in squad (parallel) sessions.
+   *
+   * When `false`, the provider is excluded from the squad provider picker.
+   * Defaults to `true` when not set.
+   */
+  readonly canSquad?: boolean;
+
+  /**
    * Optional streaming event. When present, `CopilotLauncher` automatically
    * subscribes and forwards chunks to the `StreamController` / KanbanPanel.
    */
@@ -111,7 +119,7 @@ export interface IGenAiProvider {
   run(prompt: string, task?: KanbanTask, worktreePath?: string): Promise<void>;
   /**
    * Send a follow-up user message into the current multi-turn session.
-   * Only supported by providers that maintain conversation history (e.g. copilot-lm).
+   * Only supported by providers that maintain conversation history (e.g. VS Code API / vscode-api).
    */
   sendFollowUp?(text: string): Promise<void>;
   /**

@@ -46,6 +46,8 @@ export interface GenAiProviderOption {
   id: string;
   displayName: string;
   icon: string;
+  /** When true the provider can participate in squad sessions. Defaults to true. */
+  canSquad?: boolean;
   /** When true the provider button is shown but greyed-out / non-clickable. */
   disabled?: boolean;
   /** Short reason shown as tooltip when the button is disabled. */

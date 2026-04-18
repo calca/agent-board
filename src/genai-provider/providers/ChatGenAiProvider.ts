@@ -16,8 +16,8 @@ import { GenAiProviderConfig, GenAiProviderScope, GenAiSettingDescriptor, IGenAi
  * Requires VS Code 1.87+ and GitHub Copilot Chat extension.
  */
 export class ChatGenAiProvider implements IGenAiProvider {
-  readonly id = 'chat';
-  readonly displayName = 'Copilot - chat';
+  readonly id = 'vscode-chat';
+  readonly displayName = 'VS Code Chat';
   readonly description = 'VS Code agent chat panel';
   readonly icon = 'comment-discussion';
   readonly scope: GenAiProviderScope = 'global';
@@ -27,6 +27,7 @@ export class ChatGenAiProvider implements IGenAiProvider {
    * it to done/failed when run() returns.
    */
   readonly disableAutoAdvance = true;
+  readonly canSquad = false;
 
   private agentTools: AgentTools | undefined;
 

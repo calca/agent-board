@@ -140,23 +140,23 @@ export function activate(context: vscode.ExtensionContext): void {
   genAiRegistry.register(new CloudGenAiProvider());
 
   // LmApiGenAiProvider — reads initial config from project file / VS Code settings
-  const copilotLmCfg = ProjectConfig.getProjectConfig()?.genAiProviders?.['copilot-lm'] ?? {};
-  const lmYolo = (copilotLmCfg.yolo as boolean | undefined) ?? vscode.workspace.getConfiguration('agentBoard').get<boolean>('copilotCli.yolo', true);
+  const vsCodeApiCfg = ProjectConfig.getProjectConfig()?.genAiProviders?.['vscode-api'] ?? {};
+  const lmYolo = (vsCodeApiCfg.yolo as boolean | undefined) ?? vscode.workspace.getConfiguration('agentBoard').get<boolean>('githubCopilot.yolo', true);
   genAiRegistry.register(new LmApiGenAiProvider({
     yolo: lmYolo,
     autopilot: lmYolo,
   }));
 
-  // Copilot CLI — reads initial config from project file / VS Code settings
-  const copilotCliCfg = ProjectConfig.getProjectConfig()?.genAiProviders?.['copilot-cli'] ?? {};
-  const copilotCliConfig: Record<string, unknown> = {
-    ...copilotCliCfg,
-    yolo: (copilotCliCfg.yolo as boolean | undefined) ?? vscode.workspace.getConfiguration('agentBoard').get<boolean>('copilotCli.yolo', true),
-    fleet: (copilotCliCfg.fleet as boolean | undefined) ?? vscode.workspace.getConfiguration('agentBoard').get<boolean>('copilotCli.fleet', false),
-    silent: (copilotCliCfg.silent as boolean | undefined) ?? vscode.workspace.getConfiguration('agentBoard').get<boolean>('copilotCli.silent', true),
+  // GitHub Copilot — reads initial config from project file / VS Code settings
+  const ghCopilotCfg = ProjectConfig.getProjectConfig()?.genAiProviders?.['github-copilot'] ?? {};
+  const ghCopilotConfig: Record<string, unknown> = {
+    ...ghCopilotCfg,
+    yolo: (ghCopilotCfg.yolo as boolean | undefined) ?? vscode.workspace.getConfiguration('agentBoard').get<boolean>('githubCopilot.yolo', true),
+    fleet: (ghCopilotCfg.fleet as boolean | undefined) ?? vscode.workspace.getConfiguration('agentBoard').get<boolean>('githubCopilot.fleet', false),
+    silent: (ghCopilotCfg.silent as boolean | undefined) ?? vscode.workspace.getConfiguration('agentBoard').get<boolean>('githubCopilot.silent', true),
   };
-  const copilotCliGenAi = new CopilotCliGenAiProvider(copilotCliConfig);
-  genAiRegistry.register(copilotCliGenAi);
+  const ghCopilotGenAi = new CopilotCliGenAiProvider(ghCopilotConfig);
+  genAiRegistry.register(ghCopilotGenAi);
 
   // ── Copilot infrastructure ─────────────────────────────────────────────
 
@@ -222,9 +222,9 @@ export function activate(context: vscode.ExtensionContext): void {
     const isGH = cachedIsGitHub;
     const providers = genAiRegistry.getAll().map(p => {
       const entry: { id: string; displayName: string; disabled?: boolean } = { id: p.id, displayName: p.displayName };
-      if (!isGit && (p.id === 'copilot-cli' || p.id === 'cloud' || p.id === 'copilot-lm')) {
+      if (!isGit && (p.id === 'github-copilot' || p.id === 'github-cloud' || p.id === 'vscode-api')) {
         entry.disabled = true;
-      } else if (!isGH && p.id === 'cloud') {
+      } else if (!isGH && p.id === 'github-cloud') {
         entry.disabled = true;
       }
       return entry;
@@ -782,10 +782,10 @@ async function pickGenAiProvider(
 ): Promise<string | undefined> {
   const items = registry.getAll()
     .filter(p => {
-      if (p.id === 'chat') { return false; }
-      const noGitRequired = p.id === 'copilot-cli' || p.id === 'cloud' || p.id === 'copilot-lm';
+      if (p.canSquad === false) { return false; }
+      const noGitRequired = p.id === 'github-copilot' || p.id === 'github-cloud' || p.id === 'vscode-api';
       if (!isGit && noGitRequired) { return false; }
-      if (!isGitHub && p.id === 'cloud') { return false; }
+      if (!isGitHub && p.id === 'github-cloud') { return false; }
       return true;
     })
     .map(p => ({

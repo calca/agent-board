@@ -16,7 +16,7 @@ export function Toolbar() {
   const squadSheetRef = useRef<HTMLDialogElement>(null);
 
   const filtered = getFilteredCount();
-  const squadProviders = genAiProviders.filter(p => !p.disabled && p.id !== 'chat');
+  const squadProviders = genAiProviders.filter(p => !p.disabled && p.canSquad !== false);
   const squadAgents = availableAgents.filter(a => a.canSquad);
 
   function getFilteredCount() {
@@ -331,9 +331,9 @@ function ConnectionIndicator() {
 export function getNotifications(repoIsGit: boolean, repoIsGitHub: boolean): string[] {
   const notifications: string[] = [];
   if (!repoIsGit) {
-    notifications.push('⚠︎ Questo progetto non è un repository Git. Squad, Copilot LM API, Copilot CLI e Cloud sono disabilitati.');
+    notifications.push('⚠︎ Questo progetto non è un repository Git. Squad, VS Code API, GitHub Copilot e GitHub Cloud sono disabilitati.');
   } else if (!repoIsGitHub) {
-    notifications.push('⚠︎ Nessun remote GitHub collegato. Cloud è disabilitato.');
+    notifications.push('⚠︎ Nessun remote GitHub collegato. GitHub Cloud è disabilitato.');
   }
   return notifications;
 }

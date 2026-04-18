@@ -14,8 +14,8 @@ const CLI_SESSION_STATE_DIR = path.join(os.homedir(), '.copilot', 'session-state
 
 /** GenAI provider that invokes the `copilot` CLI (`npm i -g @github/copilot`) as a background subprocess. */
 export class CopilotCliGenAiProvider implements IGenAiProvider {
-  readonly id = 'copilot-cli';
-  readonly displayName = 'Copilot - cli';
+  readonly id = 'github-copilot';
+  readonly displayName = 'GitHub Copilot';
   readonly description = 'GitHub Copilot CLI in terminal';
   readonly icon = 'terminal';
   readonly scope: GenAiProviderScope = 'global';
@@ -83,7 +83,7 @@ export class CopilotCliGenAiProvider implements IGenAiProvider {
     if (this.yolo) { flagParts.push('--allow-all', '--autopilot'); }
     if (this.silent) { flagParts.push('--silent'); }
     const flags = flagParts.length ? ` ${flagParts.join(' ')}` : '';
-    this._emit(`[copilot-cli] Avvio: copilot${flags}${resumeLabel}\n`);
+    this._emit(`[github-copilot] Avvio: copilot${flags}${resumeLabel}\n`);
     await this._spawnCopilot(fullPrompt, cwd, resumeId);
   }
 
@@ -91,7 +91,7 @@ export class CopilotCliGenAiProvider implements IGenAiProvider {
     if (this._proc) {
       this._proc.kill('SIGTERM');
       this._proc = undefined;
-      this._emit('\n[copilot-cli] Sessione annullata.\n');
+      this._emit('\n[github-copilot] Sessione annullata.\n');
     }
   }
 
@@ -124,22 +124,22 @@ export class CopilotCliGenAiProvider implements IGenAiProvider {
         env: { ...CopilotCliGenAiProvider._shellEnv(), NO_COLOR: '1' },
       });
       this._proc = proc;
-      proc.stdout?.on("data", (chunk: Buffer) => { const t = chunk.toString("utf-8"); this._emit(t); this.logger.info("[copilot-cli] %s", t.trimEnd()); });
-      proc.stderr?.on("data", (chunk: Buffer) => { const t = chunk.toString("utf-8"); this._emit(t); this.logger.warn("[copilot-cli] stderr: %s", t.trimEnd()); });
+      proc.stdout?.on("data", (chunk: Buffer) => { const t = chunk.toString("utf-8"); this._emit(t); this.logger.info("[github-copilot] %s", t.trimEnd()); });
+      proc.stderr?.on("data", (chunk: Buffer) => { const t = chunk.toString("utf-8"); this._emit(t); this.logger.warn("[github-copilot] stderr: %s", t.trimEnd()); });
       proc.on('close', (code) => {
         this._proc = undefined;
         // Detect the CLI session ID created during this run.
         this._lastSessionId = resumeId ?? CopilotCliGenAiProvider._detectNewSessionId(existingIds);
         if (this._lastSessionId) {
-          this._emit(`[copilot-cli] session-id: ${this._lastSessionId}\n`);
+          this._emit(`[github-copilot] session-id: ${this._lastSessionId}\n`);
         }
-        this._emit(`\n[copilot-cli] exit ${code ?? 'null'}.\n`);
+        this._emit(`\n[github-copilot] exit ${code ?? 'null'}.\n`);
         resolve();
       });
       proc.on("error", (err) => {
         this._proc = undefined;
         const msg = formatError(err);
-        this._emit(`\n[copilot-cli] Errore: ${msg}\nInstalla: npm install -g @github/copilot\n`);
+        this._emit(`\n[github-copilot] Errore: ${msg}\nInstalla: npm install -g @github/copilot\n`);
         this.logger.error("CopilotCliGenAiProvider: %s", msg);
         reject(err);
       });

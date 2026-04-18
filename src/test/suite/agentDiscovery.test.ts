@@ -148,7 +148,7 @@ suite('Messages — agent selection types', () => {
     const msg = {
       type: 'openCopilot' as const,
       taskId: 'github:42',
-      providerId: 'cloud',
+      providerId: 'github-cloud',
       agentSlug: 'code-reviewer',
     };
     assert.strictEqual(msg.agentSlug, 'code-reviewer');
@@ -158,7 +158,7 @@ suite('Messages — agent selection types', () => {
     const msg: { type: 'openCopilot'; taskId: string; providerId: string; agentSlug?: string } = {
       type: 'openCopilot' as const,
       taskId: 'github:42',
-      providerId: 'cloud',
+      providerId: 'github-cloud',
     };
     assert.strictEqual(msg.agentSlug, undefined);
   });

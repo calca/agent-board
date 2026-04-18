@@ -96,7 +96,7 @@ export class CopilotLauncher {
 
   /**
    * Send a follow-up message to the active provider for a task.
-   * Only works when the provider supports `sendFollowUp` (e.g. copilot-lm).
+   * Only works when the provider supports `sendFollowUp` (e.g. VS Code API / vscode-api).
    */
   async sendFollowUp(taskId: string, text: string): Promise<void> {
     const provider = this.activeProviders.get(taskId);

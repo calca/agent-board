@@ -73,23 +73,32 @@ export async function buildGenAiOptions(registry: GenAiProviderRegistry): Promis
   const isGitHub = await isGitHubRepository();
   const genAiCfg = ProjectConfig.getProjectConfig()?.genAiProviders ?? {};
 
-  return registry.getAll()
+  const filtered = registry.getAll()
     .filter(p => {
       const entry = genAiCfg[p.id];
+      // 'vscode-chat' provider requires explicit opt-in (like project-scoped providers)
+      if (p.id === 'vscode-chat') { return entry?.enabled === true; }
       if (p.scope === 'global') { return entry?.enabled !== false; }
       return entry?.enabled === true;
-    })
-    .map(p => {
+    });
+
+  const availability = await Promise.all(filtered.map(p => p.isAvailable()));
+
+  return filtered.map((p, i) => {
       const option: GenAiProviderOption = {
         id: p.id,
         displayName: p.displayName,
         icon: p.icon,
+        canSquad: p.canSquad !== false,
       };
 
-      if (!isGit && (p.id === 'copilot-cli' || p.id === 'cloud' || p.id === 'copilot-lm')) {
+      if (!availability[i]) {
+        option.disabled = true;
+        option.disabledReason = 'Not available in this environment';
+      } else if (!isGit && (p.id === 'github-copilot' || p.id === 'github-cloud' || p.id === 'vscode-api')) {
         option.disabled = true;
         option.disabledReason = 'Requires a git repository';
-      } else if (!isGitHub && p.id === 'cloud') {
+      } else if (!isGitHub && p.id === 'github-cloud') {
         option.disabled = true;
         option.disabledReason = 'Requires a GitHub repository';
       }

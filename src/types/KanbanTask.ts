@@ -12,7 +12,7 @@ export interface CopilotSessionInfo {
   /** URL to open the VS Code session (e.g. vscode://…). */
   sessionUrl?: string;
   /** URL to open the cloud dashboard for this session. */
-  cloudUrl?: string;
+  githubCloudUrl?: string;
   /** Timestamp when the session started. */
   startedAt?: string;
   /** Timestamp when the session finished. */

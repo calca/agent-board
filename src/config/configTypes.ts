@@ -104,7 +104,7 @@ export interface ProjectConfigData {
   /**
    * Per-provider GenAI configuration.
    *
-   * Global providers (chat, cloud, copilot-cli) have VS Code settings
+   * Global providers (VS Code Chat, GitHub Cloud, GitHub Copilot, VS Code API) have VS Code settings
    * and can be overridden here.  Project providers are enabled and
    * configured **only** here.
    */

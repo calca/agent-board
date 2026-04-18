@@ -27,7 +27,7 @@ export function AboutSection() {
           <li>Live session streaming with diff viewer</li>
           <li>MCP server for external agent integration</li>
           <li>GitHub Issues, Azure DevOps, JSON, Markdown, Beads providers</li>
-          <li>Multiple GenAI backends: Copilot, LM API, or your own custom provider</li>
+          <li>Multiple GenAI backends: VS Code Chat, GitHub Cloud, GitHub Copilot, VS Code API, or your own custom provider</li>
         </ul>
       </div>
 

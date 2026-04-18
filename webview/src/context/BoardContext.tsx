@@ -136,7 +136,7 @@ export function boardReducer(state: BoardState, action: BoardAction): BoardState
       }
       let selectedSquadProviderId = state.selectedSquadProviderId;
       if (!selectedSquadProviderId) {
-        const first = action.genAiProviders.find(p => !p.disabled && p.id !== 'chat');
+        const first = action.genAiProviders.find(p => !p.disabled && p.canSquad !== false);
         if (first) { selectedSquadProviderId = first.id; }
       }
       return {

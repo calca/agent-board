@@ -34,17 +34,17 @@ suite('GenAiProviderRegistry', () => {
 
   test('register and get a provider', () => {
     const reg = new GenAiProviderRegistry();
-    const p = makeGenAiProvider('chat', 'Chat');
+    const p = makeGenAiProvider('vscode-chat', 'VS Code Chat');
     reg.register(p);
-    assert.strictEqual(reg.get('chat'), p);
+    assert.strictEqual(reg.get('vscode-chat'), p);
     assert.strictEqual(reg.getAll().length, 1);
   });
 
   test('register duplicate throws', () => {
     const reg = new GenAiProviderRegistry();
-    reg.register(makeGenAiProvider('cloud', 'Cloud'));
+    reg.register(makeGenAiProvider('github-cloud', 'GitHub Cloud'));
     assert.throws(
-      () => reg.register(makeGenAiProvider('cloud', 'Cloud v2')),
+      () => reg.register(makeGenAiProvider('github-cloud', 'GitHub Cloud v2')),
       /already registered/,
     );
   });
@@ -60,9 +60,9 @@ suite('GenAiProviderRegistry', () => {
 
   test('getByScope filters by scope', () => {
     const reg = new GenAiProviderRegistry();
-    reg.register(makeGenAiProvider('chat', 'Chat', 'global'));
+    reg.register(makeGenAiProvider('vscode-chat', 'VS Code Chat', 'global'));
     reg.register(makeGenAiProvider('custom', 'Custom', 'project'));
-    reg.register(makeGenAiProvider('cloud', 'Cloud', 'global'));
+    reg.register(makeGenAiProvider('github-cloud', 'GitHub Cloud', 'global'));
 
     const globals = reg.getByScope('global');
     assert.strictEqual(globals.length, 2);
@@ -127,7 +127,7 @@ suite('IGenAiProvider interface shape', () => {
   });
 
   test('global scope providers have scope "global"', () => {
-    const p = makeGenAiProvider('chat', 'Chat', 'global');
+    const p = makeGenAiProvider('vscode-chat', 'VS Code Chat', 'global');
     assert.strictEqual(p.scope, 'global');
   });
 
@@ -137,7 +137,7 @@ suite('IGenAiProvider interface shape', () => {
   });
 
   test('supportsWorktree defaults to undefined when not set', () => {
-    const p = makeGenAiProvider('chat', 'Chat', 'global');
+    const p = makeGenAiProvider('vscode-chat', 'VS Code Chat', 'global');
     assert.strictEqual(p.supportsWorktree, undefined);
   });
 
@@ -151,7 +151,7 @@ suite('IGenAiProvider interface shape', () => {
 
   test('supportsWorktree can be set to false', () => {
     const p: IGenAiProvider = {
-      ...makeGenAiProvider('chat', 'Chat', 'global'),
+      ...makeGenAiProvider('vscode-chat', 'VS Code Chat', 'global'),
       supportsWorktree: false,
     };
     assert.strictEqual(p.supportsWorktree, false);
