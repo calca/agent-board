@@ -27,17 +27,12 @@ export function MessageList({ messages, isRunning }: MessageListProps) {
 
   return (
     <div className="cb-message-list" ref={scrollRef} onScroll={handleScroll}>
-      {messages.length === 0 && (
+      {messages.length === 0 && !isRunning && (
         <div className="cb-message-list__empty">Start a conversation…</div>
       )}
       {messages.map(msg => (
-        <MessageBubble key={msg.id} message={msg} />
+        <MessageBubble key={msg.id} message={msg} isRunning={isRunning} />
       ))}
-      {isRunning && (
-        <div className="cb-typing">
-          <span /><span /><span />
-        </div>
-      )}
     </div>
   );
 }

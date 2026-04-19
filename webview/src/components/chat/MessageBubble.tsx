@@ -11,10 +11,12 @@ function BlockRenderer({ block }: { block: UIBlock }) {
   }
 }
 
-/* Monochrome SVG icons for chat roles */
+/* Monochrome SVG icons for chat roles — based on media/icon.svg */
 const BoardIcon = () => (
-  <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor">
-    <path d="M2 2h4v4H2V2Zm0 6h4v4H2V8Zm6-6h4v4H8V2Zm0 6h4v4H8V8Zm-7-7v14h14V1H1Zm1 1h12v12H2V2Z"/>
+  <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round">
+    <rect x="2" y="4.5" width="2.5" height="7" rx="0.9"/>
+    <rect x="6.75" y="2.5" width="2.5" height="11" rx="0.9"/>
+    <rect x="11.5" y="5.5" width="2.5" height="6" rx="0.9"/>
   </svg>
 );
 const AssistantIcon = () => (
@@ -36,9 +38,10 @@ const avatarFor = (role: ChatBlockMessage['role']) => {
   }
 };
 
-export function MessageBubble({ message }: { message: ChatBlockMessage }) {
+export function MessageBubble({ message, isRunning }: { message: ChatBlockMessage; isRunning?: boolean }) {
   const isRight = message.role === 'user' || message.role === 'board';
   const cls = `cb-bubble cb-bubble--${message.role}`;
+  const showTyping = isRunning && message.role === 'assistant' && message.blocks.length === 0;
 
   return (
     <div className={cls}>
@@ -49,6 +52,11 @@ export function MessageBubble({ message }: { message: ChatBlockMessage }) {
         {message.blocks.map((block, i) => (
           <BlockRenderer key={i} block={block} />
         ))}
+        {showTyping && (
+          <div className="cb-typing">
+            <span /><span /><span />
+          </div>
+        )}
       </div>
       {isRight && (
         <div className="cb-bubble__avatar">{avatarFor(message.role)}</div>

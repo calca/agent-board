@@ -1,5 +1,6 @@
 import React, { createContext, useCallback, useContext, useReducer, useRef, type Dispatch } from 'react';
 import type { ChatState } from '../components/chat/chatTypes';
+import { getVsCodeApi } from '../hooks/useVsCodeApi';
 import { AgentOption, ChatMessage, Column, FileChangeInfo, GenAiProviderOption, KanbanTask, MobileDeviceInfo, SquadStatus, TaskLogEntry } from '../types';
 
 // ── State ────────────────────────────────────────────────────────────────
@@ -274,6 +275,27 @@ interface BoardContextValue {
 
 const BoardContext = createContext<BoardContextValue | null>(null);
 
+/** Restore chatStates from VS Code webview persisted state. */
+function restoreChatStates(): Map<string, ChatState> {
+  try {
+    const raw = (getVsCodeApi()?.getState() as Record<string, unknown> | undefined)?.chatStates;
+    if (Array.isArray(raw)) {
+      return new Map(raw as [string, ChatState][]);
+    }
+  } catch { /* ignore */ }
+  return new Map();
+}
+
+/** Save chatStates to VS Code webview persisted state. */
+export function persistChatStates(chatStates: Map<string, ChatState>): void {
+  try {
+    const api = getVsCodeApi();
+    if (!api) { return; }
+    const prev = (api.getState() as Record<string, unknown>) ?? {};
+    api.setState({ ...prev, chatStates: Array.from(chatStates.entries()) });
+  } catch { /* ignore */ }
+}
+
 export function BoardProvider({ children }: { children: React.ReactNode }) {
   const [state, dispatch] = useReducer(boardReducer, initialState);
   const [, setTick] = React.useState(0);
@@ -286,7 +308,7 @@ export function BoardProvider({ children }: { children: React.ReactNode }) {
     sessionChatMessages: [],
     streamAutoScroll: true,
     fullViewAutoScroll: true,
-    chatStates: new Map(),
+    chatStates: restoreChatStates(),
   });
   const forceUpdate = useCallback(() => setTick(t => t + 1), []);
 

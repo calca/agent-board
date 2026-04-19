@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react';
 import type { UIBlock } from '../components/chat/chatTypes';
 import { chatReducer, EMPTY_CHAT_STATE } from '../components/chat/chatTypes';
-import { useBoard } from '../context/BoardContext';
+import { persistChatStates, useBoard } from '../context/BoardContext';
 import { DataProvider } from '../DataProvider';
 import type { Column, FileChangeInfo, KanbanTask, TaskLogEntry } from '../types';
 import { getVsCodeApi, postMessage } from './useVsCodeApi';
@@ -238,6 +238,7 @@ export function useHostMessages(): void {
     function dispatchChat(sessionId: string, action: import('../components/chat/chatTypes').ChatAction) {
       const prev = imp.current.chatStates.get(sessionId) ?? EMPTY_CHAT_STATE;
       imp.current.chatStates.set(sessionId, chatReducer(prev, action));
+      persistChatStates(imp.current.chatStates);
       forceUpdate();
     }
 

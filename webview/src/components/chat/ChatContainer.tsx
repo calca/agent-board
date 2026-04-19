@@ -1,5 +1,5 @@
 import { useCallback } from 'react';
-import { useBoard } from '../../context/BoardContext';
+import { persistChatStates, useBoard } from '../../context/BoardContext';
 import { postMessage } from '../../hooks/useVsCodeApi';
 import { chatReducer, EMPTY_CHAT_STATE } from './chatTypes';
 import { InputBox } from './InputBox';
@@ -23,6 +23,7 @@ export function ChatContainer({ sessionId }: ChatContainerProps) {
   const handleSend = useCallback((text: string) => {
     const prev = imp.current.chatStates.get(sessionId) ?? EMPTY_CHAT_STATE;
     imp.current.chatStates.set(sessionId, chatReducer(prev, { type: 'USER_MESSAGE', text }));
+    persistChatStates(imp.current.chatStates);
     forceUpdate();
     postMessage({ type: 'sendFollowUp', sessionId, text });
   }, [sessionId, imp, forceUpdate]);

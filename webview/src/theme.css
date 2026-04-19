@@ -4898,12 +4898,10 @@ body.vscode-high-contrast .md-editor-container {
 
 .cb-bubble--user {
   align-self: flex-end;
-  flex-direction: row-reverse;
 }
 
 .cb-bubble--board {
   align-self: flex-end;
-  flex-direction: row-reverse;
 }
 
 .cb-bubble--assistant {
@@ -5094,8 +5092,8 @@ body.vscode-high-contrast .md-editor-container {
 .cb-typing {
   display: flex;
   gap: 4px;
-  padding: 8px 12px;
-  align-self: flex-start;
+  align-items: center;
+  min-height: 20px;
 }
 
 .cb-typing span {
