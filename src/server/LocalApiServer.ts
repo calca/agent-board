@@ -281,16 +281,16 @@ export class LocalApiServer {
       align-items: center;
       justify-content: center;
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-      background: #1e1e1e;
+      background: #252530;
       color: #cccccc;
     }
     .card {
       text-align: center;
       max-width: 420px;
       padding: 48px 32px;
-      border: 1px solid #3c3c3c;
+      border: 1px solid #404050;
       border-radius: 16px;
-      background: #252526;
+      background: #2e2e3a;
     }
     .icon {
       font-size: 56px;
@@ -312,14 +312,14 @@ export class LocalApiServer {
       margin-top: 24px;
       padding: 12px 16px;
       border-radius: 8px;
-      background: #1a1a2e;
-      border: 1px solid #3c3c3c;
+      background: #25253a;
+      border: 1px solid #404050;
       font-size: 0.85rem;
       opacity: 0.7;
     }
     .hint code {
       font-family: 'SF Mono', Menlo, Monaco, 'Courier New', monospace;
-      background: #333;
+      background: #3a3a48;
       padding: 2px 6px;
       border-radius: 4px;
     }
@@ -402,28 +402,28 @@ export class LocalApiServer {
       --vscode-font-size: 13px;
       --vscode-foreground: #cccccc;
       --vscode-descriptionForeground: #888;
-      --vscode-editor-background: #1e1e1e;
+      --vscode-editor-background: #252530;
       --vscode-editor-foreground: #cccccc;
       --vscode-editor-font-family: 'SF Mono', Menlo, Monaco, 'Courier New', monospace;
-      --vscode-sideBar-background: #252526;
-      --vscode-panel-border: #3c3c3c;
+      --vscode-sideBar-background: #2e2e3a;
+      --vscode-panel-border: #404050;
       --vscode-focusBorder: #007fd4;
-      --vscode-input-background: #3c3c3c;
+      --vscode-input-background: #404050;
       --vscode-input-foreground: #cccccc;
-      --vscode-input-border: #3c3c3c;
+      --vscode-input-border: #404050;
       --vscode-input-placeholderForeground: #888;
       --vscode-button-background: #0e639c;
       --vscode-button-foreground: #ffffff;
       --vscode-button-hoverBackground: #1177bb;
-      --vscode-button-secondaryBackground: #3a3d41;
+      --vscode-button-secondaryBackground: #3a3d48;
       --vscode-button-secondaryForeground: #cccccc;
-      --vscode-button-secondaryHoverBackground: #4a4d51;
-      --vscode-toolbar-hoverBackground: rgba(90, 93, 94, 0.31);
-      --vscode-badge-background: #4d4d4d;
+      --vscode-button-secondaryHoverBackground: #4a4d58;
+      --vscode-toolbar-hoverBackground: rgba(90, 93, 110, 0.31);
+      --vscode-badge-background: #4d4d60;
       --vscode-badge-foreground: #ffffff;
-      --vscode-dropdown-background: #3c3c3c;
+      --vscode-dropdown-background: #404050;
       --vscode-dropdown-foreground: #cccccc;
-      --vscode-dropdown-border: #3c3c3c;
+      --vscode-dropdown-border: #404050;
       --vscode-progressBar-background: #0e70c0;
       --vscode-errorForeground: #f48771;
       --vscode-terminal-ansiRed: #f44747;
