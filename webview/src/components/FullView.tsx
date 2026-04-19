@@ -1,11 +1,10 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useBoard } from '../context/BoardContext';
 import { DataProvider } from '../DataProvider';
-import { useAgentChat } from '../hooks/useAgentChat';
 import { postMessage } from '../hooks/useVsCodeApi';
 import type { Column, KanbanTask } from '../types';
 import { relativeWorktreePath } from '../utils';
-import { AgentChatLog } from './AgentChatLog';
+import { ChatContainer } from './chat';
 import { FlatButton } from './FlatButton';
 import { LocalNotesPanel } from './LocalNotesPanel';
 import { MarkdownBody } from './MarkdownBody';
@@ -20,8 +19,6 @@ export function FullView() {
   const [mobileTab, setMobileTab] = useState<'details' | 'session' | 'files' | 'actions' | 'chat'>('details');
 
   const task = tasks.find(t => t.id === fullViewTaskId);
-
-  const { messages: chatMessages, isRunning: chatIsRunning } = useAgentChat(fullViewTaskId ?? undefined);
 
   useEffect(() => {
     if (imp.current.fullViewAutoScroll && logScrollRef.current) {
@@ -84,7 +81,7 @@ export function FullView() {
           { id: 'session' as const, label: '⊙ Session', badge: undefined as number | undefined },
           { id: 'files' as const, label: '⊞ Files', badge: files.length || undefined },
           { id: 'actions' as const, label: '▸ Actions', badge: undefined as number | undefined },
-          { id: 'chat' as const, label: '≡ Chat', badge: chatMessages.length || logs.length || undefined },
+          { id: 'chat' as const, label: '≡ Chat', badge: logs.length || undefined },
         ]).map(tab => (
           <button
             key={tab.id}
@@ -192,12 +189,12 @@ export function FullView() {
         <div className="fv-panel fv-panel--fill" style={{ background: '#8888880D' }}>
           <div className="fv-panel__header fv-panel__header--static fv-log-panel-header" style={{ background: '#8888881A' }}>
             <span className="fv-panel__header-text">≡ Activity Logs</span>
-            <span className="fv-panel__badge">{chatMessages.length || logs.length}</span>
+            <span className="fv-panel__badge">{logs.length}</span>
             <FlatButton variant="icon" size="sm" icon={logExpanded ? '⊖' : '⊕'} title={logExpanded ? 'Collapse' : 'Expand'} onClick={() => dispatch({ type: 'TOGGLE_LOG_EXPANDED' })} />
           </div>
           <div className="fv-panel__body fv-panel__body--log">
-            {chatMessages.length > 0 ? (
-              <AgentChatLog messages={chatMessages} isRunning={chatIsRunning} />
+            {fullViewTaskId ? (
+              <ChatContainer sessionId={fullViewTaskId} />
             ) : (
               <div className="fv-log-scroll" ref={logScrollRef} onScroll={handleLogScroll}>
                 <div className="fv-log-entries">

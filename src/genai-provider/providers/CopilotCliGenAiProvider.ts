@@ -8,6 +8,7 @@ import { formatError } from '../../utils/errorUtils';
 import { Logger } from '../../utils/logger';
 import { buildOptimisationPrefix } from '../copilotCliUtils';
 import { GenAiProviderConfig, GenAiProviderScope, GenAiSettingDescriptor, IGenAiProvider } from '../IGenAiProvider';
+import type { CopilotEvent } from './copilot-sdk/types';
 
 /** Directory where the copilot CLI persists session state. */
 const CLI_SESSION_STATE_DIR = path.join(os.homedir(), '.copilot', 'session-state');
@@ -32,6 +33,9 @@ export class CopilotCliGenAiProvider implements IGenAiProvider {
 
   private readonly _onDidStreamEmitter = new vscode.EventEmitter<string>();
   readonly onDidStream: vscode.Event<string> = this._onDidStreamEmitter.event;
+
+  private readonly _onDidCopilotEventEmitter = new vscode.EventEmitter<CopilotEvent>();
+  readonly onDidCopilotEvent: vscode.Event<CopilotEvent> = this._onDidCopilotEventEmitter.event;
 
   constructor(config?: GenAiProviderConfig) {
     this.yolo   = (config?.yolo   as boolean | undefined) ?? true;
@@ -85,6 +89,7 @@ export class CopilotCliGenAiProvider implements IGenAiProvider {
     if (this.silent) { flagParts.push('--silent'); }
     const flags = flagParts.length ? ` ${flagParts.join(' ')}` : '';
     this._emit(`[github-copilot] Avvio: copilot${flags}${resumeLabel}\n`);
+    this._onDidCopilotEventEmitter.fire({ type: 'start' });
     await this._spawnCopilot(fullPrompt, cwd, resumeId);
   }
 
@@ -93,10 +98,11 @@ export class CopilotCliGenAiProvider implements IGenAiProvider {
       this._proc.kill('SIGTERM');
       this._proc = undefined;
       this._emit('\n[github-copilot] Sessione annullata.\n');
+      this._onDidCopilotEventEmitter.fire({ type: 'end' });
     }
   }
 
-  dispose(): void { this.cancel(); this._onDidStreamEmitter.dispose(); }
+  dispose(): void { this.cancel(); this._onDidStreamEmitter.dispose(); this._onDidCopilotEventEmitter.dispose(); }
 
   private _emit(text: string): void { this._onDidStreamEmitter.fire(text); }
 
@@ -125,8 +131,18 @@ export class CopilotCliGenAiProvider implements IGenAiProvider {
         env: { ...CopilotCliGenAiProvider._shellEnv(), NO_COLOR: '1' },
       });
       this._proc = proc;
-      proc.stdout?.on("data", (chunk: Buffer) => { const t = chunk.toString("utf-8"); this._emit(t); this.logger.info("[github-copilot] %s", t.trimEnd()); });
-      proc.stderr?.on("data", (chunk: Buffer) => { const t = chunk.toString("utf-8"); this._emit(t); this.logger.warn("[github-copilot] stderr: %s", t.trimEnd()); });
+      proc.stdout?.on("data", (chunk: Buffer) => {
+        const t = chunk.toString("utf-8");
+        this._emit(t);
+        this._onDidCopilotEventEmitter.fire({ type: 'message_delta', content: t });
+        this.logger.info("[github-copilot] %s", t.trimEnd());
+      });
+      proc.stderr?.on("data", (chunk: Buffer) => {
+        const t = chunk.toString("utf-8");
+        this._emit(t);
+        this._onDidCopilotEventEmitter.fire({ type: 'error', content: t });
+        this.logger.warn("[github-copilot] stderr: %s", t.trimEnd());
+      });
       proc.on('close', (code) => {
         this._proc = undefined;
         // Detect the CLI session ID created during this run.
@@ -135,6 +151,7 @@ export class CopilotCliGenAiProvider implements IGenAiProvider {
           this._emit(`[github-copilot] session-id: ${this._lastSessionId}\n`);
         }
         this._emit(`\n[github-copilot] exit ${code ?? 'null'}.\n`);
+        this._onDidCopilotEventEmitter.fire({ type: 'end' });
         resolve();
       });
       proc.on("error", (err) => {

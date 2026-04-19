@@ -208,6 +208,9 @@ export function useHostMessages(): void {
         case 'themeChange':
           // Theme auto-applied via CSS variables
           break;
+
+        // chatBlock/chatStart/chatEnd/chatError are handled directly
+        // by ChatContainer via window message listener.
       }
     }
 

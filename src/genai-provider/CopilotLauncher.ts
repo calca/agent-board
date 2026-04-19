@@ -12,6 +12,7 @@ import { Logger } from '../utils/logger';
 import { AgentInfo, readAgentInstructions } from './agentDiscovery';
 import { ContextBuilder } from './ContextBuilder';
 import { GenAiProviderRegistry } from './GenAiProviderRegistry';
+import type { CopilotEvent } from './providers/copilot-sdk/types';
 import { CopilotCliGenAiProvider } from './providers/CopilotCliGenAiProvider';
 import { SessionStateManager } from './SessionStateManager';
 import { createWorktree, removeWorktree, WorktreeInfo } from './WorktreeManager';
@@ -47,6 +48,10 @@ export class CopilotLauncher {
   private readonly _onDidToolCall = new vscode.EventEmitter<{ sessionId: string; status: string }>();
   /** Fires whenever a tool call is in progress for any session. */
   readonly onDidToolCall = this._onDidToolCall.event;
+
+  private readonly _onDidCopilotEvent = new vscode.EventEmitter<{ sessionId: string; event: CopilotEvent }>();
+  /** Fires structured CopilotEvents from SDK-based providers. */
+  readonly onDidCopilotEvent = this._onDidCopilotEvent.event;
 
   constructor(
     private readonly registry: ProviderRegistry,
@@ -183,6 +188,9 @@ export class CopilotLauncher {
     // Wire tool-call events → onDidToolCall aggregate event
     const toolCallSub = provider.onDidToolCall?.(status => this._onDidToolCall.fire({ sessionId: taskId, status }));
 
+    // Wire structured CopilotEvent from providers → aggregate event
+    const copilotEventSub = provider.onDidCopilotEvent?.((event) => this._onDidCopilotEvent.fire({ sessionId: taskId, event }));
+
     const watchRoot = worktree?.path ?? vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
     let dwSub: vscode.Disposable | undefined;
     if (watchRoot) {
@@ -228,6 +236,7 @@ export class CopilotLauncher {
     } finally {
       streamSub?.dispose();
       toolCallSub?.dispose();
+      copilotEventSub?.dispose();
       dwSub?.dispose();
       this.activeProviders.delete(taskId);
 

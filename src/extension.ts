@@ -12,7 +12,10 @@ import { GenAiProviderRegistry } from './genai-provider/GenAiProviderRegistry';
 import { ModelSelector } from './genai-provider/ModelSelector';
 import { ChatGenAiProvider } from './genai-provider/providers/ChatGenAiProvider';
 import { CloudGenAiProvider } from './genai-provider/providers/CloudGenAiProvider';
+import { CopilotFlowGenAiProvider } from './genai-provider/providers/copilot-flow/CopilotFlowGenAiProvider';
+import { mapEventToBlock } from './genai-provider/providers/copilot-sdk/eventMapper';
 import { CopilotCliGenAiProvider } from './genai-provider/providers/CopilotCliGenAiProvider';
+import { CopilotSdkGenAiProvider } from './genai-provider/providers/CopilotSdkGenAiProvider';
 import { LmApiGenAiProvider } from './genai-provider/providers/LmApiGenAiProvider';
 import { SessionStateManager } from './genai-provider/SessionStateManager';
 import { SquadManager } from './genai-provider/SquadManager';
@@ -157,6 +160,20 @@ export function activate(context: vscode.ExtensionContext): void {
   };
   const ghCopilotGenAi = new CopilotCliGenAiProvider(ghCopilotConfig);
   genAiRegistry.register(ghCopilotGenAi);
+
+  // Copilot SDK — structured chat UI using @github/copilot-sdk
+  const sdkCfg = ProjectConfig.getProjectConfig()?.genAiProviders?.['copilot-sdk'] ?? {};
+  const sdkConfig: Record<string, unknown> = {
+    ...sdkCfg,
+    model: (sdkCfg.model as string | undefined) ?? vscode.workspace.getConfiguration('agentBoard').get<string>('copilotModel', 'gpt-4o'),
+  };
+  genAiRegistry.register(new CopilotSdkGenAiProvider(sdkConfig));
+
+  // CopilotFlow — orchestration provider (delegates to GitHub Copilot CLI)
+  const copilotFlowCfg = ProjectConfig.getProjectConfig()?.genAiProviders?.['copilot-flow'] ?? {};
+  const copilotFlowGenAi = new CopilotFlowGenAiProvider(copilotFlowCfg);
+  copilotFlowGenAi.setInnerProvider(ghCopilotGenAi);
+  genAiRegistry.register(copilotFlowGenAi);
 
   // ── Copilot infrastructure ─────────────────────────────────────────────
 
@@ -562,6 +579,23 @@ export function activate(context: vscode.ExtensionContext): void {
       panel.notifyToolCall(sessionId, status);
     });
     panel.onDispose(() => toolCallSub.dispose());
+
+    // Forward structured CopilotEvent from providers → webview chat blocks
+    const copilotEventSub = copilotLauncher.onDidCopilotEvent(({ sessionId, event }) => {
+      if (event.type === 'start') {
+        panel.notifyChatStart(sessionId);
+        return;
+      }
+      if (event.type === 'end') {
+        panel.notifyChatEnd(sessionId);
+        return;
+      }
+      const block = mapEventToBlock(event);
+      if (block) {
+        panel.appendChatBlock(sessionId, block);
+      }
+    });
+    panel.onDispose(() => copilotEventSub.dispose());
 
     // Forward DiffWatcher file-change events → webview (live, via onDidChangeDiff)
     const diffSub = copilotLauncher.onDidChangeDiff(({ sessionId, files }) => {

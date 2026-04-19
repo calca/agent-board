@@ -2,7 +2,7 @@ import * as vscode from 'vscode';
 import { ProjectConfig } from '../config/ProjectConfig';
 import { DEFAULT_COLUMN_COLORS, DEFAULT_COLUMN_LABELS, buildColumnOrder } from '../types/ColumnId';
 import { KanbanTask } from '../types/KanbanTask';
-import { AgentOption, Column, FileChangeInfo, GenAiProviderOption, HostToWebView, SquadStatus, WebViewToHost } from '../types/Messages';
+import { AgentOption, Column, FileChangeInfo, GenAiProviderOption, HostToWebView, SquadStatus, UIBlockMsg, WebViewToHost } from '../types/Messages';
 import { Logger } from '../utils/logger';
 
 /**
@@ -148,6 +148,21 @@ export class KanbanPanel {
   /** Notify the WebView that a tool call is in progress for a session. */
   notifyToolCall(sessionId: string, status: string): void {
     this.postMessage({ type: 'toolCall', sessionId, status });
+  }
+
+  /** Push a structured chat block for a session to the WebView. */
+  appendChatBlock(sessionId: string, block: UIBlockMsg): void {
+    this.postMessage({ type: 'chatBlock', sessionId, block });
+  }
+
+  /** Signal the start of a new assistant turn. */
+  notifyChatStart(sessionId: string): void {
+    this.postMessage({ type: 'chatStart', sessionId });
+  }
+
+  /** Signal the end of an assistant turn. */
+  notifyChatEnd(sessionId: string): void {
+    this.postMessage({ type: 'chatEnd', sessionId });
   }
 
   /** Push the latest file-change list for a session to the WebView. */

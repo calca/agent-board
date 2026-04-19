@@ -121,6 +121,12 @@ export interface IGenAiProvider {
    * Payload: human-readable status string, e.g. "Leggendo src/auth.ts…"
    */
   readonly onDidToolCall?: vscode.Event<string>;
+  /**
+   * Optional structured event stream for the ChatBridge.
+   * When present, `CopilotLauncher` subscribes and forwards events to the
+   * webview ChatContainer via `chatBlock`/`chatStart`/`chatEnd` messages.
+   */
+  readonly onDidCopilotEvent?: vscode.Event<import('./providers/copilot-sdk/types').CopilotEvent>;
   /** Check whether the provider can be used in the current environment. */
   isAvailable(): Promise<boolean>;
   /**

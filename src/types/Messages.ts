@@ -73,6 +73,14 @@ export interface GenAiProviderInfo {
   settings: GenAiSettingDescriptorMsg[];
 }
 
+/** UI block shape for chat block messages (mirrors copilot-sdk/types.ts UIBlock). */
+export type UIBlockMsg =
+  | { type: 'text'; content: string; streaming?: boolean }
+  | { type: 'code'; content: string; language?: string }
+  | { type: 'command'; content: string }
+  | { type: 'result'; content: string }
+  | { type: 'step'; label: string; status?: 'running' | 'done' };
+
 export type HostToWebView =
   | { type: 'tasksUpdate'; tasks: KanbanTask[]; columns: Column[]; editableProviderIds: string[]; genAiProviders: GenAiProviderOption[] }
   | { type: 'providerStatus'; providerId: string; status: 'ok' | 'error' | 'loading'; message?: string }
@@ -94,7 +102,11 @@ export type HostToWebView =
   | { type: 'createPullRequestResult'; sessionId: string; success: boolean; prUrl?: string; prNumber?: number; message?: string }
   | { type: 'agentLog'; taskId: string; chunk: string; done: boolean }
   | { type: 'agentError'; taskId: string; error: string }
-  | { type: 'localNotes'; taskId: string; notes: string };
+  | { type: 'localNotes'; taskId: string; notes: string }
+  | { type: 'chatBlock'; sessionId: string; block: UIBlockMsg }
+  | { type: 'chatStart'; sessionId: string }
+  | { type: 'chatEnd'; sessionId: string }
+  | { type: 'chatError'; sessionId: string; content: string };
 
 // ── WebView → Host ──────────────────────────────────────────────────────────
 

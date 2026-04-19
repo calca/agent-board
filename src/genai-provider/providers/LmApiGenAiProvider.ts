@@ -4,6 +4,7 @@ import { KanbanTask } from '../../types/KanbanTask';
 import { Logger } from '../../utils/logger';
 import { ContextBuilder } from '../ContextBuilder';
 import { GenAiProviderConfig, GenAiProviderScope, GenAiSettingDescriptor, IGenAiProvider } from '../IGenAiProvider';
+import type { CopilotEvent } from './copilot-sdk/types';
 
 /**
  * GenAI provider that calls the **`vscode.lm`** Language Model API
@@ -65,6 +66,10 @@ export class LmApiGenAiProvider implements IGenAiProvider {
   /** Subscribe to tool-call status notifications. */
   readonly onDidToolCall: vscode.Event<string> = this.onDidToolCallEmitter.event;
 
+  /** Structured event stream for the ChatBridge. */
+  private readonly _onDidCopilotEventEmitter = new vscode.EventEmitter<CopilotEvent>();
+  readonly onDidCopilotEvent: vscode.Event<CopilotEvent> = this._onDidCopilotEventEmitter.event;
+
   async isAvailable(): Promise<boolean> {
     if (typeof vscode.lm?.selectChatModels !== 'function') {
       return false;
@@ -107,6 +112,7 @@ export class LmApiGenAiProvider implements IGenAiProvider {
     this.activeRoot = root;
     const tools = root ? new AgentTools(root, { yolo: this.yolo }) : undefined;
 
+    this._onDidCopilotEventEmitter.fire({ type: 'start' });
     await this.runConversationLoop(model, tools);
   }
 
@@ -140,6 +146,7 @@ export class LmApiGenAiProvider implements IGenAiProvider {
     this.cancel();
     this.onDidStreamEmitter.dispose();
     this.onDidToolCallEmitter.dispose();
+    this._onDidCopilotEventEmitter.dispose();
   }
 
   // ── Private ────────────────────────────────────────────────────────
@@ -214,6 +221,7 @@ export class LmApiGenAiProvider implements IGenAiProvider {
           if (part instanceof vscode.LanguageModelTextPart) {
             assistantText += part.value;
             this.onDidStreamEmitter.fire(part.value);
+            this._onDidCopilotEventEmitter.fire({ type: 'message_delta', content: part.value });
           } else if (part instanceof vscode.LanguageModelToolCallPart && tools) {
             toolCallParts.push({ part, priorText: assistantText });
           }
@@ -232,10 +240,12 @@ export class LmApiGenAiProvider implements IGenAiProvider {
             const statusLabel = this.toolCallStatusLabel(part.name, part.input as Record<string, unknown>);
             this.onDidToolCallEmitter.fire(statusLabel);
             this.onDidStreamEmitter.fire(`\n🔧 ${statusLabel}\n`);
+            this._onDidCopilotEventEmitter.fire({ type: 'command', content: statusLabel });
 
             const result = await this.executeToolCall(tools, part.name, part.input as Record<string, unknown>);
             const resultPreview = result.content.slice(0, 300) + (result.content.length > 300 ? '…' : '');
             this.onDidStreamEmitter.fire(`📄 ${resultPreview}\n`);
+            this._onDidCopilotEventEmitter.fire({ type: 'result', content: resultPreview });
 
             // Feed tool result back for the next round
             this.messages.push(
@@ -257,9 +267,11 @@ export class LmApiGenAiProvider implements IGenAiProvider {
         break;
       } catch (err) {
         this.handleError(err);
+        this._onDidCopilotEventEmitter.fire({ type: 'error', content: err instanceof Error ? err.message : String(err) });
         break;
       }
     }
+    this._onDidCopilotEventEmitter.fire({ type: 'end' });
   }
 
   /** Build a human-readable label for a tool call status display. */
