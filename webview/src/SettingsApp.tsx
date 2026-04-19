@@ -1,3 +1,4 @@
+import { FlatButton } from './components/FlatButton';
 import { AboutSection } from './components/settings/AboutSection';
 import { GenAiSection } from './components/settings/GenAiSection';
 import { KanbanSection } from './components/settings/KanbanSection';
@@ -47,8 +48,8 @@ export function SettingsApp() {
             <p className="settings-header__subtitle">.agent-board/config.json</p>
           </div>
           <div className="settings-header__actions">
-            <button className="btn btn--secondary" onClick={resetToFile}>Reset to file</button>
-            <button className="btn btn--primary" onClick={save}>Save</button>
+            <FlatButton variant="secondary" onClick={resetToFile}>Reset to file</FlatButton>
+            <FlatButton variant="primary" onClick={save}>Save</FlatButton>
           </div>
         </div>
         <SettingsPillNav />

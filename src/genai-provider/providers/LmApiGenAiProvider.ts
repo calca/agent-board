@@ -3,7 +3,8 @@ import { AgentTools, ToolResult } from '../../agent/AgentTools';
 import { KanbanTask } from '../../types/KanbanTask';
 import { Logger } from '../../utils/logger';
 import { ContextBuilder } from '../ContextBuilder';
-import { GenAiProviderScope, IGenAiProvider } from '../IGenAiProvider';
+import { GenAiProviderConfig, GenAiProviderScope, GenAiSettingDescriptor, IGenAiProvider } from '../IGenAiProvider';
+import type { CopilotEvent } from './copilot-sdk/types';
 
 /**
  * GenAI provider that calls the **`vscode.lm`** Language Model API
@@ -21,24 +22,38 @@ import { GenAiProviderScope, IGenAiProvider } from '../IGenAiProvider';
  * Requires VS Code >= 1.90 and GitHub Copilot Chat extension.
  */
 export class LmApiGenAiProvider implements IGenAiProvider {
-  readonly id = 'copilot-lm';
-  readonly displayName = 'Copilot - lm';
+  readonly id = 'vscode-api';
+  readonly displayName = 'VS Code API';
+  readonly description = 'VS Code Language Model API with tool-calling';
   readonly icon = 'copilot';
   readonly scope: GenAiProviderScope = 'global';
   readonly supportsWorktree = true;
+  readonly requiresGit = true;
 
   private readonly logger = Logger.getInstance();
-  private readonly yolo: boolean;
-  private readonly autopilot: boolean;
+  private yolo: boolean;
+  private autopilot: boolean;
   private cts: vscode.CancellationTokenSource | undefined;
   /** Conversation history for multi-turn sessions. */
   private messages: vscode.LanguageModelChatMessage[] = [];
   /** Root path of the active worktree or workspace. */
   private activeRoot: string | undefined;
 
-  constructor(config?: { yolo?: boolean; autopilot?: boolean }) {
-    this.yolo = config?.yolo ?? false;
-    this.autopilot = config?.autopilot ?? config?.yolo ?? false;
+  constructor(config?: GenAiProviderConfig) {
+    this.yolo = (config?.yolo as boolean | undefined) ?? false;
+    this.autopilot = (config?.autopilot as boolean | undefined) ?? this.yolo;
+  }
+
+  getSettingsDescriptors(): GenAiSettingDescriptor[] {
+    return [
+      { key: 'yolo', title: 'Yolo mode', description: 'Auto-approve all changes without confirmation', type: 'boolean', defaultValue: false },
+      { key: 'autopilot', title: 'Autopilot', description: 'Continuous agent loop until task complete', type: 'boolean', defaultValue: false },
+    ];
+  }
+
+  applyConfig(config: GenAiProviderConfig): void {
+    if (config.yolo !== undefined)      { this.yolo      = Boolean(config.yolo); }
+    if (config.autopilot !== undefined) { this.autopilot  = Boolean(config.autopilot); }
   }
 
   /** Event emitter for streaming chunks (consumed by StreamController). */
@@ -50,6 +65,10 @@ export class LmApiGenAiProvider implements IGenAiProvider {
   private readonly onDidToolCallEmitter = new vscode.EventEmitter<string>();
   /** Subscribe to tool-call status notifications. */
   readonly onDidToolCall: vscode.Event<string> = this.onDidToolCallEmitter.event;
+
+  /** Structured event stream for the ChatBridge. */
+  private readonly _onDidCopilotEventEmitter = new vscode.EventEmitter<CopilotEvent>();
+  readonly onDidCopilotEvent: vscode.Event<CopilotEvent> = this._onDidCopilotEventEmitter.event;
 
   async isAvailable(): Promise<boolean> {
     if (typeof vscode.lm?.selectChatModels !== 'function') {
@@ -93,6 +112,7 @@ export class LmApiGenAiProvider implements IGenAiProvider {
     this.activeRoot = root;
     const tools = root ? new AgentTools(root, { yolo: this.yolo }) : undefined;
 
+    this._onDidCopilotEventEmitter.fire({ type: 'start' });
     await this.runConversationLoop(model, tools);
   }
 
@@ -126,6 +146,7 @@ export class LmApiGenAiProvider implements IGenAiProvider {
     this.cancel();
     this.onDidStreamEmitter.dispose();
     this.onDidToolCallEmitter.dispose();
+    this._onDidCopilotEventEmitter.dispose();
   }
 
   // ── Private ────────────────────────────────────────────────────────
@@ -200,6 +221,7 @@ export class LmApiGenAiProvider implements IGenAiProvider {
           if (part instanceof vscode.LanguageModelTextPart) {
             assistantText += part.value;
             this.onDidStreamEmitter.fire(part.value);
+            this._onDidCopilotEventEmitter.fire({ type: 'message_delta', content: part.value });
           } else if (part instanceof vscode.LanguageModelToolCallPart && tools) {
             toolCallParts.push({ part, priorText: assistantText });
           }
@@ -218,10 +240,12 @@ export class LmApiGenAiProvider implements IGenAiProvider {
             const statusLabel = this.toolCallStatusLabel(part.name, part.input as Record<string, unknown>);
             this.onDidToolCallEmitter.fire(statusLabel);
             this.onDidStreamEmitter.fire(`\n🔧 ${statusLabel}\n`);
+            this._onDidCopilotEventEmitter.fire({ type: 'command', content: statusLabel });
 
             const result = await this.executeToolCall(tools, part.name, part.input as Record<string, unknown>);
             const resultPreview = result.content.slice(0, 300) + (result.content.length > 300 ? '…' : '');
             this.onDidStreamEmitter.fire(`📄 ${resultPreview}\n`);
+            this._onDidCopilotEventEmitter.fire({ type: 'result', content: resultPreview });
 
             // Feed tool result back for the next round
             this.messages.push(
@@ -243,9 +267,11 @@ export class LmApiGenAiProvider implements IGenAiProvider {
         break;
       } catch (err) {
         this.handleError(err);
+        this._onDidCopilotEventEmitter.fire({ type: 'error', content: err instanceof Error ? err.message : String(err) });
         break;
       }
     }
+    this._onDidCopilotEventEmitter.fire({ type: 'end' });
   }
 
   /** Build a human-readable label for a tool call status display. */

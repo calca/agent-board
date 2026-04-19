@@ -27,6 +27,9 @@ export function useSettingsMessages(): void {
         case 'providerDiagnostics':
           dispatch({ type: 'setProviders', providers: msg.providers ?? [] });
           break;
+        case 'genAiProviderInfo':
+          dispatch({ type: 'setGenAiProviders', providers: msg.providers ?? [] });
+          break;
         case 'logContent':
           dispatch({ type: 'setLogContent', content: msg.content ?? '' });
           break;

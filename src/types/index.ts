@@ -1,3 +1,4 @@
+export type { Agent, AgentStatus } from './Agent';
 export { buildColumnOrder, DEFAULT_COLUMN_IDS, DEFAULT_COLUMN_LABELS, DEFAULT_INTERMEDIATE_IDS, FIRST_COLUMN, LAST_COLUMN } from './ColumnId';
 export type { ColumnId } from './ColumnId';
 export type { CopilotSessionInfo, CopilotSessionState, KanbanTask } from './KanbanTask';

@@ -4,30 +4,52 @@ import { CopilotSessionInfo, KanbanTask } from '../types/KanbanTask';
 /**
  * Scope of a GenAI provider.
  *
- * - `global` — integrates with VS Code APIs (chat, cloud, copilot-cli).
+ * - `global` — integrates with VS Code APIs (VS Code Chat, GitHub Cloud, GitHub Copilot, VS Code API).
  *   Enabled by default via VS Code settings, overridable per project.
- * - `project` — per-project providers (e.g. Ollama, Mistral CLI).
+ * - `project` — per-project providers registered via the extension API.
  *   Enabled and configured only in `.agent-board/config.json`.
  */
 export type GenAiProviderScope = 'global' | 'project';
 
-/**
- * Per-provider configuration stored in `genAiProviders.<id>` inside
- * `.agent-board/config.json` (or VS Code settings for global providers).
- */
-export interface GenAiProviderConfig {
-  enabled?: boolean;
-  model?: string;
-  endpoint?: string;
-  /** Enable /yolo mode — auto-approve all changes without confirmation. */
-  yolo?: boolean;
-  /** Enable /fleet mode — optimise prompt for parallel fleet execution. */
-  fleet?: boolean;
-  /** Enable --remote mode — run the Copilot CLI session against the remote GitHub repository. */
-  remote?: boolean;
-  /** Enable --rubber-duck mode — use a second model family for a second opinion review. */
-  rubberDuck?: boolean;
+// ── Setting descriptors ─────────────────────────────────────────────────
+
+/** Allowed types for a GenAI provider setting. */
+export type GenAiSettingType = 'boolean' | 'string' | 'number' | 'select';
+
+/** Option for a `select` setting. */
+export interface GenAiSettingOption {
+  label: string;
+  value: string | number | boolean;
 }
+
+/**
+ * Describes a single configurable setting exposed by a GenAI provider.
+ *
+ * The Settings UI renders form controls dynamically from these descriptors
+ * so each provider only shows its own relevant settings.
+ */
+export interface GenAiSettingDescriptor {
+  /** Config key stored in `genAiProviders.<providerId>.<key>`. */
+  key: string;
+  /** Short human-readable label shown in the Settings UI. */
+  title: string;
+  /** Longer explanation shown as hint text below the control. */
+  description: string;
+  /** Control type rendered in the UI. */
+  type: GenAiSettingType;
+  /** Default value when neither project config nor VS Code settings override it. */
+  defaultValue: string | number | boolean;
+  /** Available choices — only used when `type` is `'select'`. */
+  options?: GenAiSettingOption[];
+}
+
+/**
+ * Bag of per-provider configuration values.
+ *
+ * The keys correspond to {@link GenAiSettingDescriptor.key} entries
+ * declared by each provider via `getSettingsDescriptors()`.
+ */
+export type GenAiProviderConfig = Record<string, unknown>;
 
 /**
  * Contract that every GenAI provider must implement.
@@ -36,10 +58,12 @@ export interface GenAiProviderConfig {
  * `CopilotLauncher` / `ModelSelector` — never imported directly.
  */
 export interface IGenAiProvider {
-  /** Unique identifier, e.g. `'chat'`, `'cloud'`, `'ollama'`. */
+  /** Unique identifier, e.g. `'vscode-chat'`, `'github-cloud'`, `'my-provider'`. */
   readonly id: string;
   /** Human-readable name shown in the Quick Pick. */
   readonly displayName: string;
+  /** Short description shown in the Settings UI below the provider name. */
+  readonly description: string;
   /** `vscode.ThemeIcon` codicon identifier, e.g. `'comment-discussion'`. */
   readonly icon: string;
   /** Whether this is a VS Code–integrated (`global`) or per-project (`project`) provider. */
@@ -68,6 +92,26 @@ export interface IGenAiProvider {
   readonly disableAutoAdvance?: boolean;
 
   /**
+   * Whether this provider can participate in squad (parallel) sessions.
+   *
+   * When `false`, the provider is excluded from the squad provider picker.
+   * Defaults to `true` when not set.
+   */
+  readonly canSquad?: boolean;
+
+  /**
+   * When `true`, the provider is disabled if the workspace is not
+   * inside a git repository.  Defaults to `false` when not set.
+   */
+  readonly requiresGit?: boolean;
+
+  /**
+   * When `true`, the provider is disabled if the workspace is not
+   * inside a GitHub-hosted repository.  Defaults to `false` when not set.
+   */
+  readonly requiresGitHub?: boolean;
+
+  /**
    * Optional streaming event. When present, `CopilotLauncher` automatically
    * subscribes and forwards chunks to the `StreamController` / KanbanPanel.
    */
@@ -77,6 +121,12 @@ export interface IGenAiProvider {
    * Payload: human-readable status string, e.g. "Leggendo src/auth.ts…"
    */
   readonly onDidToolCall?: vscode.Event<string>;
+  /**
+   * Optional structured event stream for the ChatBridge.
+   * When present, `CopilotLauncher` subscribes and forwards events to the
+   * webview ChatContainer via `chatBlock`/`chatStart`/`chatEnd` messages.
+   */
+  readonly onDidCopilotEvent?: vscode.Event<import('./providers/copilot-sdk/types').CopilotEvent>;
   /** Check whether the provider can be used in the current environment. */
   isAvailable(): Promise<boolean>;
   /**
@@ -87,7 +137,7 @@ export interface IGenAiProvider {
   run(prompt: string, task?: KanbanTask, worktreePath?: string): Promise<void>;
   /**
    * Send a follow-up user message into the current multi-turn session.
-   * Only supported by providers that maintain conversation history (e.g. copilot-lm).
+   * Only supported by providers that maintain conversation history (e.g. VS Code API / vscode-api).
    */
   sendFollowUp?(text: string): Promise<void>;
   /**
@@ -100,6 +150,23 @@ export interface IGenAiProvider {
    * Optional — providers that don't support session tracking can omit this.
    */
   getSessionInfo?(task: KanbanTask): CopilotSessionInfo | undefined;
+
+  /**
+   * Return the list of configurable settings this provider exposes.
+   *
+   * The Settings UI renders form controls dynamically from these
+   * descriptors. Providers with no configurable settings return `[]`.
+   */
+  getSettingsDescriptors(): GenAiSettingDescriptor[];
+
+  /**
+   * Apply a (possibly partial) configuration bag at runtime.
+   *
+   * Called by `SettingsPanel` after the user saves settings so the
+   * provider can update its internal state without requiring a restart.
+   */
+  applyConfig(config: GenAiProviderConfig): void;
+
   /** Clean up resources. */
   dispose(): void;
 }

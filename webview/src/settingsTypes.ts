@@ -26,6 +26,33 @@ export interface ProviderInfo {
   diagnostic: ProviderDiagnostic;
 }
 
+// ── GenAI provider descriptor types (mirror of host-side types) ──────
+
+/** Option for a `select`-type GenAI setting. */
+export interface GenAiSettingOption {
+  label: string;
+  value: string | number | boolean;
+}
+
+/** Describes a single configurable setting exposed by a GenAI provider. */
+export interface GenAiSettingDescriptor {
+  key: string;
+  title: string;
+  description: string;
+  type: 'boolean' | 'string' | 'number' | 'select';
+  defaultValue: string | number | boolean;
+  options?: GenAiSettingOption[];
+}
+
+/** Full GenAI provider metadata received from the host. */
+export interface GenAiProviderInfo {
+  id: string;
+  displayName: string;
+  icon: string;
+  description: string;
+  settings: GenAiSettingDescriptor[];
+}
+
 /**
  * Subset of ProjectConfigData relevant to the settings form.
  * Kept as a loose Record so we can forward it to the host as-is.

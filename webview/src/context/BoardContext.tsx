@@ -1,4 +1,6 @@
 import React, { createContext, useCallback, useContext, useReducer, useRef, type Dispatch } from 'react';
+import type { ChatState } from '../components/chat/chatTypes';
+import { getVsCodeApi } from '../hooks/useVsCodeApi';
 import { AgentOption, ChatMessage, Column, FileChangeInfo, GenAiProviderOption, KanbanTask, MobileDeviceInfo, SquadStatus, TaskLogEntry } from '../types';
 
 // ── State ────────────────────────────────────────────────────────────────
@@ -12,6 +14,8 @@ export interface BoardState {
   availableAgents: AgentOption[];
   selectedAgentSlug: string;
   selectedSquadProviderId: string;
+  availableBranches: string[];
+  selectedBaseBranch: string;
   squadStatus: SquadStatus;
   mcpEnabled: boolean;
   mobileServerRunning: boolean;
@@ -54,6 +58,8 @@ export const initialState: BoardState = {
   availableAgents: [],
   selectedAgentSlug: '',
   selectedSquadProviderId: '',
+  availableBranches: [],
+  selectedBaseBranch: '',
   squadStatus: { activeCount: 0, maxSessions: 10, autoSquadEnabled: false },
   mcpEnabled: false,
   mobileServerRunning: false,
@@ -91,6 +97,7 @@ export const initialState: BoardState = {
 export type BoardAction =
   | { type: 'TASKS_UPDATE'; tasks: KanbanTask[]; columns: Column[]; editableProviderIds: string[]; genAiProviders: GenAiProviderOption[] }
   | { type: 'AGENTS_AVAILABLE'; agents: AgentOption[] }
+  | { type: 'BRANCHES_AVAILABLE'; branches: string[]; current: string }
   | { type: 'SQUAD_STATUS'; status: SquadStatus }
   | { type: 'MCP_STATUS'; enabled: boolean }
   | { type: 'MOBILE_STATUS'; running: boolean; url: string; devices: MobileDeviceInfo[]; qrSvg?: string; tunnelEnabled?: boolean; tunnelActive?: boolean; tunnelUrl?: string; refreshing?: boolean }
@@ -112,6 +119,7 @@ export type BoardAction =
   | { type: 'CLOSE_SESSION_PANEL' }
   | { type: 'SET_SELECTED_AGENT'; slug: string }
   | { type: 'SET_SELECTED_SQUAD_PROVIDER'; id: string }
+  | { type: 'SET_SELECTED_BASE_BRANCH'; branch: string }
   | { type: 'SHOW_CLEAN_CONFIRM' }
   | { type: 'HIDE_CLEAN_CONFIRM' }
   | { type: 'START_SYNC' }
@@ -130,7 +138,7 @@ export function boardReducer(state: BoardState, action: BoardAction): BoardState
       }
       let selectedSquadProviderId = state.selectedSquadProviderId;
       if (!selectedSquadProviderId) {
-        const first = action.genAiProviders.find(p => !p.disabled && p.id !== 'chat');
+        const first = action.genAiProviders.find(p => !p.disabled && p.canSquad !== false);
         if (first) { selectedSquadProviderId = first.id; }
       }
       return {
@@ -217,6 +225,14 @@ export function boardReducer(state: BoardState, action: BoardAction): BoardState
       return { ...state, selectedAgentSlug: action.slug };
     case 'SET_SELECTED_SQUAD_PROVIDER':
       return { ...state, selectedSquadProviderId: action.id };
+    case 'SET_SELECTED_BASE_BRANCH':
+      return { ...state, selectedBaseBranch: action.branch };
+    case 'BRANCHES_AVAILABLE': {
+      const selected = state.selectedBaseBranch && action.branches.includes(state.selectedBaseBranch)
+        ? state.selectedBaseBranch
+        : action.current;
+      return { ...state, availableBranches: action.branches, selectedBaseBranch: selected };
+    }
     case 'START_SYNC':
       return { ...state, syncing: true };
     case 'SET_CONNECTION_ERROR':
@@ -243,6 +259,8 @@ export interface ImperativeState {
   sessionChatMessages: ChatMessage[];
   streamAutoScroll: boolean;
   fullViewAutoScroll: boolean;
+  /** Persistent chat state per session (survives component mount/unmount). */
+  chatStates: Map<string, ChatState>;
 }
 
 // ── Context ──────────────────────────────────────────────────────────────
@@ -257,6 +275,27 @@ interface BoardContextValue {
 
 const BoardContext = createContext<BoardContextValue | null>(null);
 
+/** Restore chatStates from VS Code webview persisted state. */
+function restoreChatStates(): Map<string, ChatState> {
+  try {
+    const raw = (getVsCodeApi()?.getState() as Record<string, unknown> | undefined)?.chatStates;
+    if (Array.isArray(raw)) {
+      return new Map(raw as [string, ChatState][]);
+    }
+  } catch { /* ignore */ }
+  return new Map();
+}
+
+/** Save chatStates to VS Code webview persisted state. */
+export function persistChatStates(chatStates: Map<string, ChatState>): void {
+  try {
+    const api = getVsCodeApi();
+    if (!api) { return; }
+    const prev = (api.getState() as Record<string, unknown>) ?? {};
+    api.setState({ ...prev, chatStates: Array.from(chatStates.entries()) });
+  } catch { /* ignore */ }
+}
+
 export function BoardProvider({ children }: { children: React.ReactNode }) {
   const [state, dispatch] = useReducer(boardReducer, initialState);
   const [, setTick] = React.useState(0);
@@ -269,6 +308,7 @@ export function BoardProvider({ children }: { children: React.ReactNode }) {
     sessionChatMessages: [],
     streamAutoScroll: true,
     fullViewAutoScroll: true,
+    chatStates: restoreChatStates(),
   });
   const forceUpdate = useCallback(() => setTick(t => t + 1), []);
 

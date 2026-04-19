@@ -1,11 +1,11 @@
-import { IGenAiProvider, GenAiProviderScope } from './IGenAiProvider';
+import { GenAiProviderScope, IGenAiProvider } from './IGenAiProvider';
 
 /**
  * Central registry of all `IGenAiProvider` instances.
  *
- * Global providers (chat, cloud, copilot-cli) are registered at
- * activation time.  Project-scoped providers (ollama, mistral) are
- * registered per-project based on `.agent-board/config.json`.
+ * Global providers (VS Code Chat, GitHub Cloud, GitHub Copilot, VS Code API) are registered at
+ * activation time.  Project-scoped providers are registered
+ * per-project based on `.agent-board/config.json` or via the API.
  */
 export class GenAiProviderRegistry {
   private readonly providers = new Map<string, IGenAiProvider>();

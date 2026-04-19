@@ -1,5 +1,7 @@
 import { useEffect, useRef } from 'react';
-import { useBoard } from '../context/BoardContext';
+import type { UIBlock } from '../components/chat/chatTypes';
+import { chatReducer, EMPTY_CHAT_STATE } from '../components/chat/chatTypes';
+import { persistChatStates, useBoard } from '../context/BoardContext';
 import { DataProvider } from '../DataProvider';
 import type { Column, FileChangeInfo, KanbanTask, TaskLogEntry } from '../types';
 import { getVsCodeApi, postMessage } from './useVsCodeApi';
@@ -69,6 +71,9 @@ export function useHostMessages(): void {
         }
         case 'agentsAvailable':
           dispatch({ type: 'AGENTS_AVAILABLE', agents: msg.agents ?? [] });
+          break;
+        case 'branchesAvailable':
+          dispatch({ type: 'BRANCHES_AVAILABLE', branches: msg.branches ?? [], current: msg.current ?? '' });
           break;
         case 'squadStatus':
           dispatch({ type: 'SQUAD_STATUS', status: msg.status });
@@ -205,7 +210,36 @@ export function useHostMessages(): void {
         case 'themeChange':
           // Theme auto-applied via CSS variables
           break;
+
+        // ── Chat messages — persisted in imp.chatStates ───────────────
+        case 'chatPrompt':
+          dispatchChat(msg.sessionId as string, { type: 'BOARD_MESSAGE', text: msg.prompt as string });
+          break;
+        case 'chatBoardEvent':
+          dispatchChat(msg.sessionId as string, { type: 'BOARD_MESSAGE', text: msg.text as string });
+          break;
+        case 'chatStart':
+          dispatchChat(msg.sessionId as string, { type: 'START_ASSISTANT' });
+          break;
+        case 'chatBlock':
+          dispatchChat(msg.sessionId as string, { type: 'APPEND_BLOCK', block: msg.block as UIBlock });
+          break;
+        case 'chatEnd':
+          dispatchChat(msg.sessionId as string, { type: 'END_ASSISTANT' });
+          break;
+        case 'chatError':
+          dispatchChat(msg.sessionId as string, { type: 'APPEND_BLOCK', block: { type: 'text', content: `⚠ ${msg.content}` } });
+          dispatchChat(msg.sessionId as string, { type: 'END_ASSISTANT' });
+          break;
       }
+    }
+
+    /** Apply a ChatAction to the persistent chat state for a session. */
+    function dispatchChat(sessionId: string, action: import('../components/chat/chatTypes').ChatAction) {
+      const prev = imp.current.chatStates.get(sessionId) ?? EMPTY_CHAT_STATE;
+      imp.current.chatStates.set(sessionId, chatReducer(prev, action));
+      persistChatStates(imp.current.chatStates);
+      forceUpdate();
     }
 
     function addLog(taskId: string, source: TaskLogEntry['source'], text: string) {
@@ -277,6 +311,9 @@ export function useHostMessages(): void {
         }
         if (info.agents) {
           dispatch({ type: 'AGENTS_AVAILABLE', agents: info.agents });
+        }
+        if (info.branches) {
+          dispatch({ type: 'BRANCHES_AVAILABLE', branches: info.branches, current: info.currentBranch ?? '' });
         }
         if (info.providers) {
           // Merge into next TASKS_UPDATE as genAiProviders

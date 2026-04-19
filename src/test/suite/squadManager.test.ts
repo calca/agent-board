@@ -110,22 +110,22 @@ suite('CopilotSessionInfo shape', () => {
   test('running session with all fields', () => {
     const session = {
       state: 'running' as const,
-      providerId: 'cloud',
+      providerId: 'github-cloud',
       sessionUrl: 'vscode://session/123',
-      cloudUrl: 'https://copilot.github.com/session/123',
+      githubCloudUrl: 'https://copilot.github.com/session/123',
       startedAt: '2026-01-01T00:00:00Z',
     };
     assert.strictEqual(session.state, 'running');
-    assert.strictEqual(session.providerId, 'cloud');
+    assert.strictEqual(session.providerId, 'github-cloud');
     assert.strictEqual(session.sessionUrl, 'vscode://session/123');
-    assert.strictEqual(session.cloudUrl, 'https://copilot.github.com/session/123');
+    assert.strictEqual(session.githubCloudUrl, 'https://copilot.github.com/session/123');
     assert.strictEqual(session.startedAt, '2026-01-01T00:00:00Z');
   });
 
   test('completed session', () => {
     const session = {
       state: 'completed' as const,
-      providerId: 'chat',
+      providerId: 'vscode-chat',
       startedAt: '2026-01-01T00:00:00Z',
       finishedAt: '2026-01-01T00:05:00Z',
     };
@@ -136,7 +136,7 @@ suite('CopilotSessionInfo shape', () => {
   test('failed session', () => {
     const session = {
       state: 'failed' as const,
-      providerId: 'ollama',
+      providerId: 'custom',
       finishedAt: '2026-01-01T00:01:00Z',
     };
     assert.strictEqual(session.state, 'failed');
@@ -170,12 +170,12 @@ suite('KanbanTask with copilotSession', () => {
       meta: {},
       copilotSession: {
         state: 'running',
-        providerId: 'cloud',
+        providerId: 'github-cloud',
         sessionUrl: 'vscode://session/abc',
       },
     };
     assert.strictEqual(task.copilotSession?.state, 'running');
-    assert.strictEqual(task.copilotSession?.providerId, 'cloud');
+    assert.strictEqual(task.copilotSession?.providerId, 'github-cloud');
     assert.strictEqual(task.copilotSession?.sessionUrl, 'vscode://session/abc');
   });
 });

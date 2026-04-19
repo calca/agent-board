@@ -166,44 +166,16 @@
     },
     "genAiProviders": {
       "type": "object",
-      "description": "Per-provider GenAI configuration. Global providers (chat, cloud, copilot-cli) can be overridden here. Project providers (ollama, mistral) are enabled and configured only here.",
+      "description": "Per-provider GenAI configuration. Global providers (VS Code Chat, GitHub Cloud, GitHub Copilot, VS Code API) can be overridden here. Project providers are enabled and configured only here.",
       "additionalProperties": {
         "type": "object",
         "properties": {
           "enabled": {
             "type": "boolean",
             "description": "Whether this provider is enabled."
-          },
-          "model": {
-            "type": "string",
-            "description": "Model name to use with this provider."
-          },
-          "endpoint": {
-            "type": "string",
-            "description": "API endpoint URL for this provider."
-          },
-          "yolo": {
-            "type": "boolean",
-            "default": false,
-            "description": "Enable /yolo mode — auto-approve all changes without confirmation (copilot-cli only)."
-          },
-          "fleet": {
-            "type": "boolean",
-            "default": false,
-            "description": "Enable /fleet mode — optimise prompt for parallel fleet execution (copilot-cli only)."
-          },
-          "remote": {
-            "type": "boolean",
-            "default": false,
-            "description": "Enable --remote mode — run the Copilot CLI session against the remote GitHub repository (copilot-cli only)."
-          },
-          "rubberDuck": {
-            "type": "boolean",
-            "default": false,
-            "description": "Enable --rubber-duck mode — use a second model family for a second opinion review (copilot-cli only)."
           }
         },
-        "additionalProperties": false
+        "additionalProperties": true
       }
     },
     "kanban": {

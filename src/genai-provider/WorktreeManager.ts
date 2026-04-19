@@ -79,7 +79,8 @@ export async function isGitRepo(dir: string): Promise<boolean> {
 /**
  * Create a git worktree for the given task.
  *
- * - Creates a new branch `agent-board/<sanitised-taskId>` based on HEAD.
+ * - Creates a new branch `agent-board/<sanitised-taskId>` based on the given
+ *   `baseBranch` (defaults to `HEAD` when omitted).
  * - The worktree is placed under `.agent-board/worktrees/<sanitised-taskId>`.
  * - If the worktree already exists it is **reused** (no error).
  *
@@ -89,6 +90,7 @@ export async function isGitRepo(dir: string): Promise<boolean> {
 export async function createWorktree(
   repoRoot: string,
   taskId: string,
+  baseBranch?: string,
 ): Promise<WorktreeInfo | undefined> {
   if (!(await isGitRepo(repoRoot))) {
     return undefined;
@@ -108,7 +110,9 @@ export async function createWorktree(
     fs.mkdirSync(parentDir, { recursive: true });
   }
 
-  await exec('git', ['worktree', 'add', '-b', branch, wtPath], repoRoot);
+  const args = ['worktree', 'add', '-b', branch, wtPath];
+  if (baseBranch) { args.push(baseBranch); }
+  await exec('git', args, repoRoot);
 
   return { path: wtPath, branch };
 }

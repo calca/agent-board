@@ -68,10 +68,10 @@ suite('agentDiscovery — discoverAgents', () => {
     assert.strictEqual(result[0].canSquad, false);
   });
 
-  test('parses canSquad from frontmatter', () => {
+  test('parses agent-board-squad from frontmatter', () => {
     const dir = path.join(tmpDir, AGENTS_DIR);
     fs.mkdirSync(dir, { recursive: true });
-    fs.writeFileSync(path.join(dir, 'squad-agent.md'), '---\ncanSquad: true\n---\n# Squad Agent\n\nInstructions.');
+    fs.writeFileSync(path.join(dir, 'squad-agent.md'), '---\nagent-board-squad: true\n---\n# Squad Agent\n\nInstructions.');
     const result = discoverAgents(tmpDir);
     assert.strictEqual(result.length, 1);
     assert.strictEqual(result[0].canSquad, true);
@@ -148,7 +148,7 @@ suite('Messages — agent selection types', () => {
     const msg = {
       type: 'openCopilot' as const,
       taskId: 'github:42',
-      providerId: 'cloud',
+      providerId: 'github-cloud',
       agentSlug: 'code-reviewer',
     };
     assert.strictEqual(msg.agentSlug, 'code-reviewer');
@@ -158,7 +158,7 @@ suite('Messages — agent selection types', () => {
     const msg: { type: 'openCopilot'; taskId: string; providerId: string; agentSlug?: string } = {
       type: 'openCopilot' as const,
       taskId: 'github:42',
-      providerId: 'cloud',
+      providerId: 'github-cloud',
     };
     assert.strictEqual(msg.agentSlug, undefined);
   });

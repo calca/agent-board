@@ -2,7 +2,7 @@ import * as assert from 'assert';
 import * as os from 'os';
 import * as path from 'path';
 import { GenAiProviderRegistry } from '../../genai-provider/GenAiProviderRegistry';
-import { GenAiProviderScope, IGenAiProvider } from '../../genai-provider/IGenAiProvider';
+import { GenAiProviderConfig, GenAiProviderScope, GenAiSettingDescriptor, IGenAiProvider } from '../../genai-provider/IGenAiProvider';
 import { buildOptimisationPrefix, FLEET_PREFIX, isGitHubRepository, YOLO_PREFIX } from '../../genai-provider/copilotCliUtils';
 
 /** Minimal stub GenAI provider for testing the registry. */
@@ -16,10 +16,13 @@ function makeGenAiProvider(
   return {
     id,
     displayName,
+    description: `${displayName} provider`,
     icon: 'beaker',
     scope,
     async isAvailable(): Promise<boolean> { return available; },
     async run(): Promise<void> { /* noop */ },
+    getSettingsDescriptors(): GenAiSettingDescriptor[] { return []; },
+    applyConfig(): void { /* noop */ },
     dispose(): void { disposed = true; },
     get isDisposed() { return disposed; },
   };
@@ -33,17 +36,17 @@ suite('GenAiProviderRegistry', () => {
 
   test('register and get a provider', () => {
     const reg = new GenAiProviderRegistry();
-    const p = makeGenAiProvider('chat', 'Chat');
+    const p = makeGenAiProvider('vscode-chat', 'VS Code Chat');
     reg.register(p);
-    assert.strictEqual(reg.get('chat'), p);
+    assert.strictEqual(reg.get('vscode-chat'), p);
     assert.strictEqual(reg.getAll().length, 1);
   });
 
   test('register duplicate throws', () => {
     const reg = new GenAiProviderRegistry();
-    reg.register(makeGenAiProvider('cloud', 'Cloud'));
+    reg.register(makeGenAiProvider('github-cloud', 'GitHub Cloud'));
     assert.throws(
-      () => reg.register(makeGenAiProvider('cloud', 'Cloud v2')),
+      () => reg.register(makeGenAiProvider('github-cloud', 'GitHub Cloud v2')),
       /already registered/,
     );
   });
@@ -59,9 +62,9 @@ suite('GenAiProviderRegistry', () => {
 
   test('getByScope filters by scope', () => {
     const reg = new GenAiProviderRegistry();
-    reg.register(makeGenAiProvider('chat', 'Chat', 'global'));
-    reg.register(makeGenAiProvider('ollama', 'Ollama', 'project'));
-    reg.register(makeGenAiProvider('cloud', 'Cloud', 'global'));
+    reg.register(makeGenAiProvider('vscode-chat', 'VS Code Chat', 'global'));
+    reg.register(makeGenAiProvider('custom', 'Custom', 'project'));
+    reg.register(makeGenAiProvider('github-cloud', 'GitHub Cloud', 'global'));
 
     const globals = reg.getByScope('global');
     assert.strictEqual(globals.length, 2);
@@ -69,7 +72,7 @@ suite('GenAiProviderRegistry', () => {
 
     const projects = reg.getByScope('project');
     assert.strictEqual(projects.length, 1);
-    assert.strictEqual(projects[0].id, 'ollama');
+    assert.strictEqual(projects[0].id, 'custom');
   });
 
   test('getAvailable returns only available providers', async () => {
@@ -126,17 +129,17 @@ suite('IGenAiProvider interface shape', () => {
   });
 
   test('global scope providers have scope "global"', () => {
-    const p = makeGenAiProvider('chat', 'Chat', 'global');
+    const p = makeGenAiProvider('vscode-chat', 'VS Code Chat', 'global');
     assert.strictEqual(p.scope, 'global');
   });
 
   test('project scope providers have scope "project"', () => {
-    const p = makeGenAiProvider('ollama', 'Ollama', 'project');
+    const p = makeGenAiProvider('custom', 'Custom', 'project');
     assert.strictEqual(p.scope, 'project');
   });
 
   test('supportsWorktree defaults to undefined when not set', () => {
-    const p = makeGenAiProvider('chat', 'Chat', 'global');
+    const p = makeGenAiProvider('vscode-chat', 'VS Code Chat', 'global');
     assert.strictEqual(p.supportsWorktree, undefined);
   });
 
@@ -150,10 +153,40 @@ suite('IGenAiProvider interface shape', () => {
 
   test('supportsWorktree can be set to false', () => {
     const p: IGenAiProvider = {
-      ...makeGenAiProvider('chat', 'Chat', 'global'),
+      ...makeGenAiProvider('vscode-chat', 'VS Code Chat', 'global'),
       supportsWorktree: false,
     };
     assert.strictEqual(p.supportsWorktree, false);
+  });
+
+  test('requiresGit defaults to undefined when not set', () => {
+    const p = makeGenAiProvider('test', 'Test');
+    assert.strictEqual(p.requiresGit, undefined);
+  });
+
+  test('requiresGitHub defaults to undefined when not set', () => {
+    const p = makeGenAiProvider('test', 'Test');
+    assert.strictEqual(p.requiresGitHub, undefined);
+  });
+
+  test('requiresGit can be set to true', () => {
+    const p: IGenAiProvider = { ...makeGenAiProvider('cli', 'CLI'), requiresGit: true };
+    assert.strictEqual(p.requiresGit, true);
+  });
+
+  test('requiresGitHub can be set to true', () => {
+    const p: IGenAiProvider = { ...makeGenAiProvider('cloud', 'Cloud'), requiresGitHub: true };
+    assert.strictEqual(p.requiresGitHub, true);
+  });
+
+  test('canSquad defaults to undefined when not set', () => {
+    const p = makeGenAiProvider('test', 'Test');
+    assert.strictEqual(p.canSquad, undefined);
+  });
+
+  test('canSquad can be set to false', () => {
+    const p: IGenAiProvider = { ...makeGenAiProvider('chat', 'Chat'), canSquad: false };
+    assert.strictEqual(p.canSquad, false);
   });
 });
 
@@ -206,5 +239,70 @@ suite('isGitHubRepository', () => {
     const repoRoot = path.resolve(__dirname, '../../../');
     const result = await isGitHubRepository(repoRoot);
     assert.strictEqual(result, true);
+  });
+});
+
+// ── getSettingsDescriptors & applyConfig ─────────────────────────────────
+
+suite('IGenAiProvider.getSettingsDescriptors', () => {
+  test('stub provider returns empty descriptors', () => {
+    const p = makeGenAiProvider('stub', 'Stub');
+    assert.deepStrictEqual(p.getSettingsDescriptors(), []);
+  });
+
+  test('descriptor with boolean type has correct shape', () => {
+    const descriptor: GenAiSettingDescriptor = {
+      key: 'yolo',
+      title: 'Yolo mode',
+      description: 'Auto-approve changes',
+      type: 'boolean',
+      defaultValue: true,
+    };
+    assert.strictEqual(descriptor.type, 'boolean');
+    assert.strictEqual(descriptor.defaultValue, true);
+    assert.strictEqual(descriptor.options, undefined);
+  });
+
+  test('descriptor with select type includes options', () => {
+    const descriptor: GenAiSettingDescriptor = {
+      key: 'level',
+      title: 'Log level',
+      description: 'Logging verbosity',
+      type: 'select',
+      defaultValue: 'info',
+      options: [
+        { label: 'Debug', value: 'debug' },
+        { label: 'Info', value: 'info' },
+        { label: 'Warn', value: 'warn' },
+      ],
+    };
+    assert.strictEqual(descriptor.type, 'select');
+    assert.strictEqual(descriptor.options?.length, 3);
+  });
+});
+
+suite('IGenAiProvider.applyConfig', () => {
+  test('applyConfig on stub provider is a no-op', () => {
+    const p = makeGenAiProvider('stub', 'Stub');
+    assert.doesNotThrow(() => p.applyConfig({ yolo: true }));
+  });
+
+  test('provider with custom applyConfig updates internal state', () => {
+    let capturedYolo = false;
+    const p: IGenAiProvider = {
+      ...makeGenAiProvider('custom', 'Custom'),
+      applyConfig(config: GenAiProviderConfig): void {
+        if (config.yolo !== undefined) { capturedYolo = Boolean(config.yolo); }
+      },
+    };
+    p.applyConfig({ yolo: true });
+    assert.strictEqual(capturedYolo, true);
+    p.applyConfig({ yolo: false });
+    assert.strictEqual(capturedYolo, false);
+  });
+
+  test('applyConfig ignores unknown keys gracefully', () => {
+    const p = makeGenAiProvider('stub', 'Stub');
+    assert.doesNotThrow(() => p.applyConfig({ unknownKey: 42 }));
   });
 });

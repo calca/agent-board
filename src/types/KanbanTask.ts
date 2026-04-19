@@ -1,7 +1,7 @@
 import { ColumnId } from './ColumnId';
 
 /** Current state of a copilot session attached to a task. */
-export type CopilotSessionState = 'idle' | 'starting' | 'running' | 'paused' | 'completed' | 'error' | 'interrupted';
+export type CopilotSessionState = 'idle' | 'starting' | 'running' | 'paused' | 'completed' | 'error' | 'interrupted' | 'manual';
 
 /** Provider-supplied links/shortcuts for an active copilot session. */
 export interface CopilotSessionInfo {
@@ -12,7 +12,7 @@ export interface CopilotSessionInfo {
   /** URL to open the VS Code session (e.g. vscode://…). */
   sessionUrl?: string;
   /** URL to open the cloud dashboard for this session. */
-  cloudUrl?: string;
+  githubCloudUrl?: string;
   /** Timestamp when the session started. */
   startedAt?: string;
   /** Timestamp when the session finished. */

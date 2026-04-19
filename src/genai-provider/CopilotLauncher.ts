@@ -12,6 +12,7 @@ import { Logger } from '../utils/logger';
 import { AgentInfo, readAgentInstructions } from './agentDiscovery';
 import { ContextBuilder } from './ContextBuilder';
 import { GenAiProviderRegistry } from './GenAiProviderRegistry';
+import type { CopilotEvent } from './providers/copilot-sdk/types';
 import { CopilotCliGenAiProvider } from './providers/CopilotCliGenAiProvider';
 import { SessionStateManager } from './SessionStateManager';
 import { createWorktree, removeWorktree, WorktreeInfo } from './WorktreeManager';
@@ -47,6 +48,14 @@ export class CopilotLauncher {
   private readonly _onDidToolCall = new vscode.EventEmitter<{ sessionId: string; status: string }>();
   /** Fires whenever a tool call is in progress for any session. */
   readonly onDidToolCall = this._onDidToolCall.event;
+
+  private readonly _onDidCopilotEvent = new vscode.EventEmitter<{ sessionId: string; event: CopilotEvent }>();
+  /** Fires structured CopilotEvents from SDK-based providers. */
+  readonly onDidCopilotEvent = this._onDidCopilotEvent.event;
+
+  private readonly _onDidBoardEvent = new vscode.EventEmitter<{ sessionId: string; kind: 'prompt' | 'event'; text: string }>();
+  /** Fires board-level messages (prompt sent, state changes, actions). */
+  readonly onDidBoardEvent = this._onDidBoardEvent.event;
 
   constructor(
     private readonly registry: ProviderRegistry,
@@ -96,7 +105,7 @@ export class CopilotLauncher {
 
   /**
    * Send a follow-up message to the active provider for a task.
-   * Only works when the provider supports `sendFollowUp` (e.g. copilot-lm).
+   * Only works when the provider supports `sendFollowUp` (e.g. VS Code API / vscode-api).
    */
   async sendFollowUp(taskId: string, text: string): Promise<void> {
     const provider = this.activeProviders.get(taskId);
@@ -113,7 +122,7 @@ export class CopilotLauncher {
     this.agents = agents;
   }
 
-  async launch(taskId: string, providerId: string, agentSlug?: string, promptOverride?: string): Promise<void> {
+  async launch(taskId: string, providerId: string, agentSlug?: string, promptOverride?: string, baseBranch?: string): Promise<void> {
     this.logger.info(`CopilotLauncher: launching provider "${providerId}" for task ${taskId}${agentSlug ? ` with agent "${agentSlug}"` : ''}`);
 
     const provider = this.genAiRegistry.get(providerId);
@@ -132,7 +141,7 @@ export class CopilotLauncher {
     let worktree: WorktreeInfo | undefined;
     if (provider.supportsWorktree && this.isWorktreeEnabled(provider.id)) {
       try {
-        worktree = await this.tryCreateWorktree(taskId);
+        worktree = await this.tryCreateWorktree(taskId, baseBranch);
       } catch (wtErr) {
         const errMsg = formatError(wtErr);
         this.sessionStateManager?.startSession(taskId, providerId, undefined, undefined);
@@ -155,7 +164,7 @@ export class CopilotLauncher {
     const logPath = this.computeLogPath(taskId);
 
     // ── Register session in SessionStateManager ───────────────────────
-    this.sessionStateManager?.startSession(taskId, providerId, worktree?.path, logPath);
+    this.sessionStateManager?.startSession(taskId, providerId, worktree?.path, logPath, baseBranch);
 
     // ── Agent instructions ────────────────────────────────────────────
     if (agentSlug) {
@@ -183,12 +192,15 @@ export class CopilotLauncher {
     // Wire tool-call events → onDidToolCall aggregate event
     const toolCallSub = provider.onDidToolCall?.(status => this._onDidToolCall.fire({ sessionId: taskId, status }));
 
+    // Wire structured CopilotEvent from providers → aggregate event
+    const copilotEventSub = provider.onDidCopilotEvent?.((event) => this._onDidCopilotEvent.fire({ sessionId: taskId, event }));
+
     const watchRoot = worktree?.path ?? vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
     let dwSub: vscode.Disposable | undefined;
     if (watchRoot) {
       // When running in a worktree the agent may commit its changes, so we diff
-      // against `main` (the parent branch) instead of `HEAD` to keep seeing them.
-      const baseRef = worktree ? 'main' : 'HEAD';
+      // against the parent branch instead of `HEAD` to keep seeing them.
+      const baseRef = worktree ? (baseBranch || 'main') : 'HEAD';
       const dw = new DiffWatcher(watchRoot, baseRef);
       this.diffWatchers.set(taskId, dw);
       dwSub = dw.onDidChange(files => this._onDidChangeDiff.fire({ sessionId: taskId, files }));
@@ -196,8 +208,14 @@ export class CopilotLauncher {
       void dw.refresh();
     }
 
-    this.sessionStateManager?.markRunning(taskId);
     this.activeProviders.set(taskId, provider);
+    const autoAdvance = !provider.disableAutoAdvance;
+
+    if (autoAdvance) {
+      this.sessionStateManager?.markRunning(taskId);
+    } else {
+      this.sessionStateManager?.markManual(taskId);
+    }
 
     // ── CLI session resume ────────────────────────────────────────────
     // If a previous CLI session ID is stored, tell the provider to resume it.
@@ -211,6 +229,12 @@ export class CopilotLauncher {
 
     // Emit the prompt to the activity log so the user can see what was sent
     stream.append(`-----------------\nPROMPT\n${prompt}\n-----------------`);
+    // Send prompt and board events to the chat UI
+    this._onDidBoardEvent.fire({ sessionId: taskId, kind: 'prompt', text: prompt });
+    if (worktree) {
+      this._onDidBoardEvent.fire({ sessionId: taskId, kind: 'event', text: `Worktree created: ${worktree.branch}` });
+    }
+    this._onDidBoardEvent.fire({ sessionId: taskId, kind: 'event', text: `Provider: ${provider.displayName} — running` });
 
     let sessionSucceeded = false;
     let sessionError: string | undefined;
@@ -222,6 +246,7 @@ export class CopilotLauncher {
     } finally {
       streamSub?.dispose();
       toolCallSub?.dispose();
+      copilotEventSub?.dispose();
       dwSub?.dispose();
       this.activeProviders.delete(taskId);
 
@@ -240,13 +265,17 @@ export class CopilotLauncher {
       }
 
       // ── Update session state ──────────────────────────────────────
-      if (sessionSucceeded) {
-        this.sessionStateManager?.markCompleted(taskId);
-        // Move task to review column on successful completion
-        await this.moveTaskToReview(task);
-      } else {
-        this.sessionStateManager?.markError(taskId, sessionError);
+      if (autoAdvance) {
+        if (sessionSucceeded) {
+          this.sessionStateManager?.markCompleted(taskId);
+          await this.moveTaskToReview(task);
+          this._onDidBoardEvent.fire({ sessionId: taskId, kind: 'event', text: 'Session completed ✓ — moved to review' });
+        } else {
+          this.sessionStateManager?.markError(taskId, sessionError);
+          this._onDidBoardEvent.fire({ sessionId: taskId, kind: 'event', text: `Session failed: ${sessionError ?? 'unknown error'}` });
+        }
       }
+      // Manual sessions keep their 'manual' state — no transition.
 
 
       // Worktree cleanup is disabled by default: the worktree is kept so the
@@ -317,14 +346,14 @@ export class CopilotLauncher {
     return settingValue ?? true;
   }
 
-  private async tryCreateWorktree(taskId: string): Promise<WorktreeInfo | undefined> {
+  private async tryCreateWorktree(taskId: string, baseBranch?: string): Promise<WorktreeInfo | undefined> {
     const folders = vscode.workspace.workspaceFolders;
     if (!folders || folders.length === 0) {
       return undefined;
     }
 
     const repoRoot = folders[0].uri.fsPath;
-    const info = await createWorktree(repoRoot, taskId);
+    const info = await createWorktree(repoRoot, taskId, baseBranch);
     if (info) {
       this.logger.info(
         `CopilotLauncher: worktree created at ${info.path} (branch: ${info.branch})`,

@@ -15,7 +15,7 @@ suite('SessionStateManager (pure utils)', () => {
   // ── badgeColor ────────────────────────────────────────────────────
 
   test('badgeColor returns different colors per state', () => {
-    const states: SessionState[] = ['idle', 'starting', 'running', 'paused', 'completed', 'error'];
+    const states: SessionState[] = ['idle', 'starting', 'running', 'paused', 'completed', 'error', 'manual'];
     const colors = states.map(s => badgeColor(s));
     for (const c of colors) {
       assert.ok(c.length > 0);
@@ -42,6 +42,14 @@ suite('SessionStateManager (pure utils)', () => {
     assert.strictEqual(badgeIcon('idle'), 'circle-outline');
   });
 
+  test('badgeColor manual is green', () => {
+    assert.strictEqual(badgeColor('manual'), 'charts.green');
+  });
+
+  test('badgeIcon manual is person', () => {
+    assert.strictEqual(badgeIcon('manual'), 'person');
+  });
+
   // ── mapStateToCopilot ─────────────────────────────────────────────
 
   test('maps idle to idle', () => {
@@ -62,12 +70,17 @@ suite('SessionStateManager (pure utils)', () => {
     assert.strictEqual(mapStateToCopilot('error'), 'error');
   });
 
+  test('maps manual to manual', () => {
+    assert.strictEqual(mapStateToCopilot('manual'), 'manual');
+  });
+
   // ── isActive ──────────────────────────────────────────────────────
 
-  test('isActive returns true for starting/running/paused', () => {
+  test('isActive returns true for starting/running/paused/manual', () => {
     assert.strictEqual(isActive('starting'), true);
     assert.strictEqual(isActive('running'), true);
     assert.strictEqual(isActive('paused'), true);
+    assert.strictEqual(isActive('manual'), true);
   });
 
   test('isActive returns false for idle/completed/error', () => {
@@ -82,12 +95,12 @@ suite('SessionStateManager (pure utils)', () => {
     const session: PersistedSession = {
       taskId: 't:1',
       state: 'running',
-      providerId: 'chat',
+      providerId: 'vscode-chat',
       startedAt: '2024-01-01T00:00:00Z',
     };
     const info = toCopilotSessionInfo(session);
     assert.strictEqual(info.state, 'running');
-    assert.strictEqual(info.providerId, 'chat');
+    assert.strictEqual(info.providerId, 'vscode-chat');
     assert.strictEqual(info.startedAt, '2024-01-01T00:00:00Z');
     assert.strictEqual(info.finishedAt, undefined);
   });
@@ -96,7 +109,7 @@ suite('SessionStateManager (pure utils)', () => {
     const session: PersistedSession = {
       taskId: 't:2',
       state: 'completed',
-      providerId: 'cloud',
+      providerId: 'github-cloud',
       finishedAt: '2024-06-01T12:00:00Z',
     };
     assert.strictEqual(toCopilotSessionInfo(session).state, 'completed');
@@ -106,7 +119,7 @@ suite('SessionStateManager (pure utils)', () => {
 
   test('marks running sessions as interrupted', () => {
     const sessions: PersistedSession[] = [
-      { taskId: 't:1', state: 'running', providerId: 'chat', startedAt: '2024-01-01T00:00:00Z' },
+      { taskId: 't:1', state: 'running', providerId: 'vscode-chat', startedAt: '2024-01-01T00:00:00Z' },
     ];
     const fixed = fixInterruptedSessions(sessions);
     assert.strictEqual(fixed[0].state, 'interrupted');
@@ -115,7 +128,7 @@ suite('SessionStateManager (pure utils)', () => {
 
   test('marks starting sessions as interrupted', () => {
     const sessions: PersistedSession[] = [
-      { taskId: 't:2', state: 'starting', providerId: 'cloud' },
+      { taskId: 't:2', state: 'starting', providerId: 'github-cloud' },
     ];
     const fixed = fixInterruptedSessions(sessions);
     assert.strictEqual(fixed[0].state, 'interrupted');
@@ -123,7 +136,7 @@ suite('SessionStateManager (pure utils)', () => {
 
   test('leaves completed sessions unchanged', () => {
     const sessions: PersistedSession[] = [
-      { taskId: 't:3', state: 'completed', providerId: 'chat', finishedAt: '2024-01-01T01:00:00Z' },
+      { taskId: 't:3', state: 'completed', providerId: 'vscode-chat', finishedAt: '2024-01-01T01:00:00Z' },
     ];
     const fixed = fixInterruptedSessions(sessions);
     assert.strictEqual(fixed[0].state, 'completed');
@@ -131,18 +144,26 @@ suite('SessionStateManager (pure utils)', () => {
 
   test('leaves error sessions unchanged', () => {
     const sessions: PersistedSession[] = [
-      { taskId: 't:4', state: 'error', providerId: 'chat' },
+      { taskId: 't:4', state: 'error', providerId: 'vscode-chat' },
     ];
     const fixed = fixInterruptedSessions(sessions);
     assert.strictEqual(fixed[0].state, 'error');
   });
 
+  test('leaves manual sessions unchanged', () => {
+    const sessions: PersistedSession[] = [
+      { taskId: 't:5', state: 'manual', providerId: 'vscode-chat' },
+    ];
+    const fixed = fixInterruptedSessions(sessions);
+    assert.strictEqual(fixed[0].state, 'manual');
+  });
+
   test('handles mixed sessions', () => {
     const sessions: PersistedSession[] = [
-      { taskId: 't:a', state: 'running', providerId: 'chat' },
-      { taskId: 't:b', state: 'completed', providerId: 'cloud' },
-      { taskId: 't:c', state: 'starting', providerId: 'chat' },
-      { taskId: 't:d', state: 'paused', providerId: 'cloud' },
+      { taskId: 't:a', state: 'running', providerId: 'vscode-chat' },
+      { taskId: 't:b', state: 'completed', providerId: 'github-cloud' },
+      { taskId: 't:c', state: 'starting', providerId: 'vscode-chat' },
+      { taskId: 't:d', state: 'paused', providerId: 'github-cloud' },
     ];
     const fixed = fixInterruptedSessions(sessions);
     assert.strictEqual(fixed[0].state, 'interrupted');
@@ -153,7 +174,7 @@ suite('SessionStateManager (pure utils)', () => {
 
   test('does not mutate original array', () => {
     const sessions: PersistedSession[] = [
-      { taskId: 't:x', state: 'running', providerId: 'chat' },
+      { taskId: 't:x', state: 'running', providerId: 'vscode-chat' },
     ];
     const fixed = fixInterruptedSessions(sessions);
     assert.strictEqual(sessions[0].state, 'running');

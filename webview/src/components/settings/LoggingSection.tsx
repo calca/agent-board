@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { postSettingsMessage, useSettings } from '../../context/SettingsContext';
+import { FlatButton } from '../FlatButton';
 
 function numOrUndef(val: string): number | undefined {
   const n = Number(val);
@@ -138,8 +139,8 @@ export function LoggingSection() {
             />
             Auto-scroll
           </label>
-          <button className="btn btn--secondary btn--sm" onClick={handleRefresh}>⟳ Refresh</button>
-          <button className="btn btn--secondary btn--sm" onClick={handleCopy}>📋 Copy</button>
+          <FlatButton variant="secondary" size="sm" icon="⟳" onClick={handleRefresh}>Refresh</FlatButton>
+          <FlatButton variant="secondary" size="sm" icon="📋" onClick={handleCopy}>Copy</FlatButton>
         </div>
       </div>
 

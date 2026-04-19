@@ -55,13 +55,14 @@ export class SessionStateManager {
   // ── Public API ──────────────────────────────────────────────────────
 
   /** Register a new session in `starting` state. */
-  startSession(taskId: string, providerId: string, worktreePath?: string, logPath?: string): void {
+  startSession(taskId: string, providerId: string, worktreePath?: string, logPath?: string, baseBranch?: string): void {
     const session: PersistedSession = {
       taskId,
       state: 'starting',
       providerId,
       worktreePath,
       logPath,
+      baseBranch,
       startedAt: new Date().toISOString(),
     };
     this.sessions.set(taskId, session);
@@ -86,6 +87,23 @@ export class SessionStateManager {
     this.persist();
     this.armTimeout(taskId);
     this.fireChange(taskId, 'running', prev);
+  }
+
+  /**
+   * Transition a session to `manual`.
+   *
+   * Used for providers whose `disableAutoAdvance` is `true` — the task
+   * is in-progress but all further state changes are user-driven.
+   * No timeout is armed because there is nothing to time-out.
+   */
+  markManual(taskId: string): void {
+    const session = this.sessions.get(taskId);
+    if (!session) { return; }
+    const prev = session.state;
+    session.state = 'manual';
+    this.clearTimer(taskId);
+    this.persist();
+    this.fireChange(taskId, 'manual', prev);
   }
 
   /** Pause a running session (e.g. user requested pause). */

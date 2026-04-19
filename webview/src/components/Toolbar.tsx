@@ -1,20 +1,22 @@
 import { useRef } from 'react';
 import { useBoard } from '../context/BoardContext';
 import { getVsCodeApi, postMessage } from '../hooks/useVsCodeApi';
+import { FlatButton } from './FlatButton';
 
 export function Toolbar() {
   const { state, dispatch } = useBoard();
   const {
     workspaceName, mcpEnabled, squadStatus, repoIsGit,
     genAiProviders, availableAgents, selectedSquadProviderId,
-    selectedAgentSlug, searchText, showSearchInput, syncing,
+    selectedAgentSlug, selectedBaseBranch, availableBranches,
+    searchText, showSearchInput, syncing,
     mobileServerRunning, mobileDevices, mobileRefreshing,
   } = state;
   const isVsCodeWebview = Boolean(getVsCodeApi());
   const squadSheetRef = useRef<HTMLDialogElement>(null);
 
   const filtered = getFilteredCount();
-  const squadProviders = genAiProviders.filter(p => !p.disabled && p.id !== 'chat');
+  const squadProviders = genAiProviders.filter(p => !p.disabled && p.canSquad !== false);
   const squadAgents = availableAgents.filter(a => a.canSquad);
 
   function getFilteredCount() {
@@ -31,6 +33,7 @@ export function Toolbar() {
     const payload = {
       agentSlug: selectedAgentSlug || undefined,
       genAiProviderId: selectedSquadProviderId || undefined,
+      baseBranch: selectedBaseBranch || undefined,
     };
     if (isVsCodeWebview) {
       postMessage({ type: action, ...payload });
@@ -65,21 +68,22 @@ export function Toolbar() {
             <span className="mcp-toggle__label">MCP</span>
           </button>
           {isVsCodeWebview && (
-            <button
-              className={`toolbar__btn toolbar__btn--icon mobile-companion-btn${mobileServerRunning ? ' mobile-companion-btn--on' : ' mobile-companion-btn--off'}${mobileRefreshing ? ' mobile-companion-btn--spinning' : ''}`}
+            <FlatButton
+              variant="icon"
+              className={`mobile-companion-btn${mobileServerRunning ? ' mobile-companion-btn--on' : ' mobile-companion-btn--off'}${mobileRefreshing ? ' mobile-companion-btn--spinning' : ''}`}
               title={mobileServerRunning ? `Mobile server attivo — ${mobileDevices.length} device` : 'Mobile server spento'}
               onClick={() => {
                 dispatch({ type: 'START_MOBILE_REFRESH' });
                 postMessage({ type: 'openMobileCompanion' });
               }}
-            >
-              <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+              icon={<svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
                 <path d="M5 1.75A1.75 1.75 0 0 0 3.25 3.5v9A1.75 1.75 0 0 0 5 14.25h6A1.75 1.75 0 0 0 12.75 12.5v-9A1.75 1.75 0 0 0 11 1.75H5Zm0 1.5h6a.25.25 0 0 1 .25.25v9a.25.25 0 0 1-.25.25H5a.25.25 0 0 1-.25-.25v-9A.25.25 0 0 1 5 3.25ZM8 11.25a.75.75 0 1 0 0 1.5.75.75 0 0 0 0-1.5Z"/>
-              </svg>
+              </svg>}
+            >
               {mobileServerRunning && mobileDevices.length > 0 && (
                 <span className="mobile-companion-btn__badge">{mobileDevices.length}</span>
               )}
-            </button>
+            </FlatButton>
           )}
           {!isVsCodeWebview && <ConnectionIndicator />}
           <NotificationBell />
@@ -87,7 +91,8 @@ export function Toolbar() {
       </div>
 
       <div className="toolbar__row toolbar__row--main">
-        <div className="toolbar__group" data-label="Squad">
+        {(availableBranches.length > 0 || !repoIsGit) && (
+        <div className="toolbar__group toolbar__group--fade-in" data-label="Squad">
           <button
             className={`mcp-toggle mcp-toggle--toolbar${squadStatus.autoSquadEnabled ? ' mcp-toggle--on' : ''}`}
             title="Toggle Auto‑Squad"
@@ -96,6 +101,20 @@ export function Toolbar() {
             <span className="mcp-toggle__dot" />
             <span className="mcp-toggle__label">Auto</span>
           </button>
+          {availableBranches.length === 1
+            ? <span className="toolbar__branch-pill" title="Base branch">{availableBranches[0]}</span>
+            : availableBranches.length > 1 && (
+            <select
+              className="toolbar__select"
+              title="Base branch"
+              value={selectedBaseBranch}
+              onChange={e => dispatch({ type: 'SET_SELECTED_BASE_BRANCH', branch: e.target.value })}
+            >
+              {availableBranches.map(b => (
+                <option key={b} value={b}>{b}</option>
+              ))}
+            </select>
+          )}
           <select
             className="toolbar__select"
             title="Provider"
@@ -121,34 +140,34 @@ export function Toolbar() {
                 <option key={a.slug} value={a.slug}>{a.displayName}</option>
               ))}
           </select>
-          <button
-            className="toolbar__btn toolbar__btn--primary"
+          <FlatButton
+            variant="primary"
+            icon={<svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor"><path d="M6 3.5L12 8l-6 4.5v-9Z"/></svg>}
             disabled={squadStatus.activeCount >= squadStatus.maxSessions}
-            title="Start Squad"
+            title={squadStatus.autoSquadEnabled ? 'Launch squad and keep auto-polling' : 'Launch squad once'}
             onClick={() => squadAction('startSquad')}
           >
-            ▶ Start
-          </button>
+            {squadStatus.autoSquadEnabled ? 'Start Squad & Auto' : 'Start Squad'}
+          </FlatButton>
           {squadStatus.activeCount > 0 && (
             <span className="toolbar__badge toolbar__badge--live">
               {squadStatus.activeCount}/{squadStatus.maxSessions}
             </span>
           )}
         </div>
+        )}
 
         <div className="toolbar__spacer" />
 
         <div className="toolbar__group" data-label="Issues">
-          <button
-            className="toolbar__btn toolbar__btn--icon"
+          <FlatButton
+            variant="icon"
             title="Filter"
             onClick={() => dispatch({ type: 'TOGGLE_SEARCH' })}
+            icon={<svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M6 12h4v-1H6v1zm-3-4h10V7H3v1zm-2-5v1h14V3H1z"/></svg>}
           >
-            <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor">
-              <path d="M6 12h4v-1H6v1zm-3-4h10V7H3v1zm-2-5v1h14V3H1z"/>
-            </svg>
             {searchText && <span className="toolbar__badge toolbar__badge--inline">{filtered}</span>}
-          </button>
+          </FlatButton>
           {showSearchInput && (
             <input
               className="toolbar__search-input toolbar__search-input--open"
@@ -161,8 +180,8 @@ export function Toolbar() {
               }}
             />
           )}
-          <button className={`toolbar__btn toolbar__btn--secondary toolbar__btn--sync${syncing ? ' toolbar__btn--syncing' : ''}`} onClick={() => { dispatch({ type: 'START_SYNC' }); if (isVsCodeWebview) { postMessage({ type: 'refreshRequest' }); } else { (window as any).__agentBoardMobileSync?.(); } }}>{syncing ? 'Syncing…' : 'Sync'}</button>
-          <button className="toolbar__btn toolbar__btn--secondary" onClick={() => dispatch({ type: 'OPEN_TASK_FORM' })}>+ New Issue</button>
+          <FlatButton variant="secondary" className={syncing ? 'toolbar__btn--syncing' : ''} icon={<svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor"><path d="M5.563 2.063A6 6 0 0 1 14 8h-1.5A4.5 4.5 0 1 0 8 12.5v1.5A6 6 0 0 1 5.563 2.063Z"/><path d="M14 4v4h-4l1.5-1.5L10 5l2.5-1L14 4Z"/></svg>} onClick={() => { dispatch({ type: 'START_SYNC' }); if (isVsCodeWebview) { postMessage({ type: 'refreshRequest' }); } else { (window as any).__agentBoardMobileSync?.(); } }}>{syncing ? 'Syncing…' : 'Sync'}</FlatButton>
+          <FlatButton variant="secondary" icon="+" onClick={() => dispatch({ type: 'OPEN_TASK_FORM' })}>New Issue</FlatButton>
         </div>
       </div>
 
@@ -177,18 +196,20 @@ export function Toolbar() {
           <span className="toolbar__mobile-idle">No agents running</span>
         )}
         <div className="toolbar__mobile-actions">
-          <button
-            className={`toolbar__btn toolbar__btn--secondary toolbar__btn--sync${syncing ? ' toolbar__btn--syncing' : ''}`}
+          <FlatButton
+            variant="secondary"
+            className={syncing ? 'toolbar__btn--syncing' : ''}
+            icon={<svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor"><path d="M5.563 2.063A6 6 0 0 1 14 8h-1.5A4.5 4.5 0 1 0 8 12.5v1.5A6 6 0 0 1 5.563 2.063Z"/><path d="M14 4v4h-4l1.5-1.5L10 5l2.5-1L14 4Z"/></svg>}
             onClick={() => { dispatch({ type: 'START_SYNC' }); if (isVsCodeWebview) { postMessage({ type: 'refreshRequest' }); } else { (window as any).__agentBoardMobileSync?.(); } }}
-          >
-            {syncing ? '↻' : '↻'}
-          </button>
-          <button
-            className="toolbar__btn toolbar__btn--primary toolbar__mobile-squad-btn"
+          />
+          <FlatButton
+            variant="primary"
+            className="toolbar__mobile-squad-btn"
+            icon={<svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor"><path d="M6 3.5L12 8l-6 4.5v-9Z"/></svg>}
             onClick={() => squadSheetRef.current?.showModal()}
           >
-            ▶ Squad
-          </button>
+            Squad
+          </FlatButton>
         </div>
       </div>
 
@@ -225,6 +246,22 @@ export function Toolbar() {
               : squadAgents.map(a => <option key={a.slug} value={a.slug}>{a.displayName}</option>)}
           </select>
 
+          {availableBranches.length >= 1 && (
+            <>
+              <label className="squad-sheet__label">Branch</label>
+              {availableBranches.length === 1
+                ? <span className="squad-sheet__branch-readonly">{availableBranches[0]}</span>
+                : <select
+                    className="squad-sheet__select"
+                    value={selectedBaseBranch}
+                    onChange={e => dispatch({ type: 'SET_SELECTED_BASE_BRANCH', branch: e.target.value })}
+                  >
+                    {availableBranches.map(b => <option key={b} value={b}>{b}</option>)}
+                  </select>
+              }
+            </>
+          )}
+
           <div className="squad-sheet__toggle-row">
             <span>Auto-Squad</span>
             <button
@@ -243,13 +280,15 @@ export function Toolbar() {
             </div>
           )}
 
-          <button
-            className="toolbar__btn toolbar__btn--primary squad-sheet__start"
+          <FlatButton
+            variant="primary"
+            className="squad-sheet__start"
+            icon={<svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor"><path d="M6 3.5L12 8l-6 4.5v-9Z"/></svg>}
             disabled={squadStatus.activeCount >= squadStatus.maxSessions}
             onClick={() => { squadAction('startSquad'); squadSheetRef.current?.close(); }}
           >
-            ▶ Start Squad
-          </button>
+            {squadStatus.autoSquadEnabled ? 'Start Squad & Auto' : 'Start Squad'}
+          </FlatButton>
 
           <button className="squad-sheet__close" onClick={() => squadSheetRef.current?.close()}>Cancel</button>
         </div>
@@ -264,16 +303,15 @@ function NotificationBell() {
   const count = notifications.length;
 
   return (
-    <button
-      className="toolbar__btn toolbar__btn--icon notification-bell"
+    <FlatButton
+      variant="icon"
+      className="notification-bell"
       title="Notifications"
       onClick={() => dispatch({ type: 'TOGGLE_NOTIFICATION_CENTER' })}
+      icon={<svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><path d="M8 1.5A3.5 3.5 0 0 0 4.5 5v2.5c0 .5-.2 1.1-.6 1.6L3 10.2V11h10v-.8l-.9-1.1c-.4-.5-.6-1.1-.6-1.6V5A3.5 3.5 0 0 0 8 1.5ZM6.5 12a1.5 1.5 0 0 0 3 0h-3Z"/></svg>}
     >
-      <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
-        <path d="M8 1.5A3.5 3.5 0 0 0 4.5 5v2.5c0 .5-.2 1.1-.6 1.6L3 10.2V11h10v-.8l-.9-1.1c-.4-.5-.6-1.1-.6-1.6V5A3.5 3.5 0 0 0 8 1.5ZM6.5 12a1.5 1.5 0 0 0 3 0h-3Z"/>
-      </svg>
       {count > 0 && <span className="notification-bell__badge">{count}</span>}
-    </button>
+    </FlatButton>
   );
 }
 
@@ -293,9 +331,9 @@ function ConnectionIndicator() {
 export function getNotifications(repoIsGit: boolean, repoIsGitHub: boolean): string[] {
   const notifications: string[] = [];
   if (!repoIsGit) {
-    notifications.push('⚠︎ Questo progetto non è un repository Git. Squad, Copilot LM API, Copilot CLI e Cloud sono disabilitati.');
+    notifications.push('⚠︎ Questo progetto non è un repository Git. Squad, VS Code API, GitHub Copilot e GitHub Cloud sono disabilitati.');
   } else if (!repoIsGitHub) {
-    notifications.push('⚠︎ Nessun remote GitHub collegato. Cloud è disabilitato.');
+    notifications.push('⚠︎ Nessun remote GitHub collegato. GitHub Cloud è disabilitato.');
   }
   return notifications;
 }

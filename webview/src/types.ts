@@ -45,6 +45,7 @@ export interface GenAiProviderOption {
   id: string;
   displayName: string;
   icon: string;
+  canSquad?: boolean;
   disabled?: boolean;
   disabledReason?: string;
 }

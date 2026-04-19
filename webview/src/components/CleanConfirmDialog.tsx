@@ -1,6 +1,7 @@
 import React, { useCallback, useMemo } from 'react';
 import { useBoard } from '../context/BoardContext';
 import { postMessage } from '../hooks/useVsCodeApi';
+import { FlatButton } from './FlatButton';
 
 export function CleanConfirmDialog() {
   const { state, dispatch } = useBoard();
@@ -36,7 +37,7 @@ export function CleanConfirmDialog() {
           <div className="clean-confirm__heading">Hide Tasks</div>
           <p className="clean-confirm__text">No completed tasks to hide.</p>
           <div className="clean-confirm__actions">
-            <button className="toolbar__btn toolbar__btn--secondary" onClick={handleCancel}>Close</button>
+            <FlatButton variant="secondary" onClick={handleCancel}>Close</FlatButton>
           </div>
         </div>
       </div>
@@ -71,12 +72,12 @@ export function CleanConfirmDialog() {
         </div>
 
         <div className="clean-confirm__actions">
-          <button className="toolbar__btn toolbar__btn--primary clean-confirm__btn--confirm" onClick={handleConfirm}>
+          <FlatButton variant="danger" onClick={handleConfirm}>
             Hide {doneTasks.length} task{doneTasks.length !== 1 ? 's' : ''}
-          </button>
-          <button className="toolbar__btn toolbar__btn--secondary" onClick={handleCancel}>
+          </FlatButton>
+          <FlatButton variant="secondary" onClick={handleCancel}>
             Cancel
-          </button>
+          </FlatButton>
         </div>
       </div>
     </div>

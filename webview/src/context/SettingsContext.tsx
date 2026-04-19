@@ -1,5 +1,5 @@
 import React, { createContext, useCallback, useContext, useReducer, useRef } from 'react';
-import type { ProviderInfo, SectionId, SettingsConfig } from '../settingsTypes';
+import type { GenAiProviderInfo, ProviderInfo, SectionId, SettingsConfig } from '../settingsTypes';
 
 // ── State ──────────────────────────────────────────────────────
 
@@ -7,6 +7,7 @@ export interface SettingsState {
   loaded: boolean;
   config: SettingsConfig;
   providers: ProviderInfo[];
+  genAiProviders: GenAiProviderInfo[];
   activeSection: SectionId;
   dirty: boolean;
   /** Log content received from the host. */
@@ -19,6 +20,7 @@ const initialState: SettingsState = {
   loaded: false,
   config: {},
   providers: [],
+  genAiProviders: [],
   activeSection: 'providers',
   dirty: false,
   logContent: '',
@@ -30,6 +32,7 @@ const initialState: SettingsState = {
 type Action =
   | { type: 'setConfig'; config: SettingsConfig; force?: boolean }
   | { type: 'setProviders'; providers: ProviderInfo[] }
+  | { type: 'setGenAiProviders'; providers: GenAiProviderInfo[] }
   | { type: 'setActiveSection'; section: SectionId }
   | { type: 'updateConfig'; patch: SettingsConfig }
   | { type: 'updateSectionField'; section: string; key: string; value: unknown }
@@ -46,6 +49,8 @@ function reducer(state: SettingsState, action: Action): SettingsState {
       return { ...state, config: action.config, loaded: true, dirty: false };
     case 'setProviders':
       return { ...state, providers: action.providers };
+    case 'setGenAiProviders':
+      return { ...state, genAiProviders: action.providers };
     case 'setActiveSection':
       return { ...state, activeSection: action.section };
     case 'updateConfig': {

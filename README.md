@@ -24,7 +24,7 @@ Modern AI coding assistants are powerful — but managing **multiple tasks acros
 - **One board to rule them all.** Drag tasks across columns. Each card can launch an autonomous AI session with one click.
 - **Parallel agent squads.** Spin up 10+ simultaneous Copilot sessions — each on its own git worktree, each streaming live output back to the board.
 - **From issue to PR in zero clicks.** Auto-squad picks tasks, launches agents, tracks diffs, and opens pull requests — all while you review the last batch.
-- **Works with your stack.** GitHub Issues, Azure DevOps, local JSON, Beads CLI, or your own provider. Copilot, Ollama, Mistral, or your own GenAI backend.
+- **Works with your stack.** GitHub Issues, Azure DevOps, local JSON, Beads CLI, or your own provider. Copilot, LM API, or your own GenAI backend.
 - **MCP-native.** External agents can list, create, update, and delete tasks via the built-in Model Context Protocol server.
 
 ---
@@ -57,7 +57,7 @@ Stdio-based Model Context Protocol server for full CRUD: `list_tasks`, `get_task
 
 ### Extensible Providers
 
-GitHub Issues (via `gh` CLI), Azure DevOps, Markdown files, local JSON, Beads CLI — or register your own via the extension API. GenAI providers: VS Code Chat, Cloud (vscode.lm), Copilot CLI, LM API with tool-calling, Ollama, Mistral — or register your own.
+GitHub Issues (via `gh` CLI), Azure DevOps, Markdown files, local JSON, Beads CLI — or register your own via the extension API. GenAI providers: VS Code Chat, GitHub Cloud, GitHub Copilot, VS Code API with tool-calling — or register your own.
 
 ---
 
@@ -112,9 +112,7 @@ Create a `.agent-board/config.json` file in the workspace root to override any V
     "enabled": true
   },
   "genAiProviders": {
-    "copilot-cli": { "yolo": true, "fleet": true },
-    "ollama": { "enabled": true, "model": "codellama" },
-    "mistral": { "enabled": true, "model": "mistral-small-latest" }
+    "github-copilot": { "yolo": true, "fleet": true },
   },
   "kanban": {
     "columns": ["backlog", "todo", "inprogress", "review", "done"]
@@ -167,9 +165,9 @@ All settings can also be configured globally through **File > Preferences > Sett
 | `agentBoard.markdownProvider.donePath` | `".agent-board/markdown/done"` | Directory where done `.md` files are moved |
 | `agentBoard.beadsProvider.executable` | `"beads"` | Path to Beads CLI |
 | `agentBoard.worktree.enabled` | `true` | Create an isolated git worktree for providers that support it |
-| `agentBoard.copilotCli.yolo` | `true` | Enable `/yolo` mode — auto-approve all changes without confirmation |
-| `agentBoard.copilotCli.fleet` | `false` | Enable `/fleet` mode — optimise prompt for parallel fleet execution |
-| `agentBoard.copilotCli.remote` | `false` | Enable `--remote` mode — run sessions against the remote GitHub repository |
+| `agentBoard.githubCopilot.yolo` | `true` | Enable `/yolo` mode — auto-approve all changes without confirmation |
+| `agentBoard.githubCopilot.fleet` | `false` | Enable `/fleet` mode — optimise prompt for parallel fleet execution |
+| `agentBoard.githubCopilot.silent` | `true` | Enable `--silent` mode — suppress interactive prompts and progress output |
 | `agentBoard.kanban.intermediateColumns` | `["inprogress","review"]` | Intermediate column IDs between todo and done |
 | `agentBoard.copilotModel` | `""` | Preferred Copilot model family (e.g. `gpt-4o`). Empty = default |
 | `agentBoard.contextDepth` | `"standard"` | Context depth: `minimal`, `standard`, `full` (file tree + git) |
@@ -265,7 +263,15 @@ registry?.register(myCustomProvider);
 
 Providers that declare `supportsWorktree` (e.g. **Copilot CLI**, **LM API**) automatically create an isolated git worktree before the session runs. Each task gets its own branch (`agent-board/<taskId>`) outside the repo root, so agents never conflict with each other or with your working tree.
 
-From the board you can: **open** the worktree in a new window, **review** changes (multi-file diff), **create a PR** (GitHub or Azure DevOps), **merge** (squash/merge/rebase), **align** from main, run **agent-merge**, or **delete** the worktree.
+From the board you can: **open** the worktree in a new window, **review** changes (multi-file diff), **create a PR** (GitHub or Azure DevOps), **merge** (squash/merge/rebase), **align** from the base branch, run **agent-merge**, or **delete** the worktree.
+
+### Base Branch Selection
+
+The board shows a **branch selector** in the squad toolbar and in the full-view actions panel. You can choose which branch to use as the base for worktree creation and merge targets.
+
+- **Single branch** — displayed as a read-only pill (same style as the Auto toggle).
+- **Multiple branches** — dropdown selector. Worktree branches (`agent-board/*`) are automatically filtered out.
+- The selected branch is propagated to worktree creation, diff watchers, merge operations, align prompts, and PR creation.
 
 **Worktree creation is enabled by default.** To disable it:
 
@@ -290,54 +296,75 @@ The Copilot integration uses an extensible provider architecture (`IGenAiProvide
 
 ### Global Providers (VS Code integrated)
 
-| Provider | Description | Worktree | Tool Calling |
-| ---------- | ------------- | :--------: | :------------: |
-| **Chat** (`chat`) | Opens VS Code native chat with task context pre-filled | — | Yes |
-| **Cloud** (`cloud`) | Autopilot mode via VS Code agent chat (auto-submits) | — | — |
-| **Copilot CLI** (`copilot-cli`) | Background subprocess, streams output, saves to `.kanban-notes/` | Yes | — |
-| **LM API** (`copilot-lm`) | Direct `vscode.lm` calls with full tool-calling loop (up to 100 rounds) | Yes | Yes |
+| Provider | Description | Worktree | Tool Calling | Auto-Advance |
+| ---------- | ------------- | :--------: | :------------: | :------------: |
+| **VS Code Chat** (`vscode-chat`) | Opens VS Code native chat with task context pre-filled | — | Yes | Manual |
+| **GitHub Cloud** (`github-cloud`) | Autopilot mode via VS Code agent chat (auto-submits) | — | — | Automatic |
+| **GitHub Copilot** (`github-copilot`) | Background subprocess, streams output, saves to `.kanban-notes/` | Yes | — | Automatic |
+| **VS Code API** (`vscode-api`) | Direct `vscode.lm` calls with full tool-calling loop (up to 100 rounds) | Yes | Yes | Automatic |
 
-#### Copilot CLI Optimisations
+#### GitHub Copilot CLI Optimisations
 
 | Flag | Config Key | Default | Description |
 | ------ | ----------- | --------- | ------------- |
-| `/yolo` | `genAiProviders.copilot-cli.yolo` | `true` | Auto-approve all changes — the model applies changes autonomously |
-| `/fleet` | `genAiProviders.copilot-cli.fleet` | `false` | Optimise for parallel execution — focus on assigned task, avoid conflicts |
-| `--remote` | `genAiProviders.copilot-cli.remote` | `false` | Run session against the remote GitHub repository |
+| `/yolo` | `genAiProviders.github-copilot.yolo` | `true` | Auto-approve all changes — the model applies changes autonomously |
+| `/fleet` | `genAiProviders.github-copilot.fleet` | `false` | Optimise for parallel execution — focus on assigned task, avoid conflicts |
+| `--silent` | `genAiProviders.github-copilot.silent` | `true` | Suppress interactive prompts and progress output |
 
 ```jsonc
 {
   "genAiProviders": {
-    "copilot-cli": { "yolo": true, "fleet": true, "remote": true }
-  }
-}
-```
-
-### Project Providers
-
-Enabled per project in `.agent-board/config.json` under `genAiProviders`:
-
-| Provider | Description |
-| ---------- | ------------- |
-| **Ollama** (`ollama`) | Local model (default: `llama3`, endpoint: `localhost:11434`) |
-| **Mistral** (`mistral`) | Mistral API (default: `mistral-small-latest`, key via `MISTRAL_API_KEY`) |
-
-```jsonc
-{
-  "genAiProviders": {
-    "ollama": { "enabled": true, "model": "codellama", "endpoint": "http://localhost:11434/api/generate" },
-    "mistral": { "enabled": true, "model": "mistral-small-latest" }
+    "github-copilot": { "yolo": true, "fleet": true, "silent": true }
   }
 }
 ```
 
 ### Custom GenAI Providers
 
+Any extension can register its own GenAI provider at runtime via the extension API.
+A provider must implement the `IGenAiProvider` interface (see below) and register itself through the exported `genAiRegistry`.
+
 ```typescript
+import * as vscode from 'vscode';
+
 const agentBoard = vscode.extensions.getExtension('agent-board');
 const genAiRegistry = agentBoard?.exports?.genAiRegistry;
-genAiRegistry?.register(myCustomGenAiProvider);
+
+genAiRegistry?.register({
+  id: 'my-provider',
+  displayName: 'My Provider',
+  icon: 'hubot',
+  scope: 'project',            // 'global' | 'project'
+  supportsWorktree: true,       // set to true if the provider can work inside a git worktree
+  async isAvailable() { return true; },
+  async run(prompt, task, worktreePath) {
+    // call your LLM here
+  },
+  dispose() {},
+});
 ```
+
+Providers can optionally:
+
+| Field / Method | Purpose |
+| --- | --- |
+| `onDidStream` | `vscode.Event<string>` — stream chunks to the live session panel |
+| `onDidToolCall` | `vscode.Event<string>` — show tool-call status in the UI |
+| `sendFollowUp(text)` | Multi-turn conversations (e.g. chat-style providers) |
+| `cancel()` | Cancel a running request |
+| `disableAutoAdvance` | Prevent auto-moving the task to done/failed after `run()` |
+
+Per-provider settings can be stored in `.agent-board/config.json` under `genAiProviders.<id>`:
+
+```jsonc
+{
+  "genAiProviders": {
+    "my-provider": { "enabled": true, "model": "my-model", "endpoint": "http://localhost:8080" }
+  }
+}
+```
+
+Each entry supports `enabled`, `model`, `endpoint`, `yolo`, and `fleet` — all optional.
 
 ## Agent Tools
 
@@ -361,7 +388,20 @@ When `.github/agents/` contains Markdown files, Agent Board automatically discov
 
 ### Agent file format
 
-Each `.md` file in `.github/agents/` defines an agent. The filename (without extension) becomes the **slug**. The first `# Heading` is the display name; no heading → auto title-cased. Supports `canSquad: true` frontmatter.
+Each `.md` file in `.github/agents/` defines an agent. The filename (without extension) becomes the **slug**. The first `# Heading` is the display name; no heading → auto title-cased.
+
+To make an agent available in the **squad selector**, add `agent-board-squad: true` to the frontmatter:
+
+```markdown
+---
+agent-board-squad: true
+---
+# Code Reviewer
+
+Review pull requests and suggest improvements.
+```
+
+Agents **without** `agent-board-squad: true` are still discovered and available for single-task launches, but they will not appear in the squad agent dropdown.
 
 ```text
 .github/agents/
@@ -378,6 +418,15 @@ The **squad** launches multiple parallel GenAI sessions, one per task:
 - **Auto Squad** — continuously monitors and fills slots as sessions complete.
 
 Tasks flow: **Source** → **Active** → **Done** (all three columns are configurable).
+
+### Auto-Advance
+
+Each GenAI provider declares whether task progression is automatic or manual:
+
+- **Automatic** (default) — when the session completes successfully the task moves to the done column; on failure it is retried or moved back to the source column.
+- **Manual** (`disableAutoAdvance: true`) — the task moves to the active column on launch but stays there when the session ends. The user decides when to advance it.
+
+The **VS Code Chat** provider is manual by default (interactive session). All other built-in providers (GitHub Cloud, GitHub Copilot, VS Code API) use automatic advancement.
 
 ### Squad Autonomy Features
 
@@ -486,10 +535,10 @@ Extension Host (Node.js)
 │   ├── TaskStoreProvider      (in-memory store)
 │   └── AggregatorProvider     (merge + dedup)
 ├── GenAiProviderRegistry   → IGenAiProvider implementations
-│   ├── ChatGenAiProvider      (VS Code chat + tool calling)
-│   ├── CloudGenAiProvider     (vscode.lm autopilot)
-│   ├── CopilotCliGenAiProvider (background subprocess + worktree)
-│   └── LmApiGenAiProvider     (vscode.lm + tool-calling loop + worktree)
+│   ├── ChatGenAiProvider      (VS Code Chat)
+│   ├── CloudGenAiProvider     (GitHub Cloud)
+│   ├── CopilotCliGenAiProvider (GitHub Copilot CLI)
+│   └── LmApiGenAiProvider     (VS Code API + tool-calling loop)
 ├── AgentDiscovery          → .github/agents/*.md
 ├── SquadManager            → parallel sessions, auto-squad, SquadConfig
 │   └── squadUtils.ts         (resolveSquadConfig, canRetry, etc.)

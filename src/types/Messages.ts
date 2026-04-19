@@ -46,11 +46,40 @@ export interface GenAiProviderOption {
   id: string;
   displayName: string;
   icon: string;
+  /** When true the provider can participate in squad sessions. Defaults to true. */
+  canSquad?: boolean;
   /** When true the provider button is shown but greyed-out / non-clickable. */
   disabled?: boolean;
   /** Short reason shown as tooltip when the button is disabled. */
   disabledReason?: string;
 }
+
+/** Setting descriptor for a single GenAI provider config field (host → settings webview). */
+export interface GenAiSettingDescriptorMsg {
+  key: string;
+  title: string;
+  description: string;
+  type: 'boolean' | 'string' | 'number' | 'select';
+  defaultValue: string | number | boolean;
+  options?: Array<{ label: string; value: string | number | boolean }>;
+}
+
+/** Full GenAI provider metadata sent to the settings webview. */
+export interface GenAiProviderInfo {
+  id: string;
+  displayName: string;
+  icon: string;
+  description: string;
+  settings: GenAiSettingDescriptorMsg[];
+}
+
+/** UI block shape for chat block messages (mirrors copilot-sdk/types.ts UIBlock). */
+export type UIBlockMsg =
+  | { type: 'text'; content: string; streaming?: boolean }
+  | { type: 'code'; content: string; language?: string }
+  | { type: 'command'; content: string }
+  | { type: 'result'; content: string }
+  | { type: 'step'; label: string; status?: 'running' | 'done' };
 
 export type HostToWebView =
   | { type: 'tasksUpdate'; tasks: KanbanTask[]; columns: Column[]; editableProviderIds: string[]; genAiProviders: GenAiProviderOption[] }
@@ -58,6 +87,7 @@ export type HostToWebView =
   | { type: 'themeChange'; kind: 'dark' | 'light' | 'hc' }
   | { type: 'squadStatus'; status: SquadStatus }
   | { type: 'agentsAvailable'; agents: AgentOption[] }
+  | { type: 'branchesAvailable'; branches: string[]; current: string }
   | { type: 'mcpStatus'; enabled: boolean }
   | { type: 'showTaskForm'; columns: Column[]; currentUser?: string }
   | { type: 'streamOutput'; sessionId: string; text: string; ts: string; role?: 'user' | 'assistant' | 'tool' }
@@ -71,7 +101,14 @@ export type HostToWebView =
   | { type: 'deleteWorktreeResult'; sessionId: string; success: boolean; message?: string }
   | { type: 'createPullRequestResult'; sessionId: string; success: boolean; prUrl?: string; prNumber?: number; message?: string }
   | { type: 'agentLog'; taskId: string; chunk: string; done: boolean }
-  | { type: 'agentError'; taskId: string; error: string };
+  | { type: 'agentError'; taskId: string; error: string }
+  | { type: 'localNotes'; taskId: string; notes: string }
+  | { type: 'chatBlock'; sessionId: string; block: UIBlockMsg }
+  | { type: 'chatStart'; sessionId: string }
+  | { type: 'chatEnd'; sessionId: string }
+  | { type: 'chatError'; sessionId: string; content: string }
+  | { type: 'chatPrompt'; sessionId: string; prompt: string }
+  | { type: 'chatBoardEvent'; sessionId: string; text: string };
 
 // ── WebView → Host ──────────────────────────────────────────────────────────
 
@@ -86,19 +123,20 @@ export interface NewTaskData {
 
 export type WebViewToHost =
   | { type: 'taskMoved'; taskId: string; providerId: string; toCol: ColumnId; index: number }
-  | { type: 'openCopilot'; taskId: string; providerId: string; agentSlug?: string }
+  | { type: 'openCopilot'; taskId: string; providerId: string; agentSlug?: string; baseBranch?: string }
   | { type: 'cancelSession'; taskId: string }
+  | { type: 'resetSession'; sessionId: string }
   | { type: 'refreshRequest'; providerId?: string }
   | { type: 'ready' }
   | { type: 'addTask' }
   | { type: 'saveTask'; data: NewTaskData }
   | { type: 'editTask'; taskId: string; providerId: string; data: NewTaskData }
-  | { type: 'launchProvider'; taskId: string; providerId: string; genAiProviderId: string }
+  | { type: 'launchProvider'; taskId: string; providerId: string; genAiProviderId: string; baseBranch?: string }
   | { type: 'reopenSession'; taskId: string }
   | { type: 'cancelTaskForm' }
   | { type: 'openWorktree'; worktreePath: string }
-  | { type: 'startSquad'; agentSlug?: string; genAiProviderId?: string }
-  | { type: 'toggleAutoSquad'; agentSlug?: string; genAiProviderId?: string }
+  | { type: 'startSquad'; agentSlug?: string; genAiProviderId?: string; baseBranch?: string }
+  | { type: 'toggleAutoSquad'; agentSlug?: string; genAiProviderId?: string; baseBranch?: string }
   | { type: 'toggleMcp' }
   | { type: 'toggleMobileServer' }
   | { type: 'setMobileTunnelEnabled'; enabled: boolean }
@@ -122,4 +160,5 @@ export type WebViewToHost =
   | { type: 'exportDoneMd' }
   | { type: 'cleanDone' }
   | { type: 'startAgent'; taskId: string; provider: string; prompt: string }
-  | { type: 'cancelAgent'; taskId: string };
+  | { type: 'cancelAgent'; taskId: string }
+  | { type: 'saveLocalNotes'; taskId: string; providerId: string; notes: string };

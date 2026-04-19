@@ -2,7 +2,7 @@ import * as vscode from 'vscode';
 import { ProjectConfig } from '../config/ProjectConfig';
 import { DEFAULT_COLUMN_COLORS, DEFAULT_COLUMN_LABELS, buildColumnOrder } from '../types/ColumnId';
 import { KanbanTask } from '../types/KanbanTask';
-import { AgentOption, Column, FileChangeInfo, GenAiProviderOption, HostToWebView, SquadStatus, WebViewToHost } from '../types/Messages';
+import { AgentOption, Column, FileChangeInfo, GenAiProviderOption, HostToWebView, SquadStatus, UIBlockMsg, WebViewToHost } from '../types/Messages';
 import { Logger } from '../utils/logger';
 
 /**
@@ -21,7 +21,7 @@ export class KanbanPanel {
   private readonly isDev: boolean;
   private reloadTimer: ReturnType<typeof setTimeout> | undefined;
 
-  private onMessageCallback: ((msg: WebViewToHost) => void) | undefined;
+  private onMessageCallbacks: ((msg: WebViewToHost) => void)[] = [];
 
   private constructor(
     panel: vscode.WebviewPanel,
@@ -36,7 +36,7 @@ export class KanbanPanel {
 
     this.panel.webview.onDidReceiveMessage(
       (msg: WebViewToHost) => {
-        this.onMessageCallback?.(msg);
+        for (const cb of this.onMessageCallbacks) { cb(msg); }
       },
       null,
       this.disposables,
@@ -91,9 +91,14 @@ export class KanbanPanel {
     };
   }
 
+  /** Remove all message callbacks (use before re-wiring handlers). */
+  clearMessageHandlers(): void {
+    this.onMessageCallbacks = [];
+  }
+
   /** Register a callback for messages from the WebView. */
   onMessage(callback: (msg: WebViewToHost) => void): void {
-    this.onMessageCallback = callback;
+    this.onMessageCallbacks.push(callback);
   }
 
   /** Register a callback invoked when the panel is disposed. */
@@ -143,6 +148,31 @@ export class KanbanPanel {
   /** Notify the WebView that a tool call is in progress for a session. */
   notifyToolCall(sessionId: string, status: string): void {
     this.postMessage({ type: 'toolCall', sessionId, status });
+  }
+
+  /** Push a structured chat block for a session to the WebView. */
+  appendChatBlock(sessionId: string, block: UIBlockMsg): void {
+    this.postMessage({ type: 'chatBlock', sessionId, block });
+  }
+
+  /** Signal the start of a new assistant turn. */
+  notifyChatStart(sessionId: string): void {
+    this.postMessage({ type: 'chatStart', sessionId });
+  }
+
+  /** Signal the end of an assistant turn. */
+  notifyChatEnd(sessionId: string): void {
+    this.postMessage({ type: 'chatEnd', sessionId });
+  }
+
+  /** Send the initial prompt to the chat UI (displayed as a board message). */
+  sendChatPrompt(sessionId: string, prompt: string): void {
+    this.postMessage({ type: 'chatPrompt', sessionId, prompt });
+  }
+
+  /** Send a board-level event (state change, action) to the chat UI. */
+  sendChatBoardEvent(sessionId: string, text: string): void {
+    this.postMessage({ type: 'chatBoardEvent', sessionId, text });
   }
 
   /** Push the latest file-change list for a session to the WebView. */

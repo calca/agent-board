@@ -3,7 +3,7 @@ import { AgentTools } from '../../agent/AgentTools';
 import { KanbanTask } from '../../types/KanbanTask';
 import { Logger } from '../../utils/logger';
 import { ChatSessionFactory } from '../ChatSessionFactory';
-import { GenAiProviderScope, IGenAiProvider } from '../IGenAiProvider';
+import { GenAiProviderConfig, GenAiProviderScope, GenAiSettingDescriptor, IGenAiProvider } from '../IGenAiProvider';
 
 /**
  * GenAI provider that opens a **new** VS Code chat session in agent
@@ -16,8 +16,9 @@ import { GenAiProviderScope, IGenAiProvider } from '../IGenAiProvider';
  * Requires VS Code 1.87+ and GitHub Copilot Chat extension.
  */
 export class ChatGenAiProvider implements IGenAiProvider {
-  readonly id = 'chat';
-  readonly displayName = 'Copilot - chat';
+  readonly id = 'vscode-chat';
+  readonly displayName = 'VS Code Chat';
+  readonly description = 'VS Code agent chat panel';
   readonly icon = 'comment-discussion';
   readonly scope: GenAiProviderScope = 'global';
   /**
@@ -26,6 +27,7 @@ export class ChatGenAiProvider implements IGenAiProvider {
    * it to done/failed when run() returns.
    */
   readonly disableAutoAdvance = true;
+  readonly canSquad = false;
 
   private agentTools: AgentTools | undefined;
 
@@ -79,6 +81,9 @@ export class ChatGenAiProvider implements IGenAiProvider {
     const result = await this.agentTools.execute(name, args);
     return result.content;
   }
+
+  getSettingsDescriptors(): GenAiSettingDescriptor[] { return []; }
+  applyConfig(_config: GenAiProviderConfig): void { /* no configurable settings */ }
 
   dispose(): void {
     // Nothing to clean up

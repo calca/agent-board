@@ -1,6 +1,7 @@
 import { useCallback, useState } from 'react';
 import { useBoard } from '../context/BoardContext';
 import { getVsCodeApi, postMessage } from '../hooks/useVsCodeApi';
+import { FlatButton } from './FlatButton';
 
 export function MobileCompanionDialog() {
   const { state, dispatch } = useBoard();
@@ -24,7 +25,7 @@ export function MobileCompanionDialog() {
               <span className="mc__subtitle">Accedi alla board dal tuo telefono</span>
             </div>
           </div>
-          <button className="mc__close" onClick={() => dispatch({ type: 'CLOSE_MOBILE_DIALOG' })} aria-label="Chiudi">✕</button>
+          <FlatButton variant="icon" icon="✕" onClick={() => dispatch({ type: 'CLOSE_MOBILE_DIALOG' })} aria-label="Chiudi" />
         </div>
 
         {/* ── Main content ── */}
@@ -89,27 +90,30 @@ export function MobileCompanionDialog() {
               </div>
             )}
 
-            {/* Buttons */}
             <div className="mc__actions">
-              <button
-                className={`mc__btn ${mobileServerRunning ? 'mc__btn--danger' : 'mc__btn--primary'}`}
+              <FlatButton
+                variant={mobileServerRunning ? 'danger' : 'primary'}
+                icon={mobileServerRunning
+                  ? <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor"><rect x="3" y="3" width="10" height="10" rx="1"/></svg>
+                  : <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor"><path d="M6 3.5L12 8l-6 4.5v-9Z"/></svg>}
                 onClick={() => {
                   dispatch({ type: 'START_MOBILE_REFRESH' });
                   postMessage({ type: 'toggleMobileServer' });
                   postMessage({ type: 'refreshMobileStatus' });
                 }}
               >
-                {mobileServerRunning ? '⏹ Ferma server' : '▶ Avvia server'}
-              </button>
-              <button
-                className="mc__btn mc__btn--ghost"
+                {mobileServerRunning ? 'Ferma server' : 'Avvia server'}
+              </FlatButton>
+              <FlatButton
+                variant="ghost"
+                icon={<svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor"><path d="M5.563 2.063A6 6 0 0 1 14 8h-1.5A4.5 4.5 0 1 0 8 12.5v1.5A6 6 0 0 1 5.563 2.063Z"/><path d="M14 4v4h-4l1.5-1.5L10 5l2.5-1L14 4Z"/></svg>}
                 onClick={() => {
                   dispatch({ type: 'START_MOBILE_REFRESH' });
                   postMessage({ type: 'refreshMobileStatus' });
                 }}
               >
-                ↻ Aggiorna
-              </button>
+                Aggiorna
+              </FlatButton>
             </div>
           </div>
         </div>
@@ -152,8 +156,6 @@ function CopyButton({ text }: { text: string }) {
   }, [text]);
 
   return (
-    <button className="mc__copy-btn" onClick={handleCopy} title="Copia URL" aria-label="Copia URL">
-      {copied ? '✓' : '📋'}
-    </button>
+    <FlatButton variant="icon" icon={copied ? '✓' : '📋'} onClick={handleCopy} title="Copia URL" aria-label="Copia URL" />
   );
 }

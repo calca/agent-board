@@ -16,6 +16,10 @@ export function SquadSection() {
   return (
     <div className="section">
       <div className="section__title">Squad</div>
+      <p className="section__hint">
+        Only agents with <code>agent-board-squad: true</code> in their frontmatter appear in the squad agent selector.
+        Add this to your <code>.github/agents/*.md</code> files to enable them for squad mode.
+      </p>
       <div className="cols-2">
         <div className="field">
           <label htmlFor="sq-max">Max sessions</label>

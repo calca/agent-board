@@ -115,8 +115,8 @@ suite('ProjectConfigData (full shape)', () => {
       beadsProvider: { executable: '/usr/local/bin/beads' },
       worktree: { enabled: true },
       genAiProviders: {
-        ollama: { enabled: true, model: 'llama3', endpoint: 'http://localhost:11434/api/generate' },
-        mistral: { enabled: true, model: 'mistral-small-latest' },
+        'my-provider': { enabled: true, model: 'my-model', endpoint: 'http://localhost:8080/api/generate' },
+        'another-provider': { enabled: true, model: 'another-model' },
       },
       kanban: { intermediateColumns: ['backlog', 'doing'] },
       logLevel: 'DEBUG',
@@ -126,10 +126,10 @@ suite('ProjectConfigData (full shape)', () => {
     assert.strictEqual(cfg.jsonProvider?.path, '.agent-board/tasks');
     assert.strictEqual(cfg.beadsProvider?.executable, '/usr/local/bin/beads');
     assert.strictEqual(cfg.worktree?.enabled, true);
-    assert.strictEqual(cfg.genAiProviders?.ollama?.enabled, true);
-    assert.strictEqual(cfg.genAiProviders?.ollama?.model, 'llama3');
-    assert.strictEqual(cfg.genAiProviders?.mistral?.enabled, true);
-    assert.strictEqual(cfg.genAiProviders?.mistral?.model, 'mistral-small-latest');
+    assert.strictEqual(cfg.genAiProviders?.['my-provider']?.enabled, true);
+    assert.strictEqual(cfg.genAiProviders?.['my-provider']?.['model'], 'my-model');
+    assert.strictEqual(cfg.genAiProviders?.['another-provider']?.enabled, true);
+    assert.strictEqual(cfg.genAiProviders?.['another-provider']?.['model'], 'another-model');
     assert.deepStrictEqual(cfg.kanban?.intermediateColumns, ['backlog', 'doing']);
     assert.strictEqual(cfg.logLevel, 'DEBUG');
   });
@@ -146,34 +146,36 @@ suite('ProjectConfigData (full shape)', () => {
   test('genAiProviders entries are independently optional', () => {
     const cfg: ProjectConfigData = {
       genAiProviders: {
-        ollama: { enabled: true },
-        mistral: { model: 'mistral-tiny' },
+        'my-provider': { enabled: true },
+        'another-provider': { model: 'small' },
       },
     };
-    assert.strictEqual(cfg.genAiProviders?.ollama?.enabled, true);
-    assert.strictEqual(cfg.genAiProviders?.ollama?.model, undefined);
-    assert.strictEqual(cfg.genAiProviders?.mistral?.enabled, undefined);
-    assert.strictEqual(cfg.genAiProviders?.mistral?.model, 'mistral-tiny');
+    assert.strictEqual(cfg.genAiProviders?.['my-provider']?.enabled, true);
+    assert.strictEqual(cfg.genAiProviders?.['my-provider']?.['model'], undefined);
+    assert.strictEqual(cfg.genAiProviders?.['another-provider']?.enabled, undefined);
+    assert.strictEqual(cfg.genAiProviders?.['another-provider']?.['model'], 'small');
   });
 
-  test('genAiProviders supports yolo and fleet flags', () => {
+  test('genAiProviders supports yolo, fleet and silent flags', () => {
     const cfg: ProjectConfigData = {
       genAiProviders: {
-        'copilot-cli': { yolo: true, fleet: true },
+        'github-copilot': { yolo: true, fleet: true, silent: true },
       },
     };
-    assert.strictEqual(cfg.genAiProviders?.['copilot-cli']?.yolo, true);
-    assert.strictEqual(cfg.genAiProviders?.['copilot-cli']?.fleet, true);
+    assert.strictEqual(cfg.genAiProviders?.['github-copilot']?.['yolo'], true);
+    assert.strictEqual(cfg.genAiProviders?.['github-copilot']?.['fleet'], true);
+    assert.strictEqual(cfg.genAiProviders?.['github-copilot']?.['silent'], true);
   });
 
-  test('genAiProviders yolo and fleet default to undefined', () => {
+  test('genAiProviders yolo, fleet and silent default to undefined', () => {
     const cfg: ProjectConfigData = {
       genAiProviders: {
-        'copilot-cli': { enabled: true },
+        'github-copilot': { enabled: true },
       },
     };
-    assert.strictEqual(cfg.genAiProviders?.['copilot-cli']?.yolo, undefined);
-    assert.strictEqual(cfg.genAiProviders?.['copilot-cli']?.fleet, undefined);
+    assert.strictEqual(cfg.genAiProviders?.['github-copilot']?.['yolo'], undefined);
+    assert.strictEqual(cfg.genAiProviders?.['github-copilot']?.['fleet'], undefined);
+    assert.strictEqual(cfg.genAiProviders?.['github-copilot']?.['silent'], undefined);
   });
 
   test('worktree can be explicitly enabled', () => {

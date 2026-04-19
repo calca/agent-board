@@ -21,7 +21,7 @@ export interface AgentInfo {
   displayName: string;
   /** Absolute path to the `.md` file. */
   filePath: string;
-  /** Whether this agent can participate in squad mode. Parsed from `canSquad` frontmatter. */
+  /** Whether this agent can participate in squad mode. Parsed from `agent-board-squad: true` frontmatter. */
   canSquad: boolean;
 }
 
@@ -47,7 +47,7 @@ export function discoverAgents(workspaceRoot: string): AgentInfo[] {
     const content = readFileContent(filePath);
     const frontmatter = parseFrontmatter(content);
     const displayName = extractDisplayNameFromContent(content, slug);
-    const canSquad = frontmatter.canSquad === true;
+    const canSquad = frontmatter['agent-board-squad'] === true;
     return { slug, displayName, filePath, canSquad };
   });
 }
@@ -85,7 +85,7 @@ function parseFrontmatter(content: string): Record<string, unknown> {
   if (!fmMatch) { return {}; }
   const result: Record<string, unknown> = {};
   for (const line of fmMatch[1].split(/\r?\n/)) {
-    const kv = line.match(/^(\w+):\s*(.+)$/);
+    const kv = line.match(/^([\w-]+):\s*(.+)$/);
     if (!kv) { continue; }
     const [, key, raw] = kv;
     const val = raw.trim();
