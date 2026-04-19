@@ -1,4 +1,6 @@
 import { useEffect, useRef } from 'react';
+import type { UIBlock } from '../components/chat/chatTypes';
+import { chatReducer, EMPTY_CHAT_STATE } from '../components/chat/chatTypes';
 import { useBoard } from '../context/BoardContext';
 import { DataProvider } from '../DataProvider';
 import type { Column, FileChangeInfo, KanbanTask, TaskLogEntry } from '../types';
@@ -209,9 +211,34 @@ export function useHostMessages(): void {
           // Theme auto-applied via CSS variables
           break;
 
-        // chatBlock/chatStart/chatEnd/chatError are handled directly
-        // by ChatContainer via window message listener.
+        // ── Chat messages — persisted in imp.chatStates ───────────────
+        case 'chatPrompt':
+          dispatchChat(msg.sessionId as string, { type: 'BOARD_MESSAGE', text: msg.prompt as string });
+          break;
+        case 'chatBoardEvent':
+          dispatchChat(msg.sessionId as string, { type: 'BOARD_MESSAGE', text: msg.text as string });
+          break;
+        case 'chatStart':
+          dispatchChat(msg.sessionId as string, { type: 'START_ASSISTANT' });
+          break;
+        case 'chatBlock':
+          dispatchChat(msg.sessionId as string, { type: 'APPEND_BLOCK', block: msg.block as UIBlock });
+          break;
+        case 'chatEnd':
+          dispatchChat(msg.sessionId as string, { type: 'END_ASSISTANT' });
+          break;
+        case 'chatError':
+          dispatchChat(msg.sessionId as string, { type: 'APPEND_BLOCK', block: { type: 'text', content: `⚠ ${msg.content}` } });
+          dispatchChat(msg.sessionId as string, { type: 'END_ASSISTANT' });
+          break;
       }
+    }
+
+    /** Apply a ChatAction to the persistent chat state for a session. */
+    function dispatchChat(sessionId: string, action: import('../components/chat/chatTypes').ChatAction) {
+      const prev = imp.current.chatStates.get(sessionId) ?? EMPTY_CHAT_STATE;
+      imp.current.chatStates.set(sessionId, chatReducer(prev, action));
+      forceUpdate();
     }
 
     function addLog(taskId: string, source: TaskLogEntry['source'], text: string) {

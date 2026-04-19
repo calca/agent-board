@@ -4,9 +4,10 @@ import { MessageBubble } from './MessageBubble';
 
 interface MessageListProps {
   messages: ChatBlockMessage[];
+  isRunning?: boolean;
 }
 
-export function MessageList({ messages }: MessageListProps) {
+export function MessageList({ messages, isRunning }: MessageListProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const autoScrollRef = useRef(true);
 
@@ -32,6 +33,11 @@ export function MessageList({ messages }: MessageListProps) {
       {messages.map(msg => (
         <MessageBubble key={msg.id} message={msg} />
       ))}
+      {isRunning && (
+        <div className="cb-typing">
+          <span /><span /><span />
+        </div>
+      )}
     </div>
   );
 }

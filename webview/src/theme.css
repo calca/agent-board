@@ -4916,10 +4916,13 @@ body.vscode-high-contrast .md-editor-container {
   line-height: 24px;
   text-align: center;
   border-radius: 50%;
-  background: var(--vscode-badge-background);
-  color: var(--vscode-badge-foreground);
+  background: var(--vscode-toolbar-hoverBackground, rgba(90, 93, 94, 0.31));
+  color: var(--vscode-descriptionForeground, #888);
   font-size: 12px;
   flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .cb-bubble__content {
@@ -4943,11 +4946,6 @@ body.vscode-high-contrast .md-editor-container {
   background: var(--vscode-textBlockQuote-background, rgba(127, 127, 127, 0.1));
   border-color: var(--vscode-textBlockQuote-border, var(--vscode-panel-border));
   font-size: 0.85em;
-}
-
-.cb-bubble--board .cb-bubble__avatar {
-  background: var(--vscode-textLink-foreground, #3794ff);
-  color: #fff;
 }
 
 /* ── Text block ────────────────────────────────────────────────────── */
@@ -5089,6 +5087,31 @@ body.vscode-high-contrast .md-editor-container {
 
 .cb-step__label {
   font-style: italic;
+}
+
+/* ── Typing indicator (3-dot bounce) ───────────────────────────────── */
+
+.cb-typing {
+  display: flex;
+  gap: 4px;
+  padding: 8px 12px;
+  align-self: flex-start;
+}
+
+.cb-typing span {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--vscode-descriptionForeground, #888);
+  animation: cb-bounce 1.2s ease-in-out infinite;
+}
+
+.cb-typing span:nth-child(2) { animation-delay: 0.15s; }
+.cb-typing span:nth-child(3) { animation-delay: 0.3s; }
+
+@keyframes cb-bounce {
+  0%, 60%, 100% { transform: translateY(0); }
+  30% { transform: translateY(-6px); }
 }
 
 /* ── Input box ─────────────────────────────────────────────────────── */

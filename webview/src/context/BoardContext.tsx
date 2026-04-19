@@ -1,4 +1,5 @@
 import React, { createContext, useCallback, useContext, useReducer, useRef, type Dispatch } from 'react';
+import type { ChatState } from '../components/chat/chatTypes';
 import { AgentOption, ChatMessage, Column, FileChangeInfo, GenAiProviderOption, KanbanTask, MobileDeviceInfo, SquadStatus, TaskLogEntry } from '../types';
 
 // ── State ────────────────────────────────────────────────────────────────
@@ -257,6 +258,8 @@ export interface ImperativeState {
   sessionChatMessages: ChatMessage[];
   streamAutoScroll: boolean;
   fullViewAutoScroll: boolean;
+  /** Persistent chat state per session (survives component mount/unmount). */
+  chatStates: Map<string, ChatState>;
 }
 
 // ── Context ──────────────────────────────────────────────────────────────
@@ -283,6 +286,7 @@ export function BoardProvider({ children }: { children: React.ReactNode }) {
     sessionChatMessages: [],
     streamAutoScroll: true,
     fullViewAutoScroll: true,
+    chatStates: new Map(),
   });
   const forceUpdate = useCallback(() => setTick(t => t + 1), []);
 
