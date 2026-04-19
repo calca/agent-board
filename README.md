@@ -57,7 +57,7 @@ Stdio-based Model Context Protocol server for full CRUD: `list_tasks`, `get_task
 
 ### Extensible Providers
 
-GitHub Issues (via `gh` CLI), Azure DevOps, Markdown files, local JSON, Beads CLI — or register your own via the extension API. GenAI providers: VS Code Chat, Cloud (vscode.lm), Copilot CLI, LM API with tool-calling — or register your own.
+GitHub Issues (via `gh` CLI), Azure DevOps, Markdown files, local JSON, Beads CLI — or register your own via the extension API. GenAI providers: VS Code Chat, GitHub Cloud, GitHub Copilot, VS Code API with tool-calling — or register your own.
 
 ---
 
@@ -112,7 +112,7 @@ Create a `.agent-board/config.json` file in the workspace root to override any V
     "enabled": true
   },
   "genAiProviders": {
-    "copilot-cli": { "yolo": true, "fleet": true },
+    "github-copilot": { "yolo": true, "fleet": true },
   },
   "kanban": {
     "columns": ["backlog", "todo", "inprogress", "review", "done"]
@@ -165,9 +165,9 @@ All settings can also be configured globally through **File > Preferences > Sett
 | `agentBoard.markdownProvider.donePath` | `".agent-board/markdown/done"` | Directory where done `.md` files are moved |
 | `agentBoard.beadsProvider.executable` | `"beads"` | Path to Beads CLI |
 | `agentBoard.worktree.enabled` | `true` | Create an isolated git worktree for providers that support it |
-| `agentBoard.copilotCli.yolo` | `true` | Enable `/yolo` mode — auto-approve all changes without confirmation |
-| `agentBoard.copilotCli.fleet` | `false` | Enable `/fleet` mode — optimise prompt for parallel fleet execution |
-| `agentBoard.copilotCli.silent` | `true` | Enable `--silent` mode — suppress interactive prompts and progress output |
+| `agentBoard.githubCopilot.yolo` | `true` | Enable `/yolo` mode — auto-approve all changes without confirmation |
+| `agentBoard.githubCopilot.fleet` | `false` | Enable `/fleet` mode — optimise prompt for parallel fleet execution |
+| `agentBoard.githubCopilot.silent` | `true` | Enable `--silent` mode — suppress interactive prompts and progress output |
 | `agentBoard.kanban.intermediateColumns` | `["inprogress","review"]` | Intermediate column IDs between todo and done |
 | `agentBoard.copilotModel` | `""` | Preferred Copilot model family (e.g. `gpt-4o`). Empty = default |
 | `agentBoard.contextDepth` | `"standard"` | Context depth: `minimal`, `standard`, `full` (file tree + git) |
@@ -298,23 +298,23 @@ The Copilot integration uses an extensible provider architecture (`IGenAiProvide
 
 | Provider | Description | Worktree | Tool Calling | Auto-Advance |
 | ---------- | ------------- | :--------: | :------------: | :------------: |
-| **Chat** (`chat`) | Opens VS Code native chat with task context pre-filled | — | Yes | Manual |
-| **Cloud** (`cloud`) | Autopilot mode via VS Code agent chat (auto-submits) | — | — | Automatic |
-| **Copilot CLI** (`copilot-cli`) | Background subprocess, streams output, saves to `.kanban-notes/` | Yes | — | Automatic |
-| **LM API** (`copilot-lm`) | Direct `vscode.lm` calls with full tool-calling loop (up to 100 rounds) | Yes | Yes | Automatic |
+| **VS Code Chat** (`vscode-chat`) | Opens VS Code native chat with task context pre-filled | — | Yes | Manual |
+| **GitHub Cloud** (`github-cloud`) | Autopilot mode via VS Code agent chat (auto-submits) | — | — | Automatic |
+| **GitHub Copilot** (`github-copilot`) | Background subprocess, streams output, saves to `.kanban-notes/` | Yes | — | Automatic |
+| **VS Code API** (`vscode-api`) | Direct `vscode.lm` calls with full tool-calling loop (up to 100 rounds) | Yes | Yes | Automatic |
 
-#### Copilot CLI Optimisations
+#### GitHub Copilot CLI Optimisations
 
 | Flag | Config Key | Default | Description |
 | ------ | ----------- | --------- | ------------- |
-| `/yolo` | `genAiProviders.copilot-cli.yolo` | `true` | Auto-approve all changes — the model applies changes autonomously |
-| `/fleet` | `genAiProviders.copilot-cli.fleet` | `false` | Optimise for parallel execution — focus on assigned task, avoid conflicts |
-| `--silent` | `genAiProviders.copilot-cli.silent` | `true` | Suppress interactive prompts and progress output |
+| `/yolo` | `genAiProviders.github-copilot.yolo` | `true` | Auto-approve all changes — the model applies changes autonomously |
+| `/fleet` | `genAiProviders.github-copilot.fleet` | `false` | Optimise for parallel execution — focus on assigned task, avoid conflicts |
+| `--silent` | `genAiProviders.github-copilot.silent` | `true` | Suppress interactive prompts and progress output |
 
 ```jsonc
 {
   "genAiProviders": {
-    "copilot-cli": { "yolo": true, "fleet": true, "silent": true }
+    "github-copilot": { "yolo": true, "fleet": true, "silent": true }
   }
 }
 ```
@@ -426,7 +426,7 @@ Each GenAI provider declares whether task progression is automatic or manual:
 - **Automatic** (default) — when the session completes successfully the task moves to the done column; on failure it is retried or moved back to the source column.
 - **Manual** (`disableAutoAdvance: true`) — the task moves to the active column on launch but stays there when the session ends. The user decides when to advance it.
 
-The **Chat** provider is manual by default (interactive session). All other built-in providers (Cloud, Copilot CLI, LM API) use automatic advancement.
+The **VS Code Chat** provider is manual by default (interactive session). All other built-in providers (GitHub Cloud, GitHub Copilot, VS Code API) use automatic advancement.
 
 ### Squad Autonomy Features
 
@@ -535,10 +535,10 @@ Extension Host (Node.js)
 │   ├── TaskStoreProvider      (in-memory store)
 │   └── AggregatorProvider     (merge + dedup)
 ├── GenAiProviderRegistry   → IGenAiProvider implementations
-│   ├── ChatGenAiProvider      (VS Code chat + tool calling)
-│   ├── CloudGenAiProvider     (vscode.lm autopilot)
-│   ├── CopilotCliGenAiProvider (background subprocess + worktree)
-│   └── LmApiGenAiProvider     (vscode.lm + tool-calling loop + worktree)
+│   ├── ChatGenAiProvider      (VS Code Chat)
+│   ├── CloudGenAiProvider     (GitHub Cloud)
+│   ├── CopilotCliGenAiProvider (GitHub Copilot CLI)
+│   └── LmApiGenAiProvider     (VS Code API + tool-calling loop)
 ├── AgentDiscovery          → .github/agents/*.md
 ├── SquadManager            → parallel sessions, auto-squad, SquadConfig
 │   └── squadUtils.ts         (resolveSquadConfig, canRetry, etc.)

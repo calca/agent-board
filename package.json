@@ -183,22 +183,22 @@
         "agentBoard.worktree.enabled": {
           "type": "boolean",
           "default": true,
-          "description": "Create an isolated git worktree for providers that support it (e.g. Copilot CLI). Overridable in .agent-board/config.json."
+          "description": "Create an isolated git worktree for providers that support it (e.g. GitHub Copilot). Overridable in .agent-board/config.json."
         },
-        "agentBoard.copilotCli.yolo": {
+        "agentBoard.githubCopilot.yolo": {
           "type": "boolean",
           "default": true,
-          "description": "Enable /yolo mode for Copilot CLI — auto-approve all changes without confirmation. Overridable in .agent-board/config.json under genAiProviders.copilot-cli.yolo."
+          "description": "Enable /yolo mode for GitHub Copilot — auto-approve all changes without confirmation. Overridable in .agent-board/config.json under genAiProviders.github-copilot.yolo."
         },
-        "agentBoard.copilotCli.fleet": {
+        "agentBoard.githubCopilot.fleet": {
           "type": "boolean",
           "default": false,
-          "description": "Enable /fleet mode for Copilot CLI — optimise prompt for parallel fleet execution. Overridable in .agent-board/config.json under genAiProviders.copilot-cli.fleet."
+          "description": "Enable /fleet mode for GitHub Copilot — optimise prompt for parallel fleet execution. Overridable in .agent-board/config.json under genAiProviders.github-copilot.fleet."
         },
-        "agentBoard.copilotCli.silent": {
+        "agentBoard.githubCopilot.silent": {
           "type": "boolean",
           "default": true,
-          "description": "Enable --silent mode for Copilot CLI — suppress interactive prompts and progress output. Overridable in .agent-board/config.json under genAiProviders.copilot-cli.silent."
+          "description": "Enable --silent mode for GitHub Copilot — suppress interactive prompts and progress output. Overridable in .agent-board/config.json under genAiProviders.github-copilot.silent."
         },
         "agentBoard.kanban.intermediateColumns": {
           "type": "array",
@@ -214,7 +214,7 @@
         "agentBoard.copilotModel": {
           "type": "string",
           "default": "",
-          "description": "Preferred Copilot model family for the LM API provider (e.g. 'gpt-4o'). Leave empty to use the default model."
+          "description": "Preferred Copilot model family for the VS Code API provider (e.g. 'gpt-4o'). Leave empty to use the default model."
         },
         "agentBoard.sessionTimeoutMinutes": {
           "type": "number",
@@ -349,7 +349,7 @@
     "watch:tsc": "tsc -watch -p ./",
     "pretest": "npm run compile:tsc && npm run lint",
     "lint": "eslint src --ext ts",
-    "test": "mocha --require out/test/suite/vscode-mock.js out/test/suite/agentManager.test.js out/test/suite/providerRegistry.test.js out/test/suite/columnId.test.js out/test/suite/aggregatorProvider.test.js out/test/suite/schema.test.js out/test/suite/contextBuilder.test.js out/test/suite/messages.test.js out/test/suite/projectConfig.test.js out/test/suite/githubProvider.test.js out/test/suite/genAiProvider.test.js out/test/suite/worktreeManager.test.js out/test/suite/squadManager.test.js out/test/suite/agentDiscovery.test.js out/test/suite/mcpToolHandler.test.js out/test/suite/errorUtils.test.js out/test/suite/sessionStateManager.test.js out/test/suite/markdownProvider.test.js --ui tdd --reporter spec",
+    "test": "mocha --require out/test/suite/vscode-mock.js out/test/suite/agentManager.test.js out/test/suite/providerRegistry.test.js out/test/suite/columnId.test.js out/test/suite/aggregatorProvider.test.js out/test/suite/schema.test.js out/test/suite/contextBuilder.test.js out/test/suite/messages.test.js out/test/suite/projectConfig.test.js out/test/suite/githubProvider.test.js out/test/suite/genAiProvider.test.js out/test/suite/worktreeManager.test.js out/test/suite/squadManager.test.js out/test/suite/agentDiscovery.test.js out/test/suite/mcpToolHandler.test.js out/test/suite/errorUtils.test.js out/test/suite/sessionStateManager.test.js out/test/suite/markdownProvider.test.js out/test/suite/copilotFlow.test.js --ui tdd --reporter spec",
     "mcp": "node out/mcp/mcpServer.js"
   },
   "devDependencies": {
@@ -370,6 +370,7 @@
     "typescript-eslint": "^8.58.1"
   },
   "dependencies": {
+    "@github/copilot-sdk": "^0.2.2",
     "@types/localtunnel": "^2.0.4",
     "@types/qrcode": "^1.5.6",
     "localtunnel": "^2.0.2",

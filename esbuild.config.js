@@ -38,7 +38,7 @@ const extensionBuildOptions = {
   entryPoints: ['src/extension.ts'],
   bundle: true,
   outfile: 'dist/extension.js',
-  external: ['vscode'],
+  external: ['vscode', '@github/copilot-sdk'],
   format: 'cjs',
   platform: 'node',
   target: 'es2020',
