@@ -13,6 +13,7 @@ interface ChatState {
 
 type ChatAction =
   | { type: 'USER_MESSAGE'; text: string }
+  | { type: 'BOARD_MESSAGE'; text: string }
   | { type: 'APPEND_BLOCK'; block: UIBlock }
   | { type: 'FINISH_STEP'; label: string }
   | { type: 'START_ASSISTANT' }
@@ -28,6 +29,15 @@ function chatReducer(state: ChatState, action: ChatAction): ChatState {
       const msg: ChatBlockMessage = {
         id: nextId(),
         role: 'user',
+        blocks: [{ type: 'text', content: action.text }],
+        ts: new Date().toISOString(),
+      };
+      return { ...state, messages: [...state.messages, msg] };
+    }
+    case 'BOARD_MESSAGE': {
+      const msg: ChatBlockMessage = {
+        id: nextId(),
+        role: 'board',
         blocks: [{ type: 'text', content: action.text }],
         ts: new Date().toISOString(),
       };
@@ -111,6 +121,12 @@ export function ChatContainer({ sessionId }: ChatContainerProps) {
       if (msg.sessionId !== sessionId) { return; }
 
       switch (msg.type) {
+        case 'chatPrompt':
+          dispatch({ type: 'BOARD_MESSAGE', text: msg.prompt as string });
+          break;
+        case 'chatBoardEvent':
+          dispatch({ type: 'BOARD_MESSAGE', text: msg.text as string });
+          break;
         case 'chatStart':
           dispatch({ type: 'START_ASSISTANT' });
           break;

@@ -106,7 +106,9 @@ export type HostToWebView =
   | { type: 'chatBlock'; sessionId: string; block: UIBlockMsg }
   | { type: 'chatStart'; sessionId: string }
   | { type: 'chatEnd'; sessionId: string }
-  | { type: 'chatError'; sessionId: string; content: string };
+  | { type: 'chatError'; sessionId: string; content: string }
+  | { type: 'chatPrompt'; sessionId: string; prompt: string }
+  | { type: 'chatBoardEvent'; sessionId: string; text: string };
 
 // ── WebView → Host ──────────────────────────────────────────────────────────
 

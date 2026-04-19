@@ -1,5 +1,5 @@
-import type { UIBlock, ChatBlockMessage } from './chatTypes';
-import { TextBlock, CodeBlock, CommandBlock, ResultBlock, StepBlock } from './blocks';
+import { CodeBlock, CommandBlock, ResultBlock, StepBlock, TextBlock } from './blocks';
+import type { ChatBlockMessage, UIBlock } from './chatTypes';
 
 function BlockRenderer({ block }: { block: UIBlock }) {
   switch (block.type) {
@@ -13,18 +13,24 @@ function BlockRenderer({ block }: { block: UIBlock }) {
 
 export function MessageBubble({ message }: { message: ChatBlockMessage }) {
   const isUser = message.role === 'user';
+  const isBoard = message.role === 'board';
   const cls = `cb-bubble cb-bubble--${message.role}`;
 
   return (
     <div className={cls}>
-      <div className="cb-bubble__avatar">
-        {isUser ? '👤' : '◆'}
-      </div>
+      {!isUser && !isBoard && (
+        <div className="cb-bubble__avatar">◆</div>
+      )}
       <div className="cb-bubble__content">
         {message.blocks.map((block, i) => (
           <BlockRenderer key={i} block={block} />
         ))}
       </div>
+      {(isUser || isBoard) && (
+        <div className="cb-bubble__avatar">
+          {isBoard ? '▦' : '👤'}
+        </div>
+      )}
     </div>
   );
 }

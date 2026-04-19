@@ -11,7 +11,7 @@ export type UIBlock =
 
 export interface ChatBlockMessage {
   id: string;
-  role: 'user' | 'assistant';
+  role: 'user' | 'assistant' | 'board';
   blocks: UIBlock[];
   ts: string;
 }

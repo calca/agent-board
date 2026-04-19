@@ -597,6 +597,16 @@ export function activate(context: vscode.ExtensionContext): void {
     });
     panel.onDispose(() => copilotEventSub.dispose());
 
+    // Forward board events (prompt, state changes) → webview chat
+    const boardEventSub = copilotLauncher.onDidBoardEvent(({ sessionId, kind, text }) => {
+      if (kind === 'prompt') {
+        panel.sendChatPrompt(sessionId, text);
+      } else {
+        panel.sendChatBoardEvent(sessionId, text);
+      }
+    });
+    panel.onDispose(() => boardEventSub.dispose());
+
     // Forward DiffWatcher file-change events → webview (live, via onDidChangeDiff)
     const diffSub = copilotLauncher.onDidChangeDiff(({ sessionId, files }) => {
       panel.updateFileChanges(sessionId, files);

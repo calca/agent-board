@@ -4901,6 +4901,11 @@ body.vscode-high-contrast .md-editor-container {
   flex-direction: row-reverse;
 }
 
+.cb-bubble--board {
+  align-self: flex-end;
+  flex-direction: row-reverse;
+}
+
 .cb-bubble--assistant {
   align-self: flex-start;
 }
@@ -4932,6 +4937,17 @@ body.vscode-high-contrast .md-editor-container {
   background: var(--vscode-button-background);
   color: var(--vscode-button-foreground);
   border-color: var(--vscode-button-background);
+}
+
+.cb-bubble--board .cb-bubble__content {
+  background: var(--vscode-textBlockQuote-background, rgba(127, 127, 127, 0.1));
+  border-color: var(--vscode-textBlockQuote-border, var(--vscode-panel-border));
+  font-size: 0.85em;
+}
+
+.cb-bubble--board .cb-bubble__avatar {
+  background: var(--vscode-textLink-foreground, #3794ff);
+  color: #fff;
 }
 
 /* ── Text block ────────────────────────────────────────────────────── */

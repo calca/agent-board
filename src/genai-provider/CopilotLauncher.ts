@@ -53,6 +53,10 @@ export class CopilotLauncher {
   /** Fires structured CopilotEvents from SDK-based providers. */
   readonly onDidCopilotEvent = this._onDidCopilotEvent.event;
 
+  private readonly _onDidBoardEvent = new vscode.EventEmitter<{ sessionId: string; kind: 'prompt' | 'event'; text: string }>();
+  /** Fires board-level messages (prompt sent, state changes, actions). */
+  readonly onDidBoardEvent = this._onDidBoardEvent.event;
+
   constructor(
     private readonly registry: ProviderRegistry,
     private readonly context: vscode.ExtensionContext,
@@ -225,6 +229,12 @@ export class CopilotLauncher {
 
     // Emit the prompt to the activity log so the user can see what was sent
     stream.append(`-----------------\nPROMPT\n${prompt}\n-----------------`);
+    // Send prompt and board events to the chat UI
+    this._onDidBoardEvent.fire({ sessionId: taskId, kind: 'prompt', text: prompt });
+    if (worktree) {
+      this._onDidBoardEvent.fire({ sessionId: taskId, kind: 'event', text: `Worktree created: ${worktree.branch}` });
+    }
+    this._onDidBoardEvent.fire({ sessionId: taskId, kind: 'event', text: `Provider: ${provider.displayName} — running` });
 
     let sessionSucceeded = false;
     let sessionError: string | undefined;
@@ -259,8 +269,10 @@ export class CopilotLauncher {
         if (sessionSucceeded) {
           this.sessionStateManager?.markCompleted(taskId);
           await this.moveTaskToReview(task);
+          this._onDidBoardEvent.fire({ sessionId: taskId, kind: 'event', text: 'Session completed ✓ — moved to review' });
         } else {
           this.sessionStateManager?.markError(taskId, sessionError);
+          this._onDidBoardEvent.fire({ sessionId: taskId, kind: 'event', text: `Session failed: ${sessionError ?? 'unknown error'}` });
         }
       }
       // Manual sessions keep their 'manual' state — no transition.

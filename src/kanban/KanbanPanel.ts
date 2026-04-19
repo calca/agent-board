@@ -165,6 +165,16 @@ export class KanbanPanel {
     this.postMessage({ type: 'chatEnd', sessionId });
   }
 
+  /** Send the initial prompt to the chat UI (displayed as a board message). */
+  sendChatPrompt(sessionId: string, prompt: string): void {
+    this.postMessage({ type: 'chatPrompt', sessionId, prompt });
+  }
+
+  /** Send a board-level event (state change, action) to the chat UI. */
+  sendChatBoardEvent(sessionId: string, text: string): void {
+    this.postMessage({ type: 'chatBoardEvent', sessionId, text });
+  }
+
   /** Push the latest file-change list for a session to the WebView. */
   updateFileChanges(sessionId: string, files: FileChangeInfo[]): void {
     this.postMessage({ type: 'fileChanges', sessionId, files });
