@@ -8,13 +8,13 @@ import { Logger } from '../utils/logger';
 import { CopilotLauncher } from './CopilotLauncher';
 import { GenAiProviderRegistry } from './GenAiProviderRegistry';
 import {
-  SquadConfig,
-  canRetry,
-  resolveSquadConfig,
+    SquadConfig,
+    canRetry,
+    resolveSquadConfig,
 } from './squadUtils';
 
 export {
-  DEFAULT_ACTIVE_COLUMN, DEFAULT_AUTO_SQUAD_INTERVAL, DEFAULT_COOLDOWN_MS, DEFAULT_DONE_COLUMN, DEFAULT_MAX_RETRIES, DEFAULT_MAX_SESSIONS, DEFAULT_SESSION_TIMEOUT, DEFAULT_SOURCE_COLUMN, canRetry, computeAvailableSlots, resolveSquadConfig
+    DEFAULT_ACTIVE_COLUMN, DEFAULT_AUTO_SQUAD_INTERVAL, DEFAULT_COOLDOWN_MS, DEFAULT_DONE_COLUMN, DEFAULT_MAX_RETRIES, DEFAULT_MAX_SESSIONS, DEFAULT_SESSION_TIMEOUT, DEFAULT_SOURCE_COLUMN, canRetry, computeAvailableSlots, resolveSquadConfig
 } from './squadUtils';
 
 export type { SquadConfig } from './squadUtils';
