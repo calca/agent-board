@@ -235,10 +235,11 @@ export function wireMessageDispatcher(deps: MessageDispatcherDeps): void {
         const configuredCols = buildColumnOrder(ProjectConfig.getProjectConfig()?.kanban?.intermediateColumns);
         const doneColId = configuredCols[configuredCols.length - 1] ?? 'done';
         const allProviders = providerRegistry.getAll().filter(p => p.isEnabled());
+        const rawTasks = (await Promise.allSettled(allProviders.map(p => p.getTasks())))
+          .filter((r): r is PromiseFulfilledResult<KanbanTask[]> => r.status === 'fulfilled')
+          .flatMap(r => r.value);
         const allTasks = HiddenTasksStore.filterVisible(
-          (await Promise.allSettled(allProviders.map(p => p.getTasks())))
-            .filter((r): r is PromiseFulfilledResult<KanbanTask[]> => r.status === 'fulfilled')
-            .flatMap(r => r.value),
+          [...new Map(rawTasks.map(t => [t.id, t])).values()],
         );
         const doneTasks = allTasks.filter(t => t.status === doneColId);
         const today = new Date().toISOString().slice(0, 10);

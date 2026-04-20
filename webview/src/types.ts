@@ -30,6 +30,7 @@ export interface KanbanTask {
   assignee?: string;
   url?: string;
   providerId: string;
+  createdAt?: string;
   agent?: string;
   meta?: Record<string, unknown>;
   copilotSession?: CopilotSession;

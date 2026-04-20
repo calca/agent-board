@@ -25,12 +25,15 @@ export async function sendTasksToPanel(
   squadMgr?: SquadManager,
   sessionStateMgr?: SessionStateManager,
 ): Promise<void> {
-  const providers = registry.getAll();
-  const allTasks = HiddenTasksStore.filterVisible(
-    (await Promise.allSettled(providers.map(p => p.getTasks())))
-      .filter((r): r is PromiseFulfilledResult<KanbanTask[]> => r.status === 'fulfilled')
-      .flatMap(r => r.value),
-  );
+  const providers = registry.getAll().filter(p => p.isEnabled());
+  const rawTasks = (await Promise.allSettled(providers.map(p => p.getTasks())))
+    .filter((r): r is PromiseFulfilledResult<KanbanTask[]> => r.status === 'fulfilled')
+    .flatMap(r => r.value);
+
+  // Deduplicate by task id — last occurrence wins (allows provider refresh to override stale data)
+  const deduped = [...new Map(rawTasks.map(t => [t.id, t])).values()];
+
+  const allTasks = HiddenTasksStore.filterVisible(deduped);
 
   // Inject session info into tasks so the webview can show status, worktree, errors
   for (const task of allTasks) {
