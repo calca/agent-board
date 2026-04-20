@@ -3336,6 +3336,10 @@ html, body, #root {
   border-top: 1px solid var(--vscode-panel-border);
   margin: 4px 0;
 }
+.fv-actions__row {
+  display: flex;
+  gap: 6px;
+}
 .fv-action-btn--active {
   background: var(--vscode-button-background);
   color: var(--vscode-button-foreground);
@@ -3491,6 +3495,7 @@ html, body, #root {
   display: flex;
   flex-direction: column;
   gap: 6px;
+  margin-top: 12px;
 }
 .fv-merge-panel__label {
   font-size: 0.78em;

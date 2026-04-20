@@ -367,16 +367,13 @@ function FvActions({ task, sessionInfo, isRunning, isMerged, hasWorktree, active
   return (
     <div className="fv-actions">
       {sessionInfo && !isRunning && (
-        <>
-          <FlatButton variant="ghost" fullWidth className="fv-reset-session" icon={<svg className="fv-icon" width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M5.563 2.063A6 6 0 0 1 14 8h-1.5A4.5 4.5 0 1 0 8 12.5v1.5A6 6 0 0 1 5.563 2.063Z"/><path d="M14 4v4h-4l1.5-1.5L10 5l2.5-1L14 4Z"/></svg>} onClick={() => {
-            postMessage({ type: 'resetSession', sessionId: task.id });
-            dispatch({ type: 'SET_EDITING_TASK', task: null });
-            dispatch({ type: 'CLOSE_FULL_VIEW' });
-          }} title="Reset session and move task back to first column">
-            Reset
-          </FlatButton>
-          <hr className="fv-actions__separator" />
-        </>
+        <FlatButton variant="ghost" fullWidth className="fv-reset-session" icon={<svg className="fv-icon" width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M5.563 2.063A6 6 0 0 1 14 8h-1.5A4.5 4.5 0 1 0 8 12.5v1.5A6 6 0 0 1 5.563 2.063Z"/><path d="M14 4v4h-4l1.5-1.5L10 5l2.5-1L14 4Z"/></svg>} onClick={() => {
+          postMessage({ type: 'resetSession', sessionId: task.id });
+          dispatch({ type: 'SET_EDITING_TASK', task: null });
+          dispatch({ type: 'CLOSE_FULL_VIEW' });
+        }} title="Reset session and move task back to first column">
+          Reset
+        </FlatButton>
       )}
 
       {isRunning ? (
@@ -388,7 +385,6 @@ function FvActions({ task, sessionInfo, isRunning, isMerged, hasWorktree, active
           <FlatButton variant="danger" fullWidth icon={<svg className="fv-icon" width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><rect x="3" y="3" width="10" height="10" rx="1"/></svg>} onClick={() => postMessage({ type: 'cancelSession', taskId: task.id })}>
             Stop
           </FlatButton>
-          <hr className="fv-actions__separator" />
         </>
       ) : sessionInfo?.state !== 'completed' && !isMerged ? (
         <>
@@ -419,7 +415,6 @@ function FvActions({ task, sessionInfo, isRunning, isMerged, hasWorktree, active
               : <p className="fv-actions__no-providers">No GenAI providers enabled. Configure them in <strong>Settings → GenAI</strong>.</p>
             }
           </div>
-          <hr className="fv-actions__separator" />
         </>
       ) : null}
 
@@ -431,12 +426,19 @@ function FvActions({ task, sessionInfo, isRunning, isMerged, hasWorktree, active
         ) : (
           <>
             {!isRunning && (
-              <>
-                <hr className="fv-actions__separator" />
+              <div className="fv-actions__row">
                 <FlatButton variant="secondary" fullWidth className="fv-align-wt" icon={<svg className="fv-icon" width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M8 1a.75.75 0 0 1 .75.75v2.5a.75.75 0 0 1-1.5 0v-2.5A.75.75 0 0 1 8 1ZM3.1 3.1a.75.75 0 0 1 1.06 0l1.77 1.77a.75.75 0 0 1-1.06 1.06L3.1 4.16a.75.75 0 0 1 0-1.06Zm9.8 0a.75.75 0 0 1 0 1.06l-1.77 1.77a.75.75 0 1 1-1.06-1.06l1.77-1.77a.75.75 0 0 1 1.06 0ZM8 6a2 2 0 1 0 0 4 2 2 0 0 0 0-4ZM1 8a.75.75 0 0 1 .75-.75h2.5a.75.75 0 0 1 0 1.5h-2.5A.75.75 0 0 1 1 8Zm10 0a.75.75 0 0 1 .75-.75h2.5a.75.75 0 0 1 0 1.5h-2.5A.75.75 0 0 1 11 8Z"/></svg>} onClick={() => postMessage({ type: 'alignWorktree', sessionId: task.id })} title={`Align worktree from ${selectedBaseBranch || 'main'} with AI`}>
-                  Align from {selectedBaseBranch || 'main'} with AI
+                  Align from {selectedBaseBranch || 'main'}
                 </FlatButton>
-              </>
+                {isCompleteOrDone && (
+                  <FlatButton variant="secondary" fullWidth className="fv-agent-merge" icon={<svg className="fv-icon" width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M5 3.25a2.25 2.25 0 1 1 4.5 0A2.25 2.25 0 0 1 8 5.37V7h2.75A2.25 2.25 0 0 1 13 9.25v.38a2.25 2.25 0 1 1-1.5 0v-.38a.75.75 0 0 0-.75-.75h-5.5a.75.75 0 0 0-.75.75v.38a2.25 2.25 0 1 1-1.5 0v-.38A2.25 2.25 0 0 1 5.25 7H8V5.37A2.25 2.25 0 0 1 5 3.25Z"/></svg>} onClick={() => {
+                    const providerId = task.copilotSession?.providerId ?? '';
+                    postMessage({ type: 'agentMerge', sessionId: task.id, mergeStrategy: 'squash', providerId });
+                  }} title="Launch AI to review and merge">
+                    Merge to {selectedBaseBranch || 'main'}
+                  </FlatButton>
+                )}
+              </div>
             )}
             {isCompleteOrDone && (
               <>
@@ -451,14 +453,6 @@ function FvActions({ task, sessionInfo, isRunning, isMerged, hasWorktree, active
                     {sessionInfo.prNumber ? `Open PR #${sessionInfo.prNumber}` : 'Open PR'}
                   </a>
                 )}
-                <hr className="fv-actions__separator" />
-                <FlatButton variant="secondary" fullWidth className="fv-agent-merge" icon={<svg className="fv-icon" width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M5 3.25a2.25 2.25 0 1 1 4.5 0A2.25 2.25 0 0 1 8 5.37V7h2.75A2.25 2.25 0 0 1 13 9.25v.38a2.25 2.25 0 1 1-1.5 0v-.38a.75.75 0 0 0-.75-.75h-5.5a.75.75 0 0 0-.75.75v.38a2.25 2.25 0 1 1-1.5 0v-.38A2.25 2.25 0 0 1 5.25 7H8V5.37A2.25 2.25 0 0 1 5 3.25Z"/></svg>} onClick={() => {
-                  const providerId = task.copilotSession?.providerId ?? '';
-                  postMessage({ type: 'agentMerge', sessionId: task.id, mergeStrategy: 'squash', providerId });
-                }} title="Launch AI to review and merge">
-                  Merge to {selectedBaseBranch || 'main'} with AI
-                </FlatButton>
-                <hr className="fv-actions__separator" />
                 <MergePanel taskId={task.id} targetBranch={selectedBaseBranch || 'main'} />
               </>
             )}
