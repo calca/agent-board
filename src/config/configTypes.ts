@@ -159,11 +159,6 @@ export interface ProjectConfigData {
   mcp?: {
     /** Whether the MCP server is enabled.  Defaults to `false`. */
     enabled?: boolean;
-    /**
-     * Workspace-relative or absolute path to the JSON task file
-     * the MCP server operates on.  Defaults to the jsonProvider path.
-     */
-    tasksPath?: string;
   };
   /** @deprecated Use `logging.level` instead. */
   logLevel?: string;

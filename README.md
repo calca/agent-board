@@ -132,8 +132,7 @@ Create a `.agent-board/config.json` file in the workspace root to override any V
     "taskDone": true
   },
   "mcp": {
-    "enabled": true,
-    "tasksPath": ".agent-board/tasks"
+    "enabled": true
   },
   "logLevel": "DEBUG"
 }
@@ -497,8 +496,7 @@ Stdio-based [Model Context Protocol](https://modelcontextprotocol.io) server (JS
 ```jsonc
 {
   "mcp": {
-    "enabled": true,
-    "tasksPath": ".agent-board/tasks"   // optional, defaults to jsonProvider path
+    "enabled": true
   }
 }
 ```
@@ -506,8 +504,7 @@ Stdio-based [Model Context Protocol](https://modelcontextprotocol.io) server (JS
 ### Usage
 
 ```bash
-npm run mcp                                    # default task file
-node out/mcp/mcpServer.js --tasks custom.json  # custom path
+npm run mcp
 ```
 
 ```bash

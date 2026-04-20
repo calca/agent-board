@@ -401,9 +401,4 @@ suite('MCP ProjectConfigData mcp section', () => {
     const cfg = { mcp: { enabled: true } };
     assert.strictEqual(cfg.mcp.enabled, true);
   });
-
-  test('mcp config with tasksPath', () => {
-    const cfg = { mcp: { enabled: true, tasksPath: '/custom/tasks.json' } };
-    assert.strictEqual(cfg.mcp.tasksPath, '/custom/tasks.json');
-  });
 });
