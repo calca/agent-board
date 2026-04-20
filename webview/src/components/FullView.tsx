@@ -102,10 +102,10 @@ export function FullView() {
       <div className={`fv-row fv-row--top${mobileTab === 'chat' ? ' fv-row--hidden-mobile' : ''}`}>
         {/* Task Details */}
         <div className="fv-col" data-fv-tab="details" data-active={mobileTab === 'details' || undefined}>
-          <div className="fv-panel fv-panel--fill" style={statusCol?.color ? { background: `${statusCol.color}0D` } : undefined}>
-            <div className="fv-panel__header fv-panel__header--static" style={statusCol?.color ? { background: `${statusCol.color}1A` } : undefined}>
+          <div className="fv-panel fv-panel--fill">
+            <div className="fv-panel__header fv-panel__header--static">
               <span className="fv-panel__header-text">☰ Issue Details</span>
-              <FlatButton variant="icon" size="sm" icon="✎" title="Edit" onClick={() => dispatch({ type: 'SET_EDITING_TASK', task })} />
+              <FlatButton variant="icon" size="sm" icon={<svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><path d="M13.23 1h-1.46L3.52 9.25l-.16.22L1 13.59 2.41 15l4.12-2.36.22-.16L15 4.23V2.77L13.23 1zM2.41 13.59l1.51-3 1.45 1.45-2.96 1.55zm3.83-2.06L4.47 9.76l8-8 1.77 1.77-8 8z"/></svg>} title="Edit" onClick={() => dispatch({ type: 'SET_EDITING_TASK', task })} />
             </div>
             <div className="fv-panel__body fv-panel__body--scroll">
               <FvReadOnlyDetails task={task} statusCol={statusCol} columns={columns} />
@@ -115,8 +115,8 @@ export function FullView() {
 
         {/* Session */}
         <div className="fv-col" data-fv-tab="session" data-active={mobileTab === 'session' || undefined}>
-          <div className="fv-panel fv-panel--fill" style={{ background: '#9b59b60D' }}>
-            <div className="fv-panel__header fv-panel__header--static" style={{ background: '#9b59b61A' }}>
+          <div className="fv-panel fv-panel--fill">
+            <div className="fv-panel__header fv-panel__header--static">
               <span className="fv-panel__header-text">⊙ Session</span>
             </div>
             <div className="fv-panel__body fv-panel__body--scroll">
@@ -129,8 +129,8 @@ export function FullView() {
 
         {/* Actions */}
         <div className="fv-col" data-fv-tab="actions" data-active={mobileTab === 'actions' || undefined}>
-          <div className="fv-panel fv-panel--fill" style={{ background: '#e67e220D' }}>
-            <div className="fv-panel__header fv-panel__header--static" style={{ background: '#e67e221A' }}>
+          <div className="fv-panel fv-panel--fill">
+            <div className="fv-panel__header fv-panel__header--static">
               <span className="fv-panel__header-text">
                 <svg className="fv-icon" width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M4.5 3a.5.5 0 0 0 0 1h7a.5.5 0 0 0 0-1h-7ZM4 6.5a.5.5 0 0 1 .5-.5h7a.5.5 0 0 1 0 1h-7a.5.5 0 0 1-.5-.5Zm.5 2.5a.5.5 0 0 0 0 1h4a.5.5 0 0 0 0-1h-4Zm-1 3a.5.5 0 0 1 .5-.5h2a.5.5 0 0 1 0 1h-2a.5.5 0 0 1-.5-.5Z"/></svg>
                 {' '}Actions
@@ -161,8 +161,8 @@ export function FullView() {
       <div className="fv-row fv-row--bottom" data-fv-tab="chat" data-active={mobileTab === 'chat' || mobileTab === 'files' || undefined}>
         {/* Files panel */}
         <div className="fv-col fv-col--files" data-fv-tab="files" data-active={mobileTab === 'files' || undefined}>
-          <div className="fv-panel fv-panel--fill" style={{ background: '#3498db0D' }}>
-            <div className="fv-panel__header fv-panel__header--static" style={{ background: '#3498db1A' }}>
+          <div className="fv-panel fv-panel--fill">
+            <div className="fv-panel__header fv-panel__header--static">
               <span className="fv-panel__header-text">⊞ Modified Files</span>
               {files.length > 0 && <span className="fv-panel__badge">{files.length}</span>}
               <span className="fv-panel__header-actions">
@@ -196,8 +196,8 @@ export function FullView() {
 
         {/* Activity Log panel */}
         <div className="fv-col fv-col--log" data-fv-tab="chat" data-active={mobileTab === 'chat' || undefined}>
-          <div className="fv-panel fv-panel--fill" style={{ background: '#8888880D' }}>
-            <div className="fv-panel__header fv-panel__header--static fv-log-panel-header" style={{ background: '#8888881A' }}>
+          <div className="fv-panel fv-panel--fill">
+            <div className="fv-panel__header fv-panel__header--static fv-log-panel-header">
               <span className="fv-panel__header-text">≡ Activity Logs</span>
               <span className="fv-panel__badge">{logs.length}</span>
             </div>
@@ -251,17 +251,6 @@ function FvReadOnlyDetails({ task, statusCol, columns }: { task: KanbanTask; sta
           <div className="fv-detail-row">
             <span className="fv-detail-label">Labels</span>
             <span className="fv-detail-labels">{task.labels.map(l => <span key={l} className="task-card__label">{l}</span>)}</span>
-          </div>
-        )}
-        {task.assignee && (
-          <div className="fv-detail-row">
-            <span className="fv-detail-label">Assignee</span>
-            <span className="fv-assignee-chip">
-              {(task.meta as Record<string, unknown>)?.avatarUrl
-                ? <span className="fv-assignee-chip__avatar fv-assignee-chip__avatar--img"><img src={(task.meta as Record<string, unknown>).avatarUrl as string} alt={task.assignee} /></span>
-                : <span className="fv-assignee-chip__avatar">{task.assignee.slice(0, 2)}</span>}
-              {task.assignee}
-            </span>
           </div>
         )}
         {task.agent && (
