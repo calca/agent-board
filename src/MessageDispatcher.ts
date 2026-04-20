@@ -21,6 +21,7 @@ import { removeWorktree } from './genai-provider/WorktreeManager';
 import type { PullRequestManager } from './github/PullRequestManager';
 import type { KanbanPanel } from './kanban/KanbanPanel';
 import type { JsonProvider } from './providers/JsonProvider';
+import type { McpRegistration } from './mcp/McpRegistration';
 import type { ProviderRegistry } from './providers/ProviderRegistry';
 import { buildColumnOrder, DEFAULT_COLUMN_COLORS, DEFAULT_COLUMN_LABELS } from './types/ColumnId';
 import type { KanbanTask } from './types/KanbanTask';
@@ -42,6 +43,7 @@ export interface MessageDispatcherDeps {
   refreshAgents: () => void;
   refresh: () => void;
   pushMobileStatus: (panel: KanbanPanel) => Promise<void>;
+  mcpRegistration: McpRegistration;
 }
 
 export function wireMessageDispatcher(deps: MessageDispatcherDeps): void {
@@ -58,6 +60,7 @@ export function wireMessageDispatcher(deps: MessageDispatcherDeps): void {
     refreshAgents,
     refresh,
     pushMobileStatus,
+    mcpRegistration,
   } = deps;
 
   const logger = Logger.getInstance();
@@ -141,6 +144,7 @@ export function wireMessageDispatcher(deps: MessageDispatcherDeps): void {
         const currentMcp = ProjectConfig.getProjectConfig()?.mcp?.enabled ?? false;
         const newMcpEnabled = !currentMcp;
         ProjectConfig.updateConfig({ mcp: { enabled: newMcpEnabled } });
+        mcpRegistration.setEnabled(newMcpEnabled);
         panel.updateMcpStatus(newMcpEnabled);
         logger.info(`MCP server ${newMcpEnabled ? 'enabled' : 'disabled'} via board toggle`);
         break;

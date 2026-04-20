@@ -20,6 +20,7 @@ import { SessionStateManager } from './genai-provider/SessionStateManager';
 import { SquadManager } from './genai-provider/SquadManager';
 import { PullRequestManager } from './github/PullRequestManager';
 import { KanbanPanel } from './kanban/KanbanPanel';
+import { McpRegistration } from './mcp/McpRegistration';
 import { wireMessageDispatcher } from './MessageDispatcher';
 import { OverviewTreeProvider } from './overviewTreeProvider';
 import { AzureDevOpsProvider } from './providers/AzureDevOpsProvider';
@@ -172,6 +173,13 @@ export function activate(context: vscode.ExtensionContext): void {
   const copilotFlowGenAi = new CopilotFlowGenAiProvider(copilotFlowCfg);
   copilotFlowGenAi.setInnerProvider(ghCopilotGenAi);
   genAiRegistry.register(copilotFlowGenAi);
+
+  // ── MCP server registration ────────────────────────────────────────────
+
+  const mcpRegistration = new McpRegistration(context.extensionPath);
+  context.subscriptions.push(mcpRegistration);
+  mcpRegistration.register();
+  mcpRegistration.setEnabled(ProjectConfig.getProjectConfig()?.mcp?.enabled ?? false);
 
   // ── Copilot infrastructure ─────────────────────────────────────────────
 
@@ -474,6 +482,7 @@ export function activate(context: vscode.ExtensionContext): void {
       refreshAgents,
       refresh,
       pushMobileStatus: (p) => pushMobileStatus(p),
+      mcpRegistration,
     });
 
     // Mobile-server-specific messages (require direct mobileServer ref)

@@ -16,6 +16,12 @@
   "activationEvents": [],
   "main": "./dist/extension.js",
   "contributes": {
+    "mcpServerDefinitionProviders": [
+      {
+        "id": "agent-board.mcp-server",
+        "label": "Agent Board"
+      }
+    ],
     "viewsContainers": {
       "activitybar": [
         {
