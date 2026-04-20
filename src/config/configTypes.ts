@@ -144,12 +144,6 @@ export interface ProjectConfigData {
      */
     autoPR?: boolean;
   };
-  notifications?: {
-    /** Show a VS Code notification when a task is automatically moved to the active column. */
-    taskActive?: boolean;
-    /** Show a VS Code notification when a task is automatically moved to the done column. */
-    taskDone?: boolean;
-  };
   /**
    * MCP (Model Context Protocol) server settings.
    *

@@ -4,7 +4,6 @@ import { GenAiSection } from './components/settings/GenAiSection';
 import { KanbanSection } from './components/settings/KanbanSection';
 import { LoggingSection } from './components/settings/LoggingSection';
 import { McpSection } from './components/settings/McpSection';
-import { NotificationsSection } from './components/settings/NotificationsSection';
 import { ProvidersSection } from './components/settings/ProvidersSection';
 import { SettingsPillNav } from './components/settings/SettingsPillNav';
 import { SquadSection } from './components/settings/SquadSection';
@@ -20,7 +19,6 @@ const SECTION_COMPONENTS: Record<SectionId, () => React.JSX.Element> = {
   worktree: WorktreeSection,
   squad: SquadSection,
   mcp: McpSection,
-  notifications: NotificationsSection,
   logging: LoggingSection,
   about: AboutSection,
 };

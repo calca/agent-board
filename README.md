@@ -127,10 +127,6 @@ Create a `.agent-board/config.json` file in the workspace root to override any V
     "sessionTimeout": 300000,
     "cooldownMs": 2000
   },
-  "notifications": {
-    "taskActive": true,
-    "taskDone": true
-  },
   "mcp": {
     "enabled": true
   },
@@ -180,8 +176,6 @@ All settings can also be configured globally through **File > Preferences > Sett
 | `agentBoard.squad.maxRetries` | `0` | Max retries for failed sessions (0 = no retry) |
 | `agentBoard.squad.sessionTimeout` | `300000` | Session timeout (ms), 0 = disabled |
 | `agentBoard.squad.cooldownMs` | `0` | Delay between consecutive launches (ms) |
-| `agentBoard.notifications.taskActive` | `true` | Notify when task moves to active column |
-| `agentBoard.notifications.taskDone` | `true` | Notify when task moves to done column |
 | `agentBoard.logLevel` | `"INFO"` | Log level: `DEBUG`, `INFO`, `WARN`, `ERROR` |
 
 ## Commands
@@ -452,12 +446,7 @@ The **VS Code Chat** provider is manual by default (interactive session). All ot
 
 ### Notifications
 
-| Config Key | Default | Description |
-| ----------- | --------- | ------------- |
-| `notifications.taskActive` | `true` | Notify on task → active column |
-| `notifications.taskDone` | `true` | Notify on task → done column |
-
-Failure notifications are always shown.
+Squad notifications are always enabled. You will be notified when tasks move to the active or done column, and on failures.
 
 ## Session State Management
 

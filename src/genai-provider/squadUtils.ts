@@ -49,8 +49,6 @@ export interface SquadConfig {
   sessionTimeout: number;
   cooldownMs: number;
   autoPR: boolean;
-  notifyTaskActive: boolean;
-  notifyTaskDone: boolean;
 }
 
 /**
@@ -62,7 +60,6 @@ export interface SquadConfig {
  */
 export function resolveSquadConfig(
   squad?: Partial<SquadConfig>,
-  notifications?: { taskActive?: boolean; taskDone?: boolean },
 ): SquadConfig {
   return {
     maxSessions: squad?.maxSessions ?? DEFAULT_MAX_SESSIONS,
@@ -74,8 +71,6 @@ export function resolveSquadConfig(
     sessionTimeout: squad?.sessionTimeout ?? DEFAULT_SESSION_TIMEOUT,
     cooldownMs: squad?.cooldownMs ?? DEFAULT_COOLDOWN_MS,
     autoPR: squad?.autoPR ?? false,
-    notifyTaskActive: notifications?.taskActive ?? true,
-    notifyTaskDone: notifications?.taskDone ?? true,
   };
 }
 

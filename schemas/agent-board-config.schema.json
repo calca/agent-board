@@ -249,23 +249,6 @@
       },
       "additionalProperties": false
     },
-    "notifications": {
-      "type": "object",
-      "description": "VS Code notification settings for automatic task state changes.",
-      "properties": {
-        "taskActive": {
-          "type": "boolean",
-          "default": true,
-          "description": "Show a notification when a task is automatically moved to the active column."
-        },
-        "taskDone": {
-          "type": "boolean",
-          "default": true,
-          "description": "Show a notification when a task is automatically moved to the done column."
-        }
-      },
-      "additionalProperties": false
-    },
     "mcp": {
       "type": "object",
       "description": "MCP (Model Context Protocol) server settings. When enabled, Agent Board exposes a stdio-based MCP server that lets external agents list, read, and update tasks.",

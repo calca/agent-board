@@ -324,7 +324,7 @@ export class SquadManager {
    */
   private getConfig(): SquadConfig {
     const projectCfg = ProjectConfig.getProjectConfig();
-    return resolveSquadConfig(projectCfg?.squad, projectCfg?.notifications);
+    return resolveSquadConfig(projectCfg?.squad);
   }
 
   private async getEligibleTasks(cfg: SquadConfig): Promise<KanbanTask[]> {
@@ -371,9 +371,7 @@ export class SquadManager {
 
     // Move to active column, then launch (all async, fire-and-forget)
     void this.moveTask(task, cfg.activeColumn).then(() => {
-      if (cfg.notifyTaskActive) {
-        vscode.window.showInformationMessage(`Task "${task.title}" moved to ${cfg.activeColumn}`);
-      }
+      vscode.window.showInformationMessage(`Task "${task.title}" moved to ${cfg.activeColumn}`);
       session.state = autoAdvance ? 'running' : 'manual';
       this.fireStatusChange();
 
@@ -387,9 +385,7 @@ export class SquadManager {
         .then(async () => {
           if (autoAdvance) {
             await this.moveTask(task, cfg.doneColumn);
-            if (cfg.notifyTaskDone) {
-              vscode.window.showInformationMessage(`Task "${task.title}" moved to ${cfg.doneColumn}`);
-            }
+            vscode.window.showInformationMessage(`Task "${task.title}" moved to ${cfg.doneColumn}`);
             this.completeSession(task.id);
           }
         })
@@ -440,11 +436,9 @@ export class SquadManager {
     await this.moveTask(task, cfg.activeColumn);
 
     // Notify on automatic state change → active
-    if (cfg.notifyTaskActive) {
-      vscode.window.showInformationMessage(
-        `Task "${task.title}" moved to ${cfg.activeColumn}`,
-      );
-    }
+    vscode.window.showInformationMessage(
+      `Task "${task.title}" moved to ${cfg.activeColumn}`,
+    );
 
     try {
       // Transition to 'running' or 'manual' once the provider starts
@@ -479,11 +473,9 @@ export class SquadManager {
         await this.moveTask(task, cfg.doneColumn);
 
         // Notify on automatic state change → done
-        if (cfg.notifyTaskDone) {
-          vscode.window.showInformationMessage(
-            `Task "${task.title}" moved to ${cfg.doneColumn}`,
-          );
-        }
+        vscode.window.showInformationMessage(
+          `Task "${task.title}" moved to ${cfg.doneColumn}`,
+        );
       }
 
       if (autoAdvance) {

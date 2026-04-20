@@ -67,7 +67,6 @@ export type SectionId =
   | 'worktree'
   | 'squad'
   | 'mcp'
-  | 'notifications'
   | 'logging'
   | 'about';
 
@@ -78,7 +77,6 @@ export const SECTIONS: { id: SectionId; label: string }[] = [
   { id: 'worktree', label: 'Worktree' },
   { id: 'squad', label: 'Squad' },
   { id: 'mcp', label: 'MCP' },
-  { id: 'notifications', label: 'Notifications' },
   { id: 'logging', label: 'Logging' },
   { id: 'about', label: 'About' },
 ];

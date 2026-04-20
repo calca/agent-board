@@ -237,26 +237,12 @@ suite('ProjectConfigData squad/notifications', () => {
     assert.strictEqual(cfg.notifications, undefined);
   });
 
-  test('notifications config with both flags', () => {
-    const cfg = {
-      notifications: {
-        taskActive: true,
-        taskDone: false,
-      },
-    };
-    assert.strictEqual(cfg.notifications.taskActive, true);
-    assert.strictEqual(cfg.notifications.taskDone, false);
-  });
-
-  test('full config with squad and notifications', () => {
+  test('full config with squad', () => {
     const cfg = {
       github: { owner: 'calca', repo: 'agent-board' },
       squad: { maxSessions: 8 },
-      notifications: { taskActive: true, taskDone: true },
     };
     assert.strictEqual(cfg.squad.maxSessions, 8);
-    assert.strictEqual(cfg.notifications.taskActive, true);
-    assert.strictEqual(cfg.notifications.taskDone, true);
   });
 
   test('squad config with new autonomy settings', () => {
@@ -365,8 +351,6 @@ suite('resolveSquadConfig', () => {
     assert.strictEqual(cfg.maxRetries, DEFAULT_MAX_RETRIES);
     assert.strictEqual(cfg.sessionTimeout, DEFAULT_SESSION_TIMEOUT);
     assert.strictEqual(cfg.cooldownMs, DEFAULT_COOLDOWN_MS);
-    assert.strictEqual(cfg.notifyTaskActive, true);
-    assert.strictEqual(cfg.notifyTaskDone, true);
   });
 
   test('overrides individual squad values', () => {
@@ -375,22 +359,6 @@ suite('resolveSquadConfig', () => {
     assert.strictEqual(cfg.maxRetries, 3);
     // defaults preserved
     assert.strictEqual(cfg.sourceColumn, DEFAULT_SOURCE_COLUMN);
-  });
-
-  test('overrides notification values', () => {
-    const cfg = resolveSquadConfig(undefined, { taskActive: false, taskDone: false });
-    assert.strictEqual(cfg.notifyTaskActive, false);
-    assert.strictEqual(cfg.notifyTaskDone, false);
-  });
-
-  test('overrides both squad and notification values', () => {
-    const cfg = resolveSquadConfig(
-      { cooldownMs: 5000 },
-      { taskDone: false },
-    );
-    assert.strictEqual(cfg.cooldownMs, 5000);
-    assert.strictEqual(cfg.notifyTaskDone, false);
-    assert.strictEqual(cfg.notifyTaskActive, true); // default
   });
 
   test('custom column names are supported', () => {
