@@ -63,7 +63,6 @@ html, body, #root {
 
 .toolbar {
   background: var(--vscode-sideBar-background);
-  border-bottom: 1px solid var(--vscode-panel-border);
   padding: 0 16px 14px;
   flex-shrink: 0;
 }
@@ -538,6 +537,7 @@ html, body, #root {
   overflow-y: hidden;
   flex: 1;
   min-height: 0;
+  background: var(--vscode-sideBar-background);
 }
 
 .kanban__column {
@@ -549,6 +549,7 @@ html, body, #root {
   background: var(--vscode-sideBar-background);
   border-radius: var(--card-radius);
   border: 1px solid var(--vscode-panel-border);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.12);
   overflow: hidden;
 }
 
@@ -558,7 +559,6 @@ html, body, #root {
   justify-content: space-between;
   padding: 10px 12px;
   font-weight: 600;
-  border-bottom: 1px solid var(--vscode-panel-border);
 }
 
 .kanban__column-header-right {
