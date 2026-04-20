@@ -57,7 +57,7 @@ Stdio-based Model Context Protocol server for full CRUD: `list_tasks`, `get_task
 
 ### Extensible Providers
 
-GitHub Issues (via `gh` CLI), Azure DevOps, Markdown files, local JSON, Beads CLI — or register your own via the extension API. GenAI providers: VS Code Chat, GitHub Cloud, GitHub Copilot, VS Code API with tool-calling — or register your own.
+GitHub Issues (via `gh` CLI), Azure DevOps, Markdown files, local JSON, Beads CLI — or register your own via the extension API. GenAI providers: VS Code Chat, GitHub Copilot, VS Code API with tool-calling — or register your own.
 
 ---
 
@@ -299,7 +299,6 @@ The Copilot integration uses an extensible provider architecture (`IGenAiProvide
 | Provider | Description | Worktree | Tool Calling | Auto-Advance |
 | ---------- | ------------- | :--------: | :------------: | :------------: |
 | **VS Code Chat** (`vscode-chat`) | Opens VS Code native chat with task context pre-filled | — | Yes | Manual |
-| **GitHub Cloud** (`github-cloud`) | Autopilot mode via VS Code agent chat (auto-submits) | — | — | Automatic |
 | **GitHub Copilot** (`github-copilot`) | Background subprocess, streams output, saves to `.kanban-notes/` | Yes | — | Automatic |
 | **VS Code API** (`vscode-api`) | Direct `vscode.lm` calls with full tool-calling loop (up to 100 rounds) | Yes | Yes | Automatic |
 
@@ -426,7 +425,7 @@ Each GenAI provider declares whether task progression is automatic or manual:
 - **Automatic** (default) — when the session completes successfully the task moves to the done column; on failure it is retried or moved back to the source column.
 - **Manual** (`disableAutoAdvance: true`) — the task moves to the active column on launch but stays there when the session ends. The user decides when to advance it.
 
-The **VS Code Chat** provider is manual by default (interactive session). All other built-in providers (GitHub Cloud, GitHub Copilot, VS Code API) use automatic advancement.
+The **VS Code Chat** provider is manual by default (interactive session). All other built-in providers (GitHub Copilot, VS Code API) use automatic advancement.
 
 ### Squad Autonomy Features
 
@@ -536,7 +535,6 @@ Extension Host (Node.js)
 │   └── AggregatorProvider     (merge + dedup)
 ├── GenAiProviderRegistry   → IGenAiProvider implementations
 │   ├── ChatGenAiProvider      (VS Code Chat)
-│   ├── CloudGenAiProvider     (GitHub Cloud)
 │   ├── CopilotCliGenAiProvider (GitHub Copilot CLI)
 │   └── LmApiGenAiProvider     (VS Code API + tool-calling loop)
 ├── AgentDiscovery          → .github/agents/*.md

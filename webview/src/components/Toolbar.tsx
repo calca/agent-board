@@ -331,9 +331,7 @@ function ConnectionIndicator() {
 export function getNotifications(repoIsGit: boolean, repoIsGitHub: boolean): string[] {
   const notifications: string[] = [];
   if (!repoIsGit) {
-    notifications.push('⚠︎ Questo progetto non è un repository Git. Squad, VS Code API, GitHub Copilot e GitHub Cloud sono disabilitati.');
-  } else if (!repoIsGitHub) {
-    notifications.push('⚠︎ Nessun remote GitHub collegato. GitHub Cloud è disabilitato.');
+    notifications.push('⚠︎ Questo progetto non è un repository Git. Squad, VS Code API e GitHub Copilot sono disabilitati.');
   }
   return notifications;
 }

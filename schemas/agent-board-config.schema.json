@@ -166,7 +166,7 @@
     },
     "genAiProviders": {
       "type": "object",
-      "description": "Per-provider GenAI configuration. Global providers (VS Code Chat, GitHub Cloud, GitHub Copilot, VS Code API) can be overridden here. Project providers are enabled and configured only here.",
+      "description": "Per-provider GenAI configuration. Global providers (VS Code Chat, GitHub Copilot, VS Code API) can be overridden here. Project providers are enabled and configured only here.",
       "additionalProperties": {
         "type": "object",
         "properties": {

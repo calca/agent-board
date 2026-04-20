@@ -11,7 +11,6 @@ import { CopilotLauncher } from './genai-provider/CopilotLauncher';
 import { GenAiProviderRegistry } from './genai-provider/GenAiProviderRegistry';
 import { ModelSelector } from './genai-provider/ModelSelector';
 import { ChatGenAiProvider } from './genai-provider/providers/ChatGenAiProvider';
-import { CloudGenAiProvider } from './genai-provider/providers/CloudGenAiProvider';
 import { CopilotFlowGenAiProvider } from './genai-provider/providers/copilot-flow/CopilotFlowGenAiProvider';
 import { mapEventToBlock } from './genai-provider/providers/copilot-sdk/eventMapper';
 import { CopilotCliGenAiProvider } from './genai-provider/providers/CopilotCliGenAiProvider';
@@ -140,7 +139,6 @@ export function activate(context: vscode.ExtensionContext): void {
 
   // Global providers (VS Code integrated) — always registered
   genAiRegistry.register(new ChatGenAiProvider());
-  genAiRegistry.register(new CloudGenAiProvider());
 
   // LmApiGenAiProvider — reads initial config from project file / VS Code settings
   const vsCodeApiCfg = ProjectConfig.getProjectConfig()?.genAiProviders?.['vscode-api'] ?? {};

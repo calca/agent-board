@@ -3,7 +3,7 @@ import { GenAiProviderScope, IGenAiProvider } from './IGenAiProvider';
 /**
  * Central registry of all `IGenAiProvider` instances.
  *
- * Global providers (VS Code Chat, GitHub Cloud, GitHub Copilot, VS Code API) are registered at
+ * Global providers (VS Code Chat, GitHub Copilot, VS Code API) are registered at
  * activation time.  Project-scoped providers are registered
  * per-project based on `.agent-board/config.json` or via the API.
  */
