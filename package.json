@@ -206,6 +206,16 @@
           "default": true,
           "description": "Enable --silent mode for GitHub Copilot — suppress interactive prompts and progress output. Overridable in .agent-board/config.json under genAiProviders.github-copilot.silent."
         },
+        "agentBoard.githubCopilot.remote": {
+          "type": "boolean",
+          "default": false,
+          "description": "Enable --remote mode for GitHub Copilot — run sessions against the remote GitHub repository (requires GitHub remote). Overridable in .agent-board/config.json under genAiProviders.github-copilot.remote."
+        },
+        "agentBoard.githubCopilot.rubberDuck": {
+          "type": "boolean",
+          "default": false,
+          "description": "Enable --rubber-duck mode for GitHub Copilot — use a second model family for a second opinion review. Overridable in .agent-board/config.json under genAiProviders.github-copilot.rubberDuck."
+        },
         "agentBoard.kanban.intermediateColumns": {
           "type": "array",
           "items": {

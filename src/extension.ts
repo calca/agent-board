@@ -155,7 +155,9 @@ export function activate(context: vscode.ExtensionContext): void {
     ...ghCopilotCfg,
     yolo: (ghCopilotCfg.yolo as boolean | undefined) ?? vscode.workspace.getConfiguration('agentBoard').get<boolean>('githubCopilot.yolo', true),
     fleet: (ghCopilotCfg.fleet as boolean | undefined) ?? vscode.workspace.getConfiguration('agentBoard').get<boolean>('githubCopilot.fleet', false),
-    silent: (ghCopilotCfg.silent as boolean | undefined) ?? vscode.workspace.getConfiguration('agentBoard').get<boolean>('githubCopilot.silent', true),
+    silent:     (ghCopilotCfg.silent     as boolean | undefined) ?? vscode.workspace.getConfiguration('agentBoard').get<boolean>('githubCopilot.silent', true),
+    remote:     (ghCopilotCfg.remote     as boolean | undefined) ?? vscode.workspace.getConfiguration('agentBoard').get<boolean>('githubCopilot.remote', false),
+    rubberDuck: (ghCopilotCfg.rubberDuck as boolean | undefined) ?? vscode.workspace.getConfiguration('agentBoard').get<boolean>('githubCopilot.rubberDuck', false),
   };
   const ghCopilotGenAi = new CopilotCliGenAiProvider(ghCopilotConfig);
   genAiRegistry.register(ghCopilotGenAi);
