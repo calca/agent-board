@@ -3563,6 +3563,23 @@ html, body, #root {
   color: var(--vscode-foreground);
   opacity: 0.8;
 }
+.fv-squad-agent-selector {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+.fv-squad-agent-selector__label {
+  font-size: 0.78em;
+  font-weight: 600;
+  color: var(--vscode-descriptionForeground, #888);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+}
+.fv-squad-agent-selector__select {
+  flex: 1;
+}
 .toolbar__branch-pill {
   display: inline-flex;
   align-items: center;

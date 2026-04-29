@@ -1,6 +1,7 @@
 import * as vscode from 'vscode';
 import { HiddenTasksStore } from '../config/HiddenTasksStore';
 import { LocalNotesStore } from '../config/LocalNotesStore';
+import { LocalSquadAgentStore } from '../config/LocalSquadAgentStore';
 import { ProjectConfig } from '../config/ProjectConfig';
 import type { GenAiProviderRegistry } from '../genai-provider/GenAiProviderRegistry';
 import type { SessionStateManager } from '../genai-provider/SessionStateManager';
@@ -58,6 +59,17 @@ export async function sendTasksToPanel(
     const notes = localNotes[task.id];
     if (notes) {
       (task.meta as Record<string, unknown>).localNotes = notes;
+    }
+  }
+
+  // Inject local squad-agent overrides into task for sync providers
+  const localSquadAgents = LocalSquadAgentStore.getAll();
+  for (const task of allTasks) {
+    if (!task.squadAgent) {
+      const squadAgent = localSquadAgents[task.id];
+      if (squadAgent) {
+        task.squadAgent = squadAgent;
+      }
     }
   }
 

@@ -10,6 +10,7 @@ import * as vscode from 'vscode';
 import { refreshTasksCommand } from './commands/refreshTasks';
 import { HiddenTasksStore } from './config/HiddenTasksStore';
 import { LocalNotesStore } from './config/LocalNotesStore';
+import { LocalSquadAgentStore } from './config/LocalSquadAgentStore';
 import { ProjectConfig } from './config/ProjectConfig';
 import { DiffWatcher, gitRefUri } from './diff/DiffWatcher';
 import { cancelAgent as cancelCliAgent, runAgent as runCliAgent } from './genai-provider/AgentRunner';
@@ -231,6 +232,30 @@ export function wireMessageDispatcher(deps: MessageDispatcherDeps): void {
         await sendTasksToPanel(panel, providerRegistry, genAiRegistry, squadManager, sessionStateManager);
         break;
 
+      case 'saveSquadAgent': {
+        const { taskId, providerId, agentSlug } = msg;
+        // For JSON provider, persist in the task file itself
+        if (providerId === 'json') {
+          const jsonProv = providerRegistry.get('json');
+          if (jsonProv) {
+            const jsonTasks = await jsonProv.getTasks();
+            const target = jsonTasks.find(t => t.id === taskId);
+            if (target) {
+              await jsonProv.updateTask({ ...target, squadAgent: agentSlug || undefined });
+            }
+          }
+        } else {
+          // For sync providers, store locally
+          if (agentSlug) {
+            LocalSquadAgentStore.set(providerId, taskId, agentSlug);
+          } else {
+            LocalSquadAgentStore.delete(providerId, taskId);
+          }
+        }
+        await sendTasksToPanel(panel, providerRegistry, genAiRegistry, squadManager, sessionStateManager);
+        break;
+      }
+
       case 'exportDoneMd': {
         const configuredCols = buildColumnOrder(ProjectConfig.getProjectConfig()?.kanban?.intermediateColumns);
         const doneColId = configuredCols[configuredCols.length - 1] ?? 'done';
@@ -286,7 +311,7 @@ export function wireMessageDispatcher(deps: MessageDispatcherDeps): void {
       }
 
       case 'launchProvider':
-        await squadManager.launchSingle(msg.taskId, msg.genAiProviderId, undefined, msg.baseBranch);
+        await squadManager.launchSingle(msg.taskId, msg.genAiProviderId, msg.agentSlug, msg.baseBranch);
         panel.updateSquadStatus(squadManager.getStatus());
         await sendTasksToPanel(panel, providerRegistry, genAiRegistry, squadManager, sessionStateManager);
         break;
