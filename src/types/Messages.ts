@@ -131,7 +131,7 @@ export type WebViewToHost =
   | { type: 'addTask' }
   | { type: 'saveTask'; data: NewTaskData }
   | { type: 'editTask'; taskId: string; providerId: string; data: NewTaskData }
-  | { type: 'launchProvider'; taskId: string; providerId: string; genAiProviderId: string; baseBranch?: string }
+  | { type: 'launchProvider'; taskId: string; providerId: string; genAiProviderId: string; agentSlug?: string; baseBranch?: string }
   | { type: 'reopenSession'; taskId: string }
   | { type: 'cancelTaskForm' }
   | { type: 'openWorktree'; worktreePath: string }
@@ -161,4 +161,5 @@ export type WebViewToHost =
   | { type: 'cleanDone' }
   | { type: 'startAgent'; taskId: string; provider: string; prompt: string }
   | { type: 'cancelAgent'; taskId: string }
-  | { type: 'saveLocalNotes'; taskId: string; providerId: string; notes: string };
+  | { type: 'saveLocalNotes'; taskId: string; providerId: string; notes: string }
+  | { type: 'saveSquadAgent'; taskId: string; providerId: string; agentSlug: string };

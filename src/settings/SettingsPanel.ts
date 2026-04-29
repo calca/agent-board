@@ -1,5 +1,6 @@
 import * as vscode from 'vscode';
 import { ProjectConfig, ProjectConfigData } from '../config/ProjectConfig';
+import type { AgentInfo } from '../genai-provider/agentDiscovery';
 import { GenAiProviderRegistry } from '../genai-provider/GenAiProviderRegistry';
 import { ProviderDiagnosticSeverity } from '../providers/ITaskProvider';
 import { ProviderRegistry } from '../providers/ProviderRegistry';
@@ -29,6 +30,7 @@ export class SettingsPanel {
   private disposables: vscode.Disposable[] = [];
   private registry: ProviderRegistry | undefined;
   private genAiRegistry: GenAiProviderRegistry | undefined;
+  private agentsGetter: (() => AgentInfo[]) | undefined;
   private reloadTimer: ReturnType<typeof setTimeout> | undefined;
   /** Debounce timer for config-file watcher reloads. */
   private configDebounce: ReturnType<typeof setTimeout> | undefined;
@@ -40,10 +42,12 @@ export class SettingsPanel {
     private readonly extensionUri: vscode.Uri,
     registry?: ProviderRegistry,
     genAiRegistry?: GenAiProviderRegistry,
+    agentsGetter?: () => AgentInfo[],
   ) {
     this.panel = panel;
     this.registry = registry;
     this.genAiRegistry = genAiRegistry;
+    this.agentsGetter = agentsGetter;
     this.panel.webview.html = this.getHtml(this.panel.webview);
 
     this.panel.onDidDispose(() => this.dispose(), null, this.disposables);
@@ -52,10 +56,11 @@ export class SettingsPanel {
     this.setupDevWatcher();
   }
 
-  static createOrShow(extensionUri: vscode.Uri, registry?: ProviderRegistry, genAiRegistry?: GenAiProviderRegistry): SettingsPanel {
+  static createOrShow(extensionUri: vscode.Uri, registry?: ProviderRegistry, genAiRegistry?: GenAiProviderRegistry, agentsGetter?: () => AgentInfo[]): SettingsPanel {
     if (SettingsPanel.instance) {
       SettingsPanel.instance.registry = registry;
       SettingsPanel.instance.genAiRegistry = genAiRegistry;
+      SettingsPanel.instance.agentsGetter = agentsGetter;
       SettingsPanel.instance.panel.reveal();
       return SettingsPanel.instance;
     }
@@ -72,7 +77,7 @@ export class SettingsPanel {
         ],
       },
     );
-    SettingsPanel.instance = new SettingsPanel(panel, extensionUri, registry, genAiRegistry);
+    SettingsPanel.instance = new SettingsPanel(panel, extensionUri, registry, genAiRegistry, agentsGetter);
     return SettingsPanel.instance;
   }
 
@@ -128,6 +133,7 @@ export class SettingsPanel {
       case 'ready':
         this.sendConfig();
         this.sendGenAiProviderInfo();
+        this.sendAgents();
         void this.sendProviderDiagnostics();
         break;
       case 'save':
@@ -169,6 +175,7 @@ export class SettingsPanel {
       case 'requestConfig':
         this.sendConfig();
         this.sendGenAiProviderInfo();
+        this.sendAgents();
         void this.sendProviderDiagnostics();
         break;
       case 'refreshDiagnostics':
@@ -186,6 +193,13 @@ export class SettingsPanel {
   private sendConfig(): void {
     const config = ProjectConfig.getProjectConfig() ?? {};
     this.panel.webview.postMessage({ type: 'configData', config });
+  }
+
+  /** Send available agents (squad-capable) to the settings webview. */
+  private sendAgents(): void {
+    if (!this.agentsGetter) { return; }
+    const agents = this.agentsGetter().map(a => ({ slug: a.slug, displayName: a.displayName, canSquad: a.canSquad }));
+    this.panel.webview.postMessage({ type: 'agentsAvailable', agents });
   }
 
   /** Send GenAI provider metadata (ids, names, setting descriptors) to the webview. */

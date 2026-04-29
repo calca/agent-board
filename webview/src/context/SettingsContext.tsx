@@ -8,6 +8,7 @@ export interface SettingsState {
   config: SettingsConfig;
   providers: ProviderInfo[];
   genAiProviders: GenAiProviderInfo[];
+  agents: Array<{ slug: string; displayName: string; canSquad?: boolean }>;
   activeSection: SectionId;
   dirty: boolean;
   /** Log content received from the host. */
@@ -21,6 +22,7 @@ const initialState: SettingsState = {
   config: {},
   providers: [],
   genAiProviders: [],
+  agents: [],
   activeSection: 'providers',
   dirty: false,
   logContent: '',
@@ -33,6 +35,7 @@ type Action =
   | { type: 'setConfig'; config: SettingsConfig; force?: boolean }
   | { type: 'setProviders'; providers: ProviderInfo[] }
   | { type: 'setGenAiProviders'; providers: GenAiProviderInfo[] }
+  | { type: 'setAgents'; agents: Array<{ slug: string; displayName: string; canSquad?: boolean }> }
   | { type: 'setActiveSection'; section: SectionId }
   | { type: 'updateConfig'; patch: SettingsConfig }
   | { type: 'updateSectionField'; section: string; key: string; value: unknown }
@@ -51,6 +54,8 @@ function reducer(state: SettingsState, action: Action): SettingsState {
       return { ...state, providers: action.providers };
     case 'setGenAiProviders':
       return { ...state, genAiProviders: action.providers };
+    case 'setAgents':
+      return { ...state, agents: action.agents };
     case 'setActiveSection':
       return { ...state, activeSection: action.section };
     case 'updateConfig': {

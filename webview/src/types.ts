@@ -32,6 +32,7 @@ export interface KanbanTask {
   providerId: string;
   createdAt?: string;
   agent?: string;
+  squadAgent?: string;
   meta?: Record<string, unknown>;
   copilotSession?: CopilotSession;
 }
