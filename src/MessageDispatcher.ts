@@ -10,6 +10,7 @@ import * as vscode from 'vscode';
 import { refreshTasksCommand } from './commands/refreshTasks';
 import { HiddenTasksStore } from './config/HiddenTasksStore';
 import { LocalNotesStore } from './config/LocalNotesStore';
+import { LocalSquadAgentStore } from './config/LocalSquadAgentStore';
 import { ProjectConfig } from './config/ProjectConfig';
 import { DiffWatcher, gitRefUri } from './diff/DiffWatcher';
 import { cancelAgent as cancelCliAgent, runAgent as runCliAgent } from './genai-provider/AgentRunner';
@@ -20,11 +21,12 @@ import type { SquadManager } from './genai-provider/SquadManager';
 import { removeWorktree } from './genai-provider/WorktreeManager';
 import type { PullRequestManager } from './github/PullRequestManager';
 import type { KanbanPanel } from './kanban/KanbanPanel';
+import type { McpRegistration } from './mcp/McpRegistration';
 import type { JsonProvider } from './providers/JsonProvider';
 import type { ProviderRegistry } from './providers/ProviderRegistry';
 import { buildColumnOrder, DEFAULT_COLUMN_COLORS, DEFAULT_COLUMN_LABELS } from './types/ColumnId';
 import type { KanbanTask } from './types/KanbanTask';
-import type { AgentOption } from './types/Messages';
+import type { AgentOption, SquadTeam } from './types/Messages';
 import { Logger } from './utils/logger';
 import { handleStartSquad, handleToggleAutoSquad, sendTasksToPanel } from './utils/panelHelpers';
 import { execPromise, isAzureDevOpsRepository, isGitHubRepository, isGitRepository, sendBranchesToPanel } from './utils/repoDetection';
@@ -39,9 +41,11 @@ export interface MessageDispatcherDeps {
   jsonProvider: JsonProvider;
   prManager: PullRequestManager;
   agentOptions: () => AgentOption[];
+  getSquadTeams: () => SquadTeam[];
   refreshAgents: () => void;
   refresh: () => void;
   pushMobileStatus: (panel: KanbanPanel) => Promise<void>;
+  mcpRegistration: McpRegistration;
 }
 
 export function wireMessageDispatcher(deps: MessageDispatcherDeps): void {
@@ -55,9 +59,11 @@ export function wireMessageDispatcher(deps: MessageDispatcherDeps): void {
     jsonProvider,
     prManager,
     agentOptions,
+    getSquadTeams,
     refreshAgents,
     refresh,
     pushMobileStatus,
+    mcpRegistration,
   } = deps;
 
   const logger = Logger.getInstance();
@@ -70,7 +76,7 @@ export function wireMessageDispatcher(deps: MessageDispatcherDeps): void {
       case 'ready':
         await sendTasksToPanel(panel, providerRegistry, genAiRegistry, squadManager, sessionStateManager);
         panel.updateSquadStatus(squadManager.getStatus());
-        panel.updateAgents(agentOptions());
+        panel.updateAgents(agentOptions(), getSquadTeams());
         panel.updateMcpStatus(ProjectConfig.getProjectConfig()?.mcp?.enabled ?? false);
         panel.postMessage({
           type: 'repoStatus',
@@ -90,7 +96,7 @@ export function wireMessageDispatcher(deps: MessageDispatcherDeps): void {
         } catch { /* logged in refreshTasksCommand */ }
         await sendTasksToPanel(panel, providerRegistry, genAiRegistry, squadManager, sessionStateManager);
         refreshAgents();
-        panel.updateAgents(agentOptions());
+        panel.updateAgents(agentOptions(), getSquadTeams());
         await sendBranchesToPanel(panel);
         await pushMobileStatus(panel);
         break;
@@ -141,6 +147,7 @@ export function wireMessageDispatcher(deps: MessageDispatcherDeps): void {
         const currentMcp = ProjectConfig.getProjectConfig()?.mcp?.enabled ?? false;
         const newMcpEnabled = !currentMcp;
         ProjectConfig.updateConfig({ mcp: { enabled: newMcpEnabled } });
+        mcpRegistration.setEnabled(newMcpEnabled);
         panel.updateMcpStatus(newMcpEnabled);
         logger.info(`MCP server ${newMcpEnabled ? 'enabled' : 'disabled'} via board toggle`);
         break;
@@ -227,14 +234,39 @@ export function wireMessageDispatcher(deps: MessageDispatcherDeps): void {
         await sendTasksToPanel(panel, providerRegistry, genAiRegistry, squadManager, sessionStateManager);
         break;
 
+      case 'saveSquadAgent': {
+        const { taskId, providerId, agentSlug } = msg;
+        // For JSON provider, persist in the task file itself
+        if (providerId === 'json') {
+          const jsonProv = providerRegistry.get('json');
+          if (jsonProv) {
+            const jsonTasks = await jsonProv.getTasks();
+            const target = jsonTasks.find(t => t.id === taskId);
+            if (target) {
+              await jsonProv.updateTask({ ...target, squadAgent: agentSlug || undefined });
+            }
+          }
+        } else {
+          // For sync providers, store locally
+          if (agentSlug) {
+            LocalSquadAgentStore.set(providerId, taskId, agentSlug);
+          } else {
+            LocalSquadAgentStore.delete(providerId, taskId);
+          }
+        }
+        await sendTasksToPanel(panel, providerRegistry, genAiRegistry, squadManager, sessionStateManager);
+        break;
+      }
+
       case 'exportDoneMd': {
         const configuredCols = buildColumnOrder(ProjectConfig.getProjectConfig()?.kanban?.intermediateColumns);
         const doneColId = configuredCols[configuredCols.length - 1] ?? 'done';
         const allProviders = providerRegistry.getAll().filter(p => p.isEnabled());
+        const rawTasks = (await Promise.allSettled(allProviders.map(p => p.getTasks())))
+          .filter((r): r is PromiseFulfilledResult<KanbanTask[]> => r.status === 'fulfilled')
+          .flatMap(r => r.value);
         const allTasks = HiddenTasksStore.filterVisible(
-          (await Promise.allSettled(allProviders.map(p => p.getTasks())))
-            .filter((r): r is PromiseFulfilledResult<KanbanTask[]> => r.status === 'fulfilled')
-            .flatMap(r => r.value),
+          [...new Map(rawTasks.map(t => [t.id, t])).values()],
         );
         const doneTasks = allTasks.filter(t => t.status === doneColId);
         const today = new Date().toISOString().slice(0, 10);
@@ -281,7 +313,7 @@ export function wireMessageDispatcher(deps: MessageDispatcherDeps): void {
       }
 
       case 'launchProvider':
-        await squadManager.launchSingle(msg.taskId, msg.genAiProviderId, undefined, msg.baseBranch);
+        await squadManager.launchSingle(msg.taskId, msg.genAiProviderId, msg.agentSlug, msg.baseBranch);
         panel.updateSquadStatus(squadManager.getStatus());
         await sendTasksToPanel(panel, providerRegistry, genAiRegistry, squadManager, sessionStateManager);
         break;

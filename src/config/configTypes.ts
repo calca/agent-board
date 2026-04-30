@@ -143,12 +143,11 @@ export interface ProjectConfigData {
      * Default false.
      */
     autoPR?: boolean;
-  };
-  notifications?: {
-    /** Show a VS Code notification when a task is automatically moved to the active column. */
-    taskActive?: boolean;
-    /** Show a VS Code notification when a task is automatically moved to the done column. */
-    taskDone?: boolean;
+    /**
+     * Named squad teams.
+     * Each team has a display name and the slug of the agent it uses.
+     */
+    teams?: Array<{ name: string; agentSlug: string }>;
   };
   /**
    * MCP (Model Context Protocol) server settings.
@@ -159,11 +158,6 @@ export interface ProjectConfigData {
   mcp?: {
     /** Whether the MCP server is enabled.  Defaults to `false`. */
     enabled?: boolean;
-    /**
-     * Workspace-relative or absolute path to the JSON task file
-     * the MCP server operates on.  Defaults to the jsonProvider path.
-     */
-    tasksPath?: string;
   };
   /** @deprecated Use `logging.level` instead. */
   logLevel?: string;

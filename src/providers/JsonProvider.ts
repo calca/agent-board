@@ -18,6 +18,7 @@ interface JsonTaskEntry {
   url?: string;
   createdAt?: string;
   agent?: string;
+  squadAgent?: string;
   hidden?: boolean;
   [key: string]: unknown;
 }
@@ -199,18 +200,48 @@ export class JsonProvider implements ITaskProvider {
     }
     try {
       const files = fs.readdirSync(this.tasksDir).filter(f => f.endsWith('.json'));
-      this.tasks = files
-        .map(file => {
-          try {
-            const raw = fs.readFileSync(path.join(this.tasksDir, file), 'utf-8');
-            const entry = JSON.parse(raw) as JsonTaskEntry;
-            if (entry.hidden) { return null; }
-            return this.mapEntry(entry);
-          } catch {
-            return null;
-          }
-        })
-        .filter((t): t is KanbanTask => t !== null)
+      const parsed: { file: string; task: KanbanTask }[] = [];
+      for (const file of files) {
+        try {
+          const raw = fs.readFileSync(path.join(this.tasksDir, file), 'utf-8');
+          const entry = JSON.parse(raw) as JsonTaskEntry;
+          if (entry.hidden) { continue; }
+          parsed.push({ file, task: this.mapEntry(entry) });
+        } catch {
+          // skip malformed files
+        }
+      }
+
+      // Deduplicate by internal id — when two files share the same id,
+      // keep the canonical one (filename matches nativeId) and delete the stale orphan.
+      const byId = new Map<string, { file: string; task: KanbanTask }>();
+      const orphans: string[] = [];
+      for (const item of parsed) {
+        const existing = byId.get(item.task.id);
+        if (!existing) {
+          byId.set(item.task.id, item);
+          continue;
+        }
+        // Prefer the file whose name matches the internal nativeId
+        const canonicalName = `${item.task.nativeId}.json`;
+        if (item.file === canonicalName) {
+          orphans.push(existing.file);
+          byId.set(item.task.id, item);
+        } else {
+          orphans.push(item.file);
+        }
+      }
+
+      // Clean up stale orphan files
+      for (const orphan of orphans) {
+        try {
+          fs.unlinkSync(path.join(this.tasksDir, orphan));
+          Logger.getInstance().info('JsonProvider: removed orphan task file %s', orphan);
+        } catch { /* best effort */ }
+      }
+
+      this.tasks = [...byId.values()]
+        .map(v => v.task)
         .sort((a, b) => (a.createdAt?.getTime() ?? 0) - (b.createdAt?.getTime() ?? 0));
     } catch {
       this.tasks = [];
@@ -242,6 +273,7 @@ export class JsonProvider implements ITaskProvider {
       assignee: entry.assignee,
       url: entry.url,
       agent: entry.agent,
+      squadAgent: entry.squadAgent,
       providerId: this.id,
       createdAt: entry.createdAt ? new Date(entry.createdAt) : undefined,
       meta: entry as unknown as Record<string, unknown>,
@@ -258,6 +290,7 @@ export class JsonProvider implements ITaskProvider {
       assignee: task.assignee,
       url: task.url,
       agent: task.agent,
+      squadAgent: task.squadAgent,
       createdAt: task.createdAt?.toISOString(),
     };
     if ((task.meta as Record<string, unknown>)?.hidden) {

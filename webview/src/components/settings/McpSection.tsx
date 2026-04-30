@@ -21,16 +21,6 @@ export function McpSection() {
           />
           <label htmlFor="mcp-enabled">Enable MCP server</label>
         </div>
-        <div className="field">
-          <label htmlFor="mcp-path">Tasks path</label>
-          <input
-            type="text"
-            id="mcp-path"
-            value={mcp.tasksPath ?? ''}
-            placeholder="(defaults to JSON provider path)"
-            onChange={e => update({ tasksPath: e.target.value || undefined })}
-          />
-        </div>
       </div>
     </div>
   );

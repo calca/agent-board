@@ -30,7 +30,9 @@ export interface KanbanTask {
   assignee?: string;
   url?: string;
   providerId: string;
+  createdAt?: string;
   agent?: string;
+  squadAgent?: string;
   meta?: Record<string, unknown>;
   copilotSession?: CopilotSession;
 }
@@ -39,6 +41,11 @@ export interface AgentOption {
   slug: string;
   displayName: string;
   canSquad?: boolean;
+}
+
+export interface SquadTeam {
+  name: string;
+  agentSlug: string;
 }
 
 export interface GenAiProviderOption {

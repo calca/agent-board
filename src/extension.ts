@@ -11,8 +11,6 @@ import { CopilotLauncher } from './genai-provider/CopilotLauncher';
 import { GenAiProviderRegistry } from './genai-provider/GenAiProviderRegistry';
 import { ModelSelector } from './genai-provider/ModelSelector';
 import { ChatGenAiProvider } from './genai-provider/providers/ChatGenAiProvider';
-import { CloudGenAiProvider } from './genai-provider/providers/CloudGenAiProvider';
-import { CopilotFlowGenAiProvider } from './genai-provider/providers/copilot-flow/CopilotFlowGenAiProvider';
 import { mapEventToBlock } from './genai-provider/providers/copilot-sdk/eventMapper';
 import { CopilotCliGenAiProvider } from './genai-provider/providers/CopilotCliGenAiProvider';
 import { CopilotSdkGenAiProvider } from './genai-provider/providers/CopilotSdkGenAiProvider';
@@ -21,6 +19,7 @@ import { SessionStateManager } from './genai-provider/SessionStateManager';
 import { SquadManager } from './genai-provider/SquadManager';
 import { PullRequestManager } from './github/PullRequestManager';
 import { KanbanPanel } from './kanban/KanbanPanel';
+import { McpRegistration } from './mcp/McpRegistration';
 import { wireMessageDispatcher } from './MessageDispatcher';
 import { OverviewTreeProvider } from './overviewTreeProvider';
 import { AzureDevOpsProvider } from './providers/AzureDevOpsProvider';
@@ -35,7 +34,7 @@ import { LocalApiServer } from './server/LocalApiServer';
 import { SettingsPanel } from './settings/SettingsPanel';
 import { TaskTreeItem } from './tasksTreeProvider';
 import { buildColumnOrder, DEFAULT_COLUMN_COLORS, DEFAULT_COLUMN_LABELS } from './types/ColumnId';
-import type { AgentOption } from './types/Messages';
+import type { AgentOption, SquadTeam } from './types/Messages';
 import { Logger, LogLevel } from './utils/logger';
 import { handleStartSquad, handleToggleAutoSquad, sendTasksToPanel, updateStatusBar } from './utils/panelHelpers';
 import { getLocalIPv4, isAzureDevOpsRepository, isGitHubRepository, isGitRepository } from './utils/repoDetection';
@@ -140,7 +139,6 @@ export function activate(context: vscode.ExtensionContext): void {
 
   // Global providers (VS Code integrated) — always registered
   genAiRegistry.register(new ChatGenAiProvider());
-  genAiRegistry.register(new CloudGenAiProvider());
 
   // LmApiGenAiProvider — reads initial config from project file / VS Code settings
   const vsCodeApiCfg = ProjectConfig.getProjectConfig()?.genAiProviders?.['vscode-api'] ?? {};
@@ -171,11 +169,12 @@ export function activate(context: vscode.ExtensionContext): void {
   };
   genAiRegistry.register(new CopilotSdkGenAiProvider(sdkConfig));
 
-  // CopilotFlow — orchestration provider (delegates to GitHub Copilot CLI)
-  const copilotFlowCfg = ProjectConfig.getProjectConfig()?.genAiProviders?.['copilot-flow'] ?? {};
-  const copilotFlowGenAi = new CopilotFlowGenAiProvider(copilotFlowCfg);
-  copilotFlowGenAi.setInnerProvider(ghCopilotGenAi);
-  genAiRegistry.register(copilotFlowGenAi);
+  // ── MCP server registration ────────────────────────────────────────────
+
+  const mcpRegistration = new McpRegistration(context.extensionPath);
+  context.subscriptions.push(mcpRegistration);
+  mcpRegistration.register();
+  mcpRegistration.setEnabled(ProjectConfig.getProjectConfig()?.mcp?.enabled ?? false);
 
   // ── Copilot infrastructure ─────────────────────────────────────────────
 
@@ -215,6 +214,8 @@ export function activate(context: vscode.ExtensionContext): void {
   let discoveredAgents: AgentInfo[] = [];
   const agentOptions = (): AgentOption[] =>
     discoveredAgents.map(a => ({ slug: a.slug, displayName: a.displayName, canSquad: a.canSquad }));
+  const getSquadTeams = (): SquadTeam[] =>
+    ProjectConfig.getProjectConfig()?.squad?.teams ?? [];
 
   function refreshAgents(): void {
     const folders = vscode.workspace.workspaceFolders;
@@ -226,6 +227,44 @@ export function activate(context: vscode.ExtensionContext): void {
   }
 
   refreshAgents();
+
+  // Watch .github/agents/ for changes and auto-refresh agents
+  const agentsPattern = new vscode.RelativePattern(
+    vscode.workspace.workspaceFolders![0],
+    '.github/agents/*.md'
+  );
+  const agentsWatcher = vscode.workspace.createFileSystemWatcher(agentsPattern);
+  const onAgentsChanged = () => {
+    refreshAgents();
+    const activePanel = KanbanPanel.getInstance();
+    if (activePanel) {
+      activePanel.updateAgents(agentOptions(), getSquadTeams());
+    }
+  };
+  agentsWatcher.onDidCreate(onAgentsChanged);
+  agentsWatcher.onDidDelete(onAgentsChanged);
+  agentsWatcher.onDidChange(onAgentsChanged);
+  context.subscriptions.push(agentsWatcher);
+
+  // Watch config file for squad team changes (debounced to avoid re-render storms)
+  const configPattern = new vscode.RelativePattern(
+    vscode.workspace.workspaceFolders![0],
+    '.agent-board/config.json'
+  );
+  const configWatcher = vscode.workspace.createFileSystemWatcher(configPattern);
+  let configDebounce: ReturnType<typeof setTimeout> | undefined;
+  const onConfigChanged = () => {
+    if (configDebounce) { clearTimeout(configDebounce); }
+    configDebounce = setTimeout(() => {
+      const activePanel = KanbanPanel.getInstance();
+      if (activePanel) {
+        activePanel.updateAgents(agentOptions(), getSquadTeams());
+      }
+    }, 500);
+  };
+  configWatcher.onDidCreate(onConfigChanged);
+  configWatcher.onDidChange(onConfigChanged);
+  context.subscriptions.push(configWatcher);
 
   // Cache repo status for the mobile status provider (sync callback)
   let cachedIsGit = false;
@@ -475,9 +514,11 @@ export function activate(context: vscode.ExtensionContext): void {
       jsonProvider,
       prManager,
       agentOptions,
+      getSquadTeams,
       refreshAgents,
       refresh,
       pushMobileStatus: (p) => pushMobileStatus(p),
+      mcpRegistration,
     });
 
     // Mobile-server-specific messages (require direct mobileServer ref)
@@ -677,7 +718,7 @@ export function activate(context: vscode.ExtensionContext): void {
   });
 
   const openSettings = vscode.commands.registerCommand('agentBoard.openSettings', () => {
-    SettingsPanel.createOrShow(context.extensionUri, providerRegistry, genAiRegistry);
+    SettingsPanel.createOrShow(context.extensionUri, providerRegistry, genAiRegistry, () => discoveredAgents);
   });
 
   const openMobileCompanion = vscode.commands.registerCommand('agentBoard.openMobileCompanion', async () => {

@@ -4,7 +4,7 @@ import { CopilotSessionInfo, KanbanTask } from '../types/KanbanTask';
 /**
  * Scope of a GenAI provider.
  *
- * - `global` — integrates with VS Code APIs (VS Code Chat, GitHub Cloud, GitHub Copilot, VS Code API).
+ * - `global` — integrates with VS Code APIs (VS Code Chat, GitHub Copilot, VS Code API).
  *   Enabled by default via VS Code settings, overridable per project.
  * - `project` — per-project providers registered via the extension API.
  *   Enabled and configured only in `.agent-board/config.json`.
@@ -58,7 +58,7 @@ export type GenAiProviderConfig = Record<string, unknown>;
  * `CopilotLauncher` / `ModelSelector` — never imported directly.
  */
 export interface IGenAiProvider {
-  /** Unique identifier, e.g. `'vscode-chat'`, `'github-cloud'`, `'my-provider'`. */
+  /** Unique identifier, e.g. `'vscode-chat'`, `'github-copilot'`, `'my-provider'`. */
   readonly id: string;
   /** Human-readable name shown in the Quick Pick. */
   readonly displayName: string;

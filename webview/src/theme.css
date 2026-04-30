@@ -4,7 +4,9 @@
  */
 
 :root {
-  --card-radius: 6px;
+  --card-radius: 10px;
+  --card-border: 1px solid var(--vscode-panel-border);
+  --card-shadow: 0 2px 6px rgba(0, 0, 0, 0.10);
   --column-gap: 12px;
   --card-gap: 8px;
 }
@@ -63,7 +65,6 @@ html, body, #root {
 
 .toolbar {
   background: var(--vscode-sideBar-background);
-  border-bottom: 1px solid var(--vscode-panel-border);
   padding: 0 16px 14px;
   flex-shrink: 0;
 }
@@ -538,6 +539,7 @@ html, body, #root {
   overflow-y: hidden;
   flex: 1;
   min-height: 0;
+  background: var(--vscode-sideBar-background);
 }
 
 .kanban__column {
@@ -546,9 +548,10 @@ html, body, #root {
   max-height: 100%;
   display: flex;
   flex-direction: column;
-  background: var(--vscode-sideBar-background);
+  background: var(--vscode-editor-background);
   border-radius: var(--card-radius);
-  border: 1px solid var(--vscode-panel-border);
+  border: var(--card-border);
+  box-shadow: var(--card-shadow);
   overflow: hidden;
 }
 
@@ -558,7 +561,6 @@ html, body, #root {
   justify-content: space-between;
   padding: 10px 12px;
   font-weight: 600;
-  border-bottom: 1px solid var(--vscode-panel-border);
 }
 
 .kanban__column-header-right {
@@ -640,7 +642,7 @@ html, body, #root {
 
 .task-card {
   background: var(--vscode-editor-background);
-  border: 1px solid var(--vscode-panel-border);
+  border: var(--card-border);
   border-radius: var(--card-radius);
   padding: 12px 14px;
   cursor: pointer;
@@ -648,6 +650,7 @@ html, body, #root {
   display: flex;
   flex-direction: column;
   gap: 6px;
+  box-shadow: var(--card-shadow);
 }
 
 .task-card:hover {
@@ -2586,7 +2589,7 @@ html, body, #root {
   left: 0;
   width: 100%;
   height: 100%;
-  background: var(--vscode-editor-background);
+  background: var(--vscode-sideBar-background);
   z-index: 400;
   display: flex;
   flex-direction: column;
@@ -2597,7 +2600,6 @@ html, body, #root {
   align-items: center;
   justify-content: space-between;
   padding: 12px 16px;
-  border-bottom: 1px solid var(--vscode-panel-border);
   background: var(--vscode-sideBar-background);
   flex-shrink: 0;
 }
@@ -2698,8 +2700,7 @@ html, body, #root {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 10px 16px;
-  border-bottom: 1px solid var(--vscode-panel-border);
+  padding: 14px 16px;
   background: var(--vscode-sideBar-background);
   flex-shrink: 0;
   gap: 12px;
@@ -2830,9 +2831,10 @@ html, body, #root {
 
 /* ── Collapsible panel ─── */
 .fv-panel {
-  border: 1px solid var(--vscode-panel-border);
-  border-radius: 6px;
+  border: var(--card-border);
+  border-radius: var(--card-radius);
   background: var(--vscode-editor-background);
+  box-shadow: var(--card-shadow);
   overflow: hidden;
 }
 .fv-panel[open] {
@@ -2843,11 +2845,13 @@ html, body, #root {
   align-items: center;
   gap: 8px;
   padding: 8px 12px;
+  min-height: 42px;
+  box-sizing: border-box;
   cursor: pointer;
   user-select: none;
   font-weight: 600;
   font-size: 0.88em;
-  background: var(--vscode-sideBar-background);
+  background: color-mix(in srgb, var(--vscode-sideBar-background) 96%, black);
   transition: background 0.12s;
   list-style: none; /* hide default marker */
 }
@@ -2866,7 +2870,7 @@ html, body, #root {
   user-select: auto;
 }
 .fv-panel__header--static:hover {
-  background: var(--vscode-sideBar-background);
+  background: color-mix(in srgb, var(--vscode-sideBar-background) 96%, black);
 }
 .fv-panel__header-btn {
   padding: 2px 8px;
@@ -3336,6 +3340,10 @@ html, body, #root {
   border-top: 1px solid var(--vscode-panel-border);
   margin: 4px 0;
 }
+.fv-actions__row {
+  display: flex;
+  gap: 6px;
+}
 .fv-action-btn--active {
   background: var(--vscode-button-background);
   color: var(--vscode-button-foreground);
@@ -3491,6 +3499,7 @@ html, body, #root {
   display: flex;
   flex-direction: column;
   gap: 6px;
+  margin-top: 12px;
 }
 .fv-merge-panel__label {
   font-size: 0.78em;
@@ -3554,6 +3563,23 @@ html, body, #root {
   color: var(--vscode-foreground);
   opacity: 0.8;
 }
+.fv-squad-agent-selector {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+.fv-squad-agent-selector__label {
+  font-size: 0.78em;
+  font-weight: 600;
+  color: var(--vscode-descriptionForeground, #888);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+}
+.fv-squad-agent-selector__select {
+  flex: 1;
+}
 .toolbar__branch-pill {
   display: inline-flex;
   align-items: center;
@@ -3580,7 +3606,6 @@ html, body, #root {
 
 /* ── Log in bottom row ─── */
 .fv-log-panel-header {
-  background: var(--vscode-sideBar-background);
   flex-shrink: 0;
 }
 .fv-log-scroll {

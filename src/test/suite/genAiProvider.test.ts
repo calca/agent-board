@@ -44,9 +44,9 @@ suite('GenAiProviderRegistry', () => {
 
   test('register duplicate throws', () => {
     const reg = new GenAiProviderRegistry();
-    reg.register(makeGenAiProvider('github-cloud', 'GitHub Cloud'));
+    reg.register(makeGenAiProvider('vscode-chat', 'VS Code Chat'));
     assert.throws(
-      () => reg.register(makeGenAiProvider('github-cloud', 'GitHub Cloud v2')),
+      () => reg.register(makeGenAiProvider('vscode-chat', 'VS Code Chat v2')),
       /already registered/,
     );
   });
@@ -64,10 +64,9 @@ suite('GenAiProviderRegistry', () => {
     const reg = new GenAiProviderRegistry();
     reg.register(makeGenAiProvider('vscode-chat', 'VS Code Chat', 'global'));
     reg.register(makeGenAiProvider('custom', 'Custom', 'project'));
-    reg.register(makeGenAiProvider('github-cloud', 'GitHub Cloud', 'global'));
 
     const globals = reg.getByScope('global');
-    assert.strictEqual(globals.length, 2);
+    assert.strictEqual(globals.length, 1);
     assert.ok(globals.every(p => p.scope === 'global'));
 
     const projects = reg.getByScope('project');

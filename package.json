@@ -16,6 +16,12 @@
   "activationEvents": [],
   "main": "./dist/extension.js",
   "contributes": {
+    "mcpServerDefinitionProviders": [
+      {
+        "id": "agent-board.mcp-server",
+        "label": "Agent Board"
+      }
+    ],
     "viewsContainers": {
       "activitybar": [
         {
@@ -309,16 +315,6 @@
           "type": "boolean",
           "default": false,
           "description": "Automatically create a Pull Request when a squad session completes. Overridable in .agent-board/config.json."
-        },
-        "agentBoard.notifications.taskActive": {
-          "type": "boolean",
-          "default": true,
-          "description": "Show a VS Code notification when a task is automatically moved to the active column. Overridable in .agent-board/config.json."
-        },
-        "agentBoard.notifications.taskDone": {
-          "type": "boolean",
-          "default": true,
-          "description": "Show a VS Code notification when a task is automatically moved to the done column. Overridable in .agent-board/config.json."
         }
       }
     },

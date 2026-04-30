@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useBoard } from '../context/BoardContext';
 import { DataProvider } from '../DataProvider';
 import { postMessage } from '../hooks/useVsCodeApi';
-import type { Column, KanbanTask } from '../types';
+import type { AgentOption, Column, KanbanTask, SquadTeam } from '../types';
 import { relativeWorktreePath } from '../utils';
 import { ChatContainer } from './chat';
 import { FlatButton } from './FlatButton';
@@ -14,7 +14,7 @@ const logSourceIcons: Record<string, string> = { board: '☰', agent: '◆', too
 
 export function FullView() {
   const { state, dispatch, imp } = useBoard();
-  const { fullViewTaskId, tasks, columns, genAiProviders, repoIsGit, repoIsGitHub, repoIsAzureDevOps, workspaceRoot } = state;
+  const { fullViewTaskId, tasks, columns, genAiProviders, repoIsGit, repoIsGitHub, repoIsAzureDevOps, workspaceRoot, availableAgents, squadTeams } = state;
   const logScrollRef = useRef<HTMLDivElement>(null);
   const [mobileTab, setMobileTab] = useState<'details' | 'session' | 'files' | 'actions' | 'chat'>('details');
 
@@ -102,10 +102,10 @@ export function FullView() {
       <div className={`fv-row fv-row--top${mobileTab === 'chat' ? ' fv-row--hidden-mobile' : ''}`}>
         {/* Task Details */}
         <div className="fv-col" data-fv-tab="details" data-active={mobileTab === 'details' || undefined}>
-          <div className="fv-panel fv-panel--fill" style={statusCol?.color ? { background: `${statusCol.color}0D` } : undefined}>
-            <div className="fv-panel__header fv-panel__header--static" style={statusCol?.color ? { background: `${statusCol.color}1A` } : undefined}>
+          <div className="fv-panel fv-panel--fill">
+            <div className="fv-panel__header fv-panel__header--static">
               <span className="fv-panel__header-text">☰ Issue Details</span>
-              <FlatButton variant="icon" size="sm" icon="✎" title="Edit" onClick={() => dispatch({ type: 'SET_EDITING_TASK', task })} />
+              <FlatButton variant="icon" size="sm" icon={<svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><path d="M13.23 1h-1.46L3.52 9.25l-.16.22L1 13.59 2.41 15l4.12-2.36.22-.16L15 4.23V2.77L13.23 1zM2.41 13.59l1.51-3 1.45 1.45-2.96 1.55zm3.83-2.06L4.47 9.76l8-8 1.77 1.77-8 8z"/></svg>} title="Edit" onClick={() => dispatch({ type: 'SET_EDITING_TASK', task })} />
             </div>
             <div className="fv-panel__body fv-panel__body--scroll">
               <FvReadOnlyDetails task={task} statusCol={statusCol} columns={columns} />
@@ -115,8 +115,8 @@ export function FullView() {
 
         {/* Session */}
         <div className="fv-col" data-fv-tab="session" data-active={mobileTab === 'session' || undefined}>
-          <div className="fv-panel fv-panel--fill" style={{ background: '#9b59b60D' }}>
-            <div className="fv-panel__header fv-panel__header--static" style={{ background: '#9b59b61A' }}>
+          <div className="fv-panel fv-panel--fill">
+            <div className="fv-panel__header fv-panel__header--static">
               <span className="fv-panel__header-text">⊙ Session</span>
             </div>
             <div className="fv-panel__body fv-panel__body--scroll">
@@ -129,8 +129,8 @@ export function FullView() {
 
         {/* Actions */}
         <div className="fv-col" data-fv-tab="actions" data-active={mobileTab === 'actions' || undefined}>
-          <div className="fv-panel fv-panel--fill" style={{ background: '#e67e220D' }}>
-            <div className="fv-panel__header fv-panel__header--static" style={{ background: '#e67e221A' }}>
+          <div className="fv-panel fv-panel--fill">
+            <div className="fv-panel__header fv-panel__header--static">
               <span className="fv-panel__header-text">
                 <svg className="fv-icon" width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M4.5 3a.5.5 0 0 0 0 1h7a.5.5 0 0 0 0-1h-7ZM4 6.5a.5.5 0 0 1 .5-.5h7a.5.5 0 0 1 0 1h-7a.5.5 0 0 1-.5-.5Zm.5 2.5a.5.5 0 0 0 0 1h4a.5.5 0 0 0 0-1h-4Zm-1 3a.5.5 0 0 1 .5-.5h2a.5.5 0 0 1 0 1h-2a.5.5 0 0 1-.5-.5Z"/></svg>
                 {' '}Actions
@@ -145,6 +145,8 @@ export function FullView() {
                 hasWorktree={hasWorktree}
                 activeProviderId={activeProviderId}
                 genAiProviders={genAiProviders}
+                availableAgents={availableAgents}
+                squadTeams={squadTeams}
                 repoIsGitHub={repoIsGitHub}
                 repoIsAzureDevOps={repoIsAzureDevOps}
                 columns={columns}
@@ -161,8 +163,8 @@ export function FullView() {
       <div className="fv-row fv-row--bottom" data-fv-tab="chat" data-active={mobileTab === 'chat' || mobileTab === 'files' || undefined}>
         {/* Files panel */}
         <div className="fv-col fv-col--files" data-fv-tab="files" data-active={mobileTab === 'files' || undefined}>
-          <div className="fv-panel fv-panel--fill" style={{ background: '#3498db0D' }}>
-            <div className="fv-panel__header fv-panel__header--static" style={{ background: '#3498db1A' }}>
+          <div className="fv-panel fv-panel--fill">
+            <div className="fv-panel__header fv-panel__header--static">
               <span className="fv-panel__header-text">⊞ Modified Files</span>
               {files.length > 0 && <span className="fv-panel__badge">{files.length}</span>}
               <span className="fv-panel__header-actions">
@@ -196,8 +198,8 @@ export function FullView() {
 
         {/* Activity Log panel */}
         <div className="fv-col fv-col--log" data-fv-tab="chat" data-active={mobileTab === 'chat' || undefined}>
-          <div className="fv-panel fv-panel--fill" style={{ background: '#8888880D' }}>
-            <div className="fv-panel__header fv-panel__header--static fv-log-panel-header" style={{ background: '#8888881A' }}>
+          <div className="fv-panel fv-panel--fill">
+            <div className="fv-panel__header fv-panel__header--static fv-log-panel-header">
               <span className="fv-panel__header-text">≡ Activity Logs</span>
               <span className="fv-panel__badge">{logs.length}</span>
             </div>
@@ -251,17 +253,6 @@ function FvReadOnlyDetails({ task, statusCol, columns }: { task: KanbanTask; sta
           <div className="fv-detail-row">
             <span className="fv-detail-label">Labels</span>
             <span className="fv-detail-labels">{task.labels.map(l => <span key={l} className="task-card__label">{l}</span>)}</span>
-          </div>
-        )}
-        {task.assignee && (
-          <div className="fv-detail-row">
-            <span className="fv-detail-label">Assignee</span>
-            <span className="fv-assignee-chip">
-              {(task.meta as Record<string, unknown>)?.avatarUrl
-                ? <span className="fv-assignee-chip__avatar fv-assignee-chip__avatar--img"><img src={(task.meta as Record<string, unknown>).avatarUrl as string} alt={task.assignee} /></span>
-                : <span className="fv-assignee-chip__avatar">{task.assignee.slice(0, 2)}</span>}
-              {task.assignee}
-            </span>
           </div>
         )}
         {task.agent && (
@@ -347,7 +338,7 @@ function FvSessionPanel({ sessionInfo, task, isMerged, workspaceRoot }: {
   );
 }
 
-function FvActions({ task, sessionInfo, isRunning, isMerged, hasWorktree, activeProviderId, genAiProviders, repoIsGitHub, repoIsAzureDevOps, columns, dispatch, availableBranches, selectedBaseBranch }: {
+function FvActions({ task, sessionInfo, isRunning, isMerged, hasWorktree, activeProviderId, genAiProviders, availableAgents, squadTeams, repoIsGitHub, repoIsAzureDevOps, columns, dispatch, availableBranches, selectedBaseBranch }: {
   task: KanbanTask;
   sessionInfo: KanbanTask['copilotSession'];
   isRunning: boolean;
@@ -355,6 +346,8 @@ function FvActions({ task, sessionInfo, isRunning, isMerged, hasWorktree, active
   hasWorktree: boolean;
   activeProviderId: string | undefined;
   genAiProviders: { id: string; displayName: string; disabled?: boolean }[];
+  availableAgents: AgentOption[];
+  squadTeams: SquadTeam[];
   repoIsGitHub: boolean;
   repoIsAzureDevOps: boolean;
   columns: Column[];
@@ -363,20 +356,37 @@ function FvActions({ task, sessionInfo, isRunning, isMerged, hasWorktree, active
   selectedBaseBranch: string;
 }) {
   const isCompleteOrDone = sessionInfo?.state === 'completed' || task.status === 'done';
+  const squadAgents = availableAgents.filter(a => a.canSquad);
+
+  // Split agents: team members first (from all agents), then other canSquad agents
+  const teamSlugs = new Set(squadTeams.map(t => t.agentSlug));
+  const teamEntries = squadTeams
+    .filter(t => availableAgents.some(a => a.slug === t.agentSlug))
+    .map(t => ({ slug: t.agentSlug, label: t.name }));
+  const otherAgents = squadAgents.filter(a => !teamSlugs.has(a.slug));
+  const hasAgents = teamEntries.length > 0 || otherAgents.length > 0;
+  const [selectedSquadAgent, setSelectedSquadAgent] = useState<string>(task.squadAgent ?? '');
+
+  // Keep local state in sync when the task prop changes (e.g. after save)
+  useEffect(() => {
+    setSelectedSquadAgent(task.squadAgent ?? '');
+  }, [task.squadAgent]);
+
+  function handleSquadAgentChange(slug: string) {
+    setSelectedSquadAgent(slug);
+    postMessage({ type: 'saveSquadAgent', taskId: task.id, providerId: task.providerId, agentSlug: slug });
+  }
 
   return (
     <div className="fv-actions">
       {sessionInfo && !isRunning && (
-        <>
-          <FlatButton variant="ghost" fullWidth className="fv-reset-session" icon={<svg className="fv-icon" width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M5.563 2.063A6 6 0 0 1 14 8h-1.5A4.5 4.5 0 1 0 8 12.5v1.5A6 6 0 0 1 5.563 2.063Z"/><path d="M14 4v4h-4l1.5-1.5L10 5l2.5-1L14 4Z"/></svg>} onClick={() => {
-            postMessage({ type: 'resetSession', sessionId: task.id });
-            dispatch({ type: 'SET_EDITING_TASK', task: null });
-            dispatch({ type: 'CLOSE_FULL_VIEW' });
-          }} title="Reset session and move task back to first column">
-            Reset
-          </FlatButton>
-          <hr className="fv-actions__separator" />
-        </>
+        <FlatButton variant="ghost" fullWidth className="fv-reset-session" icon={<svg className="fv-icon" width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M5.563 2.063A6 6 0 0 1 14 8h-1.5A4.5 4.5 0 1 0 8 12.5v1.5A6 6 0 0 1 5.563 2.063Z"/><path d="M14 4v4h-4l1.5-1.5L10 5l2.5-1L14 4Z"/></svg>} onClick={() => {
+          postMessage({ type: 'resetSession', sessionId: task.id });
+          dispatch({ type: 'SET_EDITING_TASK', task: null });
+          dispatch({ type: 'CLOSE_FULL_VIEW' });
+        }} title="Reset session and move task back to first column">
+          Reset
+        </FlatButton>
       )}
 
       {isRunning ? (
@@ -388,10 +398,34 @@ function FvActions({ task, sessionInfo, isRunning, isMerged, hasWorktree, active
           <FlatButton variant="danger" fullWidth icon={<svg className="fv-icon" width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><rect x="3" y="3" width="10" height="10" rx="1"/></svg>} onClick={() => postMessage({ type: 'cancelSession', taskId: task.id })}>
             Stop
           </FlatButton>
-          <hr className="fv-actions__separator" />
         </>
       ) : sessionInfo?.state !== 'completed' && !isMerged ? (
         <>
+          {hasAgents && (
+            <div className="fv-squad-agent-selector">
+              <label className="fv-squad-agent-selector__label">Squad Agent</label>
+              <select
+                className="fv-merge-select fv-squad-agent-selector__select"
+                value={selectedSquadAgent}
+                onChange={e => handleSquadAgentChange(e.target.value)}
+              >
+                <option value="">(none)</option>
+                {teamEntries.length > 0
+                  ? <>
+                      {teamEntries.map(t => (
+                        <option key={t.slug} value={t.slug}>{t.label}</option>
+                      ))}
+                      {otherAgents.length > 0 && <option disabled>───</option>}
+                      {otherAgents.map(a => (
+                        <option key={a.slug} value={a.slug}>{a.displayName}</option>
+                      ))}
+                    </>
+                  : squadAgents.map(a => (
+                      <option key={a.slug} value={a.slug}>{a.displayName}</option>
+                    ))}
+              </select>
+            </div>
+          )}
           {availableBranches.length >= 1 && (
             <div className="fv-branch-selector">
               <label className="fv-branch-selector__label">Branch</label>
@@ -412,14 +446,13 @@ function FvActions({ task, sessionInfo, isRunning, isMerged, hasWorktree, active
           <div className="fv-actions__providers">
             {genAiProviders.filter(p => !p.disabled).length > 0
               ? genAiProviders.filter(p => !p.disabled).map(p => (
-                <FlatButton key={p.id} variant="secondary" fullWidth className="fv-launch-provider" icon={<svg className="fv-icon" width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M6 3.5L12 8l-6 4.5v-9Z"/></svg>} onClick={() => postMessage({ type: 'launchProvider', taskId: task.id, providerId: task.providerId, genAiProviderId: p.id, baseBranch: selectedBaseBranch || undefined })} title={p.displayName}>
+                <FlatButton key={p.id} variant="secondary" fullWidth className="fv-launch-provider" icon={<svg className="fv-icon" width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M6 3.5L12 8l-6 4.5v-9Z"/></svg>} onClick={() => postMessage({ type: 'launchProvider', taskId: task.id, providerId: task.providerId, genAiProviderId: p.id, agentSlug: selectedSquadAgent || undefined, baseBranch: selectedBaseBranch || undefined })} title={p.displayName}>
                   {p.displayName}
                 </FlatButton>
               ))
               : <p className="fv-actions__no-providers">No GenAI providers enabled. Configure them in <strong>Settings → GenAI</strong>.</p>
             }
           </div>
-          <hr className="fv-actions__separator" />
         </>
       ) : null}
 
@@ -431,12 +464,19 @@ function FvActions({ task, sessionInfo, isRunning, isMerged, hasWorktree, active
         ) : (
           <>
             {!isRunning && (
-              <>
-                <hr className="fv-actions__separator" />
+              <div className="fv-actions__row">
                 <FlatButton variant="secondary" fullWidth className="fv-align-wt" icon={<svg className="fv-icon" width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M8 1a.75.75 0 0 1 .75.75v2.5a.75.75 0 0 1-1.5 0v-2.5A.75.75 0 0 1 8 1ZM3.1 3.1a.75.75 0 0 1 1.06 0l1.77 1.77a.75.75 0 0 1-1.06 1.06L3.1 4.16a.75.75 0 0 1 0-1.06Zm9.8 0a.75.75 0 0 1 0 1.06l-1.77 1.77a.75.75 0 1 1-1.06-1.06l1.77-1.77a.75.75 0 0 1 1.06 0ZM8 6a2 2 0 1 0 0 4 2 2 0 0 0 0-4ZM1 8a.75.75 0 0 1 .75-.75h2.5a.75.75 0 0 1 0 1.5h-2.5A.75.75 0 0 1 1 8Zm10 0a.75.75 0 0 1 .75-.75h2.5a.75.75 0 0 1 0 1.5h-2.5A.75.75 0 0 1 11 8Z"/></svg>} onClick={() => postMessage({ type: 'alignWorktree', sessionId: task.id })} title={`Align worktree from ${selectedBaseBranch || 'main'} with AI`}>
-                  Align from {selectedBaseBranch || 'main'} with AI
+                  Align from {selectedBaseBranch || 'main'}
                 </FlatButton>
-              </>
+                {isCompleteOrDone && (
+                  <FlatButton variant="secondary" fullWidth className="fv-agent-merge" icon={<svg className="fv-icon" width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M5 3.25a2.25 2.25 0 1 1 4.5 0A2.25 2.25 0 0 1 8 5.37V7h2.75A2.25 2.25 0 0 1 13 9.25v.38a2.25 2.25 0 1 1-1.5 0v-.38a.75.75 0 0 0-.75-.75h-5.5a.75.75 0 0 0-.75.75v.38a2.25 2.25 0 1 1-1.5 0v-.38A2.25 2.25 0 0 1 5.25 7H8V5.37A2.25 2.25 0 0 1 5 3.25Z"/></svg>} onClick={() => {
+                    const providerId = task.copilotSession?.providerId ?? '';
+                    postMessage({ type: 'agentMerge', sessionId: task.id, mergeStrategy: 'squash', providerId });
+                  }} title="Launch AI to review and merge">
+                    Merge to {selectedBaseBranch || 'main'}
+                  </FlatButton>
+                )}
+              </div>
             )}
             {isCompleteOrDone && (
               <>
@@ -451,14 +491,6 @@ function FvActions({ task, sessionInfo, isRunning, isMerged, hasWorktree, active
                     {sessionInfo.prNumber ? `Open PR #${sessionInfo.prNumber}` : 'Open PR'}
                   </a>
                 )}
-                <hr className="fv-actions__separator" />
-                <FlatButton variant="secondary" fullWidth className="fv-agent-merge" icon={<svg className="fv-icon" width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M5 3.25a2.25 2.25 0 1 1 4.5 0A2.25 2.25 0 0 1 8 5.37V7h2.75A2.25 2.25 0 0 1 13 9.25v.38a2.25 2.25 0 1 1-1.5 0v-.38a.75.75 0 0 0-.75-.75h-5.5a.75.75 0 0 0-.75.75v.38a2.25 2.25 0 1 1-1.5 0v-.38A2.25 2.25 0 0 1 5.25 7H8V5.37A2.25 2.25 0 0 1 5 3.25Z"/></svg>} onClick={() => {
-                  const providerId = task.copilotSession?.providerId ?? '';
-                  postMessage({ type: 'agentMerge', sessionId: task.id, mergeStrategy: 'squash', providerId });
-                }} title="Launch AI to review and merge">
-                  Merge to {selectedBaseBranch || 'main'} with AI
-                </FlatButton>
-                <hr className="fv-actions__separator" />
                 <MergePanel taskId={task.id} targetBranch={selectedBaseBranch || 'main'} />
               </>
             )}

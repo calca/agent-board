@@ -30,6 +30,9 @@ export function useSettingsMessages(): void {
         case 'genAiProviderInfo':
           dispatch({ type: 'setGenAiProviders', providers: msg.providers ?? [] });
           break;
+        case 'agentsAvailable':
+          dispatch({ type: 'setAgents', agents: msg.agents ?? [] });
+          break;
         case 'logContent':
           dispatch({ type: 'setLogContent', content: msg.content ?? '' });
           break;

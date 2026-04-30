@@ -46,7 +46,11 @@ export function KanbanBoard() {
           <KanbanColumn
             key={col.id}
             column={col}
-            tasks={filtered.filter(t => t.status === col.id)}
+            tasks={filtered.filter(t => t.status === col.id).sort((a, b) => {
+              const ta = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+              const tb = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+              return tb - ta;
+            })}
             allTasks={tasks}
             isActive={col.id === selectedCol}
           />

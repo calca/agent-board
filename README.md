@@ -57,7 +57,7 @@ Stdio-based Model Context Protocol server for full CRUD: `list_tasks`, `get_task
 
 ### Extensible Providers
 
-GitHub Issues (via `gh` CLI), Azure DevOps, Markdown files, local JSON, Beads CLI — or register your own via the extension API. GenAI providers: VS Code Chat, GitHub Cloud, GitHub Copilot, VS Code API with tool-calling — or register your own.
+GitHub Issues (via `gh` CLI), Azure DevOps, Markdown files, local JSON, Beads CLI — or register your own via the extension API. GenAI providers: VS Code Chat, GitHub Copilot, VS Code API with tool-calling — or register your own.
 
 ---
 
@@ -127,13 +127,8 @@ Create a `.agent-board/config.json` file in the workspace root to override any V
     "sessionTimeout": 300000,
     "cooldownMs": 2000
   },
-  "notifications": {
-    "taskActive": true,
-    "taskDone": true
-  },
   "mcp": {
-    "enabled": true,
-    "tasksPath": ".agent-board/tasks"
+    "enabled": true
   },
   "logLevel": "DEBUG"
 }
@@ -181,8 +176,6 @@ All settings can also be configured globally through **File > Preferences > Sett
 | `agentBoard.squad.maxRetries` | `0` | Max retries for failed sessions (0 = no retry) |
 | `agentBoard.squad.sessionTimeout` | `300000` | Session timeout (ms), 0 = disabled |
 | `agentBoard.squad.cooldownMs` | `0` | Delay between consecutive launches (ms) |
-| `agentBoard.notifications.taskActive` | `true` | Notify when task moves to active column |
-| `agentBoard.notifications.taskDone` | `true` | Notify when task moves to done column |
 | `agentBoard.logLevel` | `"INFO"` | Log level: `DEBUG`, `INFO`, `WARN`, `ERROR` |
 
 ## Commands
@@ -299,7 +292,6 @@ The Copilot integration uses an extensible provider architecture (`IGenAiProvide
 | Provider | Description | Worktree | Tool Calling | Auto-Advance |
 | ---------- | ------------- | :--------: | :------------: | :------------: |
 | **VS Code Chat** (`vscode-chat`) | Opens VS Code native chat with task context pre-filled | — | Yes | Manual |
-| **GitHub Cloud** (`github-cloud`) | Autopilot mode via VS Code agent chat (auto-submits) | — | — | Automatic |
 | **GitHub Copilot** (`github-copilot`) | Background subprocess, streams output, saves to `.kanban-notes/` | Yes | — | Automatic |
 | **VS Code API** (`vscode-api`) | Direct `vscode.lm` calls with full tool-calling loop (up to 100 rounds) | Yes | Yes | Automatic |
 
@@ -426,7 +418,7 @@ Each GenAI provider declares whether task progression is automatic or manual:
 - **Automatic** (default) — when the session completes successfully the task moves to the done column; on failure it is retried or moved back to the source column.
 - **Manual** (`disableAutoAdvance: true`) — the task moves to the active column on launch but stays there when the session ends. The user decides when to advance it.
 
-The **VS Code Chat** provider is manual by default (interactive session). All other built-in providers (GitHub Cloud, GitHub Copilot, VS Code API) use automatic advancement.
+The **VS Code Chat** provider is manual by default (interactive session). All other built-in providers (GitHub Copilot, VS Code API) use automatic advancement.
 
 ### Squad Autonomy Features
 
@@ -454,12 +446,7 @@ The **VS Code Chat** provider is manual by default (interactive session). All ot
 
 ### Notifications
 
-| Config Key | Default | Description |
-| ----------- | --------- | ------------- |
-| `notifications.taskActive` | `true` | Notify on task → active column |
-| `notifications.taskDone` | `true` | Notify on task → done column |
-
-Failure notifications are always shown.
+Squad notifications are always enabled. You will be notified when tasks move to the active or done column, and on failures.
 
 ## Session State Management
 
@@ -498,8 +485,7 @@ Stdio-based [Model Context Protocol](https://modelcontextprotocol.io) server (JS
 ```jsonc
 {
   "mcp": {
-    "enabled": true,
-    "tasksPath": ".agent-board/tasks"   // optional, defaults to jsonProvider path
+    "enabled": true
   }
 }
 ```
@@ -507,8 +493,7 @@ Stdio-based [Model Context Protocol](https://modelcontextprotocol.io) server (JS
 ### Usage
 
 ```bash
-npm run mcp                                    # default task file
-node out/mcp/mcpServer.js --tasks custom.json  # custom path
+npm run mcp
 ```
 
 ```bash
@@ -536,7 +521,6 @@ Extension Host (Node.js)
 │   └── AggregatorProvider     (merge + dedup)
 ├── GenAiProviderRegistry   → IGenAiProvider implementations
 │   ├── ChatGenAiProvider      (VS Code Chat)
-│   ├── CloudGenAiProvider     (GitHub Cloud)
 │   ├── CopilotCliGenAiProvider (GitHub Copilot CLI)
 │   └── LmApiGenAiProvider     (VS Code API + tool-calling loop)
 ├── AgentDiscovery          → .github/agents/*.md

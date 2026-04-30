@@ -74,6 +74,19 @@ const settingsBuildOptions = {
   loader: { '.tsx': 'tsx', '.ts': 'ts', '.css': 'text' },
 };
 
+/** @type {import('esbuild').BuildOptions} */
+const mcpServerBuildOptions = {
+  entryPoints: ['src/mcp/mcpServer.ts'],
+  bundle: true,
+  outfile: 'dist/mcpServer.js',
+  external: ['vscode'],
+  format: 'cjs',
+  platform: 'node',
+  target: 'es2020',
+  sourcemap: true,
+  minify: false,
+};
+
 async function main() {
   // Create dist directory if it doesn't exist
   if (!fs.existsSync('dist')) {
@@ -101,10 +114,12 @@ async function main() {
     });
     const webviewCtx = await esbuild.context(webviewBuildOptions);
     const settingsCtx = await esbuild.context(settingsBuildOptions);
+    const mcpCtx = await esbuild.context(mcpServerBuildOptions);
     
     await extensionCtx.watch();
     await webviewCtx.watch();
     await settingsCtx.watch();
+    await mcpCtx.watch();
 
     // Auto-copy CSS on changes so the webview picks it up via the file watcher
     if (fs.existsSync(cssSource)) {
@@ -134,6 +149,7 @@ async function main() {
       esbuild.build(extensionBuildOptions),
       esbuild.build(webviewBuildOptions),
       esbuild.build(settingsBuildOptions),
+      esbuild.build(mcpServerBuildOptions),
     ]);
     console.log('[esbuild] build complete');
   }
