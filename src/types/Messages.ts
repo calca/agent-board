@@ -41,6 +41,12 @@ export interface AgentOption {
   canSquad?: boolean;
 }
 
+/** Named squad team entry from project config. */
+export interface SquadTeam {
+  name: string;
+  agentSlug: string;
+}
+
 /** Minimal GenAI provider info sent to the WebView. */
 export interface GenAiProviderOption {
   id: string;
@@ -86,7 +92,7 @@ export type HostToWebView =
   | { type: 'providerStatus'; providerId: string; status: 'ok' | 'error' | 'loading'; message?: string }
   | { type: 'themeChange'; kind: 'dark' | 'light' | 'hc' }
   | { type: 'squadStatus'; status: SquadStatus }
-  | { type: 'agentsAvailable'; agents: AgentOption[] }
+  | { type: 'agentsAvailable'; agents: AgentOption[]; squadTeams?: SquadTeam[] }
   | { type: 'branchesAvailable'; branches: string[]; current: string }
   | { type: 'mcpStatus'; enabled: boolean }
   | { type: 'showTaskForm'; columns: Column[]; currentUser?: string }
@@ -131,7 +137,7 @@ export type WebViewToHost =
   | { type: 'addTask' }
   | { type: 'saveTask'; data: NewTaskData }
   | { type: 'editTask'; taskId: string; providerId: string; data: NewTaskData }
-  | { type: 'launchProvider'; taskId: string; providerId: string; genAiProviderId: string; baseBranch?: string }
+  | { type: 'launchProvider'; taskId: string; providerId: string; genAiProviderId: string; agentSlug?: string; baseBranch?: string }
   | { type: 'reopenSession'; taskId: string }
   | { type: 'cancelTaskForm' }
   | { type: 'openWorktree'; worktreePath: string }
@@ -161,4 +167,5 @@ export type WebViewToHost =
   | { type: 'cleanDone' }
   | { type: 'startAgent'; taskId: string; provider: string; prompt: string }
   | { type: 'cancelAgent'; taskId: string }
-  | { type: 'saveLocalNotes'; taskId: string; providerId: string; notes: string };
+  | { type: 'saveLocalNotes'; taskId: string; providerId: string; notes: string }
+  | { type: 'saveSquadAgent'; taskId: string; providerId: string; agentSlug: string };

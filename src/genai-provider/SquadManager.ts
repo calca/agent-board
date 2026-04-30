@@ -115,7 +115,8 @@ export class SquadManager {
         await this.delay(cfg.cooldownMs);
       }
       // Fire-and-forget: register session and launch in background so all tasks start in parallel
-      this.launchSessionInBackground(task, cfg, agentSlug, genAiProviderId, baseBranch);
+      // Per-task squadAgent takes precedence over the global agentSlug.
+      this.launchSessionInBackground(task, cfg, task.squadAgent ?? agentSlug, genAiProviderId, baseBranch);
       launched++;
     }
 
@@ -178,6 +179,9 @@ export class SquadManager {
     }
     const { provider: taskProvider, task } = resolved;
 
+    // Per-task squadAgent takes precedence over the caller-supplied agentSlug.
+    const effectiveAgentSlug = agentSlug ?? task.squadAgent;
+
     // Register the session
     const session: CopilotSessionInfo = {
       state: 'starting',
@@ -188,9 +192,9 @@ export class SquadManager {
     this.fireStatusChange();
 
     // Persist the agent slug on the task so the UI can display it
-    if (agentSlug && task.agent !== agentSlug) {
+    if (effectiveAgentSlug && task.agent !== effectiveAgentSlug) {
       try {
-        await taskProvider.updateTask({ ...task, agent: agentSlug });
+        await taskProvider.updateTask({ ...task, agent: effectiveAgentSlug });
       } catch {
         // non-blocking — the launch proceeds regardless
       }
@@ -200,7 +204,7 @@ export class SquadManager {
     await this.moveTask(task, cfg.activeColumn);
 
     // Run the provider in the background (fire-and-forget)
-    this.runInBackground(taskId, task, genAiProviderId, agentSlug, cfg, baseBranch);
+    this.runInBackground(taskId, task, genAiProviderId, effectiveAgentSlug, cfg, baseBranch);
   }
 
   /** Execute the provider in the background and update session state on completion. */

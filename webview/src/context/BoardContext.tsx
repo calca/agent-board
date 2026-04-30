@@ -1,7 +1,7 @@
 import React, { createContext, useCallback, useContext, useReducer, useRef, type Dispatch } from 'react';
 import type { ChatState } from '../components/chat/chatTypes';
 import { getVsCodeApi } from '../hooks/useVsCodeApi';
-import { AgentOption, ChatMessage, Column, FileChangeInfo, GenAiProviderOption, KanbanTask, MobileDeviceInfo, SquadStatus, TaskLogEntry } from '../types';
+import { AgentOption, ChatMessage, Column, FileChangeInfo, GenAiProviderOption, KanbanTask, MobileDeviceInfo, SquadStatus, SquadTeam, TaskLogEntry } from '../types';
 
 // ── State ────────────────────────────────────────────────────────────────
 
@@ -12,6 +12,7 @@ export interface BoardState {
   editableProviderIds: string[];
   genAiProviders: GenAiProviderOption[];
   availableAgents: AgentOption[];
+  squadTeams: SquadTeam[];
   selectedAgentSlug: string;
   selectedSquadProviderId: string;
   availableBranches: string[];
@@ -56,6 +57,7 @@ export const initialState: BoardState = {
   editableProviderIds: [],
   genAiProviders: [],
   availableAgents: [],
+  squadTeams: [],
   selectedAgentSlug: '',
   selectedSquadProviderId: '',
   availableBranches: [],
@@ -96,7 +98,7 @@ export const initialState: BoardState = {
 
 export type BoardAction =
   | { type: 'TASKS_UPDATE'; tasks: KanbanTask[]; columns: Column[]; editableProviderIds: string[]; genAiProviders: GenAiProviderOption[] }
-  | { type: 'AGENTS_AVAILABLE'; agents: AgentOption[] }
+  | { type: 'AGENTS_AVAILABLE'; agents: AgentOption[]; squadTeams?: SquadTeam[] }
   | { type: 'BRANCHES_AVAILABLE'; branches: string[]; current: string }
   | { type: 'SQUAD_STATUS'; status: SquadStatus }
   | { type: 'MCP_STATUS'; enabled: boolean }
@@ -154,15 +156,25 @@ export function boardReducer(state: BoardState, action: BoardAction): BoardState
       };
     }
     case 'AGENTS_AVAILABLE': {
+      const newTeams = action.squadTeams ?? [];
+      // Skip update if nothing changed to avoid unnecessary re-renders
+      const agentsSame = JSON.stringify(state.availableAgents) === JSON.stringify(action.agents);
+      const teamsSame = JSON.stringify(state.squadTeams) === JSON.stringify(newTeams);
+      if (agentsSame && teamsSame) { return state; }
+
+      const teamSlugs = new Set(newTeams.map(t => t.agentSlug));
       let slug = state.selectedAgentSlug;
-      if (slug && !action.agents.some(a => a.slug === slug && a.canSquad)) {
+      // Reset slug if it's no longer valid (not a team member and not canSquad)
+      if (slug && !teamSlugs.has(slug) && !action.agents.some(a => a.slug === slug && a.canSquad)) {
         slug = '';
       }
       if (!slug) {
-        const first = action.agents.find(a => a.canSquad);
+        // Prefer first team member, fallback to first canSquad agent
+        const firstTeam = newTeams.length > 0 ? action.agents.find(a => a.slug === newTeams[0].agentSlug) : undefined;
+        const first = firstTeam ?? action.agents.find(a => a.canSquad);
         if (first) { slug = first.slug; }
       }
-      return { ...state, availableAgents: action.agents, selectedAgentSlug: slug };
+      return { ...state, availableAgents: action.agents, squadTeams: newTeams, selectedAgentSlug: slug };
     }
     case 'SQUAD_STATUS':
       return { ...state, squadStatus: action.status };

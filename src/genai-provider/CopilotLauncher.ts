@@ -167,9 +167,12 @@ export class CopilotLauncher {
     this.sessionStateManager?.startSession(taskId, providerId, worktree?.path, logPath, baseBranch);
 
     // ── Agent instructions ────────────────────────────────────────────
+    const taskPrompt = prompt; // save prompt before agent prefix for logging
+    let agentDisplayName: string | undefined;
     if (agentSlug) {
       const agentInfo = this.agents.find(a => a.slug === agentSlug);
       if (agentInfo) {
+        agentDisplayName = agentInfo.displayName;
         const instructions = readAgentInstructions(agentInfo.filePath);
         if (instructions) {
           prompt = AGENT_PROMPT_PREFIX(agentInfo.displayName, instructions) + prompt;
@@ -228,7 +231,8 @@ export class CopilotLauncher {
     }
 
     // Emit the prompt to the activity log so the user can see what was sent
-    stream.append(`-----------------\nPROMPT\n${prompt}\n-----------------`);
+    const logHeader = agentDisplayName ? `Agent: ${agentDisplayName}\n` : '';
+    stream.append(`-----------------\n${logHeader}PROMPT\n${taskPrompt}\n-----------------`);
     // Send prompt and board events to the chat UI
     this._onDidBoardEvent.fire({ sessionId: taskId, kind: 'prompt', text: prompt });
     if (worktree) {

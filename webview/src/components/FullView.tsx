@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useBoard } from '../context/BoardContext';
 import { DataProvider } from '../DataProvider';
 import { postMessage } from '../hooks/useVsCodeApi';
-import type { Column, KanbanTask } from '../types';
+import type { AgentOption, Column, KanbanTask, SquadTeam } from '../types';
 import { relativeWorktreePath } from '../utils';
 import { ChatContainer } from './chat';
 import { FlatButton } from './FlatButton';
@@ -14,7 +14,7 @@ const logSourceIcons: Record<string, string> = { board: '☰', agent: '◆', too
 
 export function FullView() {
   const { state, dispatch, imp } = useBoard();
-  const { fullViewTaskId, tasks, columns, genAiProviders, repoIsGit, repoIsGitHub, repoIsAzureDevOps, workspaceRoot } = state;
+  const { fullViewTaskId, tasks, columns, genAiProviders, repoIsGit, repoIsGitHub, repoIsAzureDevOps, workspaceRoot, availableAgents, squadTeams } = state;
   const logScrollRef = useRef<HTMLDivElement>(null);
   const [mobileTab, setMobileTab] = useState<'details' | 'session' | 'files' | 'actions' | 'chat'>('details');
 
@@ -145,6 +145,8 @@ export function FullView() {
                 hasWorktree={hasWorktree}
                 activeProviderId={activeProviderId}
                 genAiProviders={genAiProviders}
+                availableAgents={availableAgents}
+                squadTeams={squadTeams}
                 repoIsGitHub={repoIsGitHub}
                 repoIsAzureDevOps={repoIsAzureDevOps}
                 columns={columns}
@@ -336,7 +338,7 @@ function FvSessionPanel({ sessionInfo, task, isMerged, workspaceRoot }: {
   );
 }
 
-function FvActions({ task, sessionInfo, isRunning, isMerged, hasWorktree, activeProviderId, genAiProviders, repoIsGitHub, repoIsAzureDevOps, columns, dispatch, availableBranches, selectedBaseBranch }: {
+function FvActions({ task, sessionInfo, isRunning, isMerged, hasWorktree, activeProviderId, genAiProviders, availableAgents, squadTeams, repoIsGitHub, repoIsAzureDevOps, columns, dispatch, availableBranches, selectedBaseBranch }: {
   task: KanbanTask;
   sessionInfo: KanbanTask['copilotSession'];
   isRunning: boolean;
@@ -344,6 +346,8 @@ function FvActions({ task, sessionInfo, isRunning, isMerged, hasWorktree, active
   hasWorktree: boolean;
   activeProviderId: string | undefined;
   genAiProviders: { id: string; displayName: string; disabled?: boolean }[];
+  availableAgents: AgentOption[];
+  squadTeams: SquadTeam[];
   repoIsGitHub: boolean;
   repoIsAzureDevOps: boolean;
   columns: Column[];
@@ -352,6 +356,26 @@ function FvActions({ task, sessionInfo, isRunning, isMerged, hasWorktree, active
   selectedBaseBranch: string;
 }) {
   const isCompleteOrDone = sessionInfo?.state === 'completed' || task.status === 'done';
+  const squadAgents = availableAgents.filter(a => a.canSquad);
+
+  // Split agents: team members first (from all agents), then other canSquad agents
+  const teamSlugs = new Set(squadTeams.map(t => t.agentSlug));
+  const teamEntries = squadTeams
+    .filter(t => availableAgents.some(a => a.slug === t.agentSlug))
+    .map(t => ({ slug: t.agentSlug, label: t.name }));
+  const otherAgents = squadAgents.filter(a => !teamSlugs.has(a.slug));
+  const hasAgents = teamEntries.length > 0 || otherAgents.length > 0;
+  const [selectedSquadAgent, setSelectedSquadAgent] = useState<string>(task.squadAgent ?? '');
+
+  // Keep local state in sync when the task prop changes (e.g. after save)
+  useEffect(() => {
+    setSelectedSquadAgent(task.squadAgent ?? '');
+  }, [task.squadAgent]);
+
+  function handleSquadAgentChange(slug: string) {
+    setSelectedSquadAgent(slug);
+    postMessage({ type: 'saveSquadAgent', taskId: task.id, providerId: task.providerId, agentSlug: slug });
+  }
 
   return (
     <div className="fv-actions">
@@ -377,6 +401,31 @@ function FvActions({ task, sessionInfo, isRunning, isMerged, hasWorktree, active
         </>
       ) : sessionInfo?.state !== 'completed' && !isMerged ? (
         <>
+          {hasAgents && (
+            <div className="fv-squad-agent-selector">
+              <label className="fv-squad-agent-selector__label">Squad Agent</label>
+              <select
+                className="fv-merge-select fv-squad-agent-selector__select"
+                value={selectedSquadAgent}
+                onChange={e => handleSquadAgentChange(e.target.value)}
+              >
+                <option value="">(none)</option>
+                {teamEntries.length > 0
+                  ? <>
+                      {teamEntries.map(t => (
+                        <option key={t.slug} value={t.slug}>{t.label}</option>
+                      ))}
+                      {otherAgents.length > 0 && <option disabled>───</option>}
+                      {otherAgents.map(a => (
+                        <option key={a.slug} value={a.slug}>{a.displayName}</option>
+                      ))}
+                    </>
+                  : squadAgents.map(a => (
+                      <option key={a.slug} value={a.slug}>{a.displayName}</option>
+                    ))}
+              </select>
+            </div>
+          )}
           {availableBranches.length >= 1 && (
             <div className="fv-branch-selector">
               <label className="fv-branch-selector__label">Branch</label>
@@ -397,7 +446,7 @@ function FvActions({ task, sessionInfo, isRunning, isMerged, hasWorktree, active
           <div className="fv-actions__providers">
             {genAiProviders.filter(p => !p.disabled).length > 0
               ? genAiProviders.filter(p => !p.disabled).map(p => (
-                <FlatButton key={p.id} variant="secondary" fullWidth className="fv-launch-provider" icon={<svg className="fv-icon" width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M6 3.5L12 8l-6 4.5v-9Z"/></svg>} onClick={() => postMessage({ type: 'launchProvider', taskId: task.id, providerId: task.providerId, genAiProviderId: p.id, baseBranch: selectedBaseBranch || undefined })} title={p.displayName}>
+                <FlatButton key={p.id} variant="secondary" fullWidth className="fv-launch-provider" icon={<svg className="fv-icon" width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M6 3.5L12 8l-6 4.5v-9Z"/></svg>} onClick={() => postMessage({ type: 'launchProvider', taskId: task.id, providerId: task.providerId, genAiProviderId: p.id, agentSlug: selectedSquadAgent || undefined, baseBranch: selectedBaseBranch || undefined })} title={p.displayName}>
                   {p.displayName}
                 </FlatButton>
               ))

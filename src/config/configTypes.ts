@@ -143,6 +143,11 @@ export interface ProjectConfigData {
      * Default false.
      */
     autoPR?: boolean;
+    /**
+     * Named squad teams.
+     * Each team has a display name and the slug of the agent it uses.
+     */
+    teams?: Array<{ name: string; agentSlug: string }>;
   };
   /**
    * MCP (Model Context Protocol) server settings.

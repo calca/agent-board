@@ -10,6 +10,7 @@ import * as vscode from 'vscode';
 import { refreshTasksCommand } from './commands/refreshTasks';
 import { HiddenTasksStore } from './config/HiddenTasksStore';
 import { LocalNotesStore } from './config/LocalNotesStore';
+import { LocalSquadAgentStore } from './config/LocalSquadAgentStore';
 import { ProjectConfig } from './config/ProjectConfig';
 import { DiffWatcher, gitRefUri } from './diff/DiffWatcher';
 import { cancelAgent as cancelCliAgent, runAgent as runCliAgent } from './genai-provider/AgentRunner';
@@ -25,7 +26,7 @@ import type { JsonProvider } from './providers/JsonProvider';
 import type { ProviderRegistry } from './providers/ProviderRegistry';
 import { buildColumnOrder, DEFAULT_COLUMN_COLORS, DEFAULT_COLUMN_LABELS } from './types/ColumnId';
 import type { KanbanTask } from './types/KanbanTask';
-import type { AgentOption } from './types/Messages';
+import type { AgentOption, SquadTeam } from './types/Messages';
 import { Logger } from './utils/logger';
 import { handleStartSquad, handleToggleAutoSquad, sendTasksToPanel } from './utils/panelHelpers';
 import { execPromise, isAzureDevOpsRepository, isGitHubRepository, isGitRepository, sendBranchesToPanel } from './utils/repoDetection';
@@ -40,6 +41,7 @@ export interface MessageDispatcherDeps {
   jsonProvider: JsonProvider;
   prManager: PullRequestManager;
   agentOptions: () => AgentOption[];
+  getSquadTeams: () => SquadTeam[];
   refreshAgents: () => void;
   refresh: () => void;
   pushMobileStatus: (panel: KanbanPanel) => Promise<void>;
@@ -57,6 +59,7 @@ export function wireMessageDispatcher(deps: MessageDispatcherDeps): void {
     jsonProvider,
     prManager,
     agentOptions,
+    getSquadTeams,
     refreshAgents,
     refresh,
     pushMobileStatus,
@@ -73,7 +76,7 @@ export function wireMessageDispatcher(deps: MessageDispatcherDeps): void {
       case 'ready':
         await sendTasksToPanel(panel, providerRegistry, genAiRegistry, squadManager, sessionStateManager);
         panel.updateSquadStatus(squadManager.getStatus());
-        panel.updateAgents(agentOptions());
+        panel.updateAgents(agentOptions(), getSquadTeams());
         panel.updateMcpStatus(ProjectConfig.getProjectConfig()?.mcp?.enabled ?? false);
         panel.postMessage({
           type: 'repoStatus',
@@ -93,7 +96,7 @@ export function wireMessageDispatcher(deps: MessageDispatcherDeps): void {
         } catch { /* logged in refreshTasksCommand */ }
         await sendTasksToPanel(panel, providerRegistry, genAiRegistry, squadManager, sessionStateManager);
         refreshAgents();
-        panel.updateAgents(agentOptions());
+        panel.updateAgents(agentOptions(), getSquadTeams());
         await sendBranchesToPanel(panel);
         await pushMobileStatus(panel);
         break;
@@ -231,6 +234,30 @@ export function wireMessageDispatcher(deps: MessageDispatcherDeps): void {
         await sendTasksToPanel(panel, providerRegistry, genAiRegistry, squadManager, sessionStateManager);
         break;
 
+      case 'saveSquadAgent': {
+        const { taskId, providerId, agentSlug } = msg;
+        // For JSON provider, persist in the task file itself
+        if (providerId === 'json') {
+          const jsonProv = providerRegistry.get('json');
+          if (jsonProv) {
+            const jsonTasks = await jsonProv.getTasks();
+            const target = jsonTasks.find(t => t.id === taskId);
+            if (target) {
+              await jsonProv.updateTask({ ...target, squadAgent: agentSlug || undefined });
+            }
+          }
+        } else {
+          // For sync providers, store locally
+          if (agentSlug) {
+            LocalSquadAgentStore.set(providerId, taskId, agentSlug);
+          } else {
+            LocalSquadAgentStore.delete(providerId, taskId);
+          }
+        }
+        await sendTasksToPanel(panel, providerRegistry, genAiRegistry, squadManager, sessionStateManager);
+        break;
+      }
+
       case 'exportDoneMd': {
         const configuredCols = buildColumnOrder(ProjectConfig.getProjectConfig()?.kanban?.intermediateColumns);
         const doneColId = configuredCols[configuredCols.length - 1] ?? 'done';
@@ -286,7 +313,7 @@ export function wireMessageDispatcher(deps: MessageDispatcherDeps): void {
       }
 
       case 'launchProvider':
-        await squadManager.launchSingle(msg.taskId, msg.genAiProviderId, undefined, msg.baseBranch);
+        await squadManager.launchSingle(msg.taskId, msg.genAiProviderId, msg.agentSlug, msg.baseBranch);
         panel.updateSquadStatus(squadManager.getStatus());
         await sendTasksToPanel(panel, providerRegistry, genAiRegistry, squadManager, sessionStateManager);
         break;

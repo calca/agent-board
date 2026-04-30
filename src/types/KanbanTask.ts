@@ -52,6 +52,8 @@ export interface KanbanTask {
   meta: Record<string, unknown>;
   /** Slug of the agent used to launch the last session, if any. */
   agent?: string;
+  /** Slug of the squad agent assigned to this specific task. */
+  squadAgent?: string;
   /** Copilot session info, present when a copilot session is attached. */
   copilotSession?: CopilotSessionInfo;
 }

@@ -8,9 +8,26 @@ function numOrUndef(val: string): number | undefined {
 export function SquadSection() {
   const { state, dispatch } = useSettings();
   const sq = state.config.squad ?? {};
+  const agents = state.agents;
+  const teams: Array<{ name: string; agentSlug: string }> = sq.teams ?? [];
 
   function update(patch: Record<string, unknown>) {
     dispatch({ type: 'updateConfig', patch: { squad: { ...sq, ...patch } } });
+  }
+
+  function addTeam() {
+    const defaultName = `Team ${teams.length + 1}`;
+    const newTeam = { name: defaultName, agentSlug: agents.find(a => a.canSquad)?.slug ?? '' };
+    update({ teams: [...teams, newTeam] });
+  }
+
+  function updateTeam(index: number, field: 'name' | 'agentSlug', value: string) {
+    const updated = teams.map((t, i) => i === index ? { ...t, [field]: value } : t);
+    update({ teams: updated });
+  }
+
+  function removeTeam(index: number) {
+    update({ teams: teams.filter((_, i) => i !== index) });
   }
 
   return (
@@ -70,6 +87,44 @@ export function SquadSection() {
           </label>
           <span className="hint">Automatically create a Pull Request when a squad session completes</span>
         </div>
+      </div>
+
+      <div className="section__subtitle">Teams</div>
+      <p className="section__hint">
+        Define named squad teams. Each team specifies an agent that handles its tasks.
+        Select a squad agent per task in the Full View to override the default agent.
+      </p>
+      <div className="squad-teams">
+        {teams.map((team, i) => (
+          <div key={i} className="squad-team-row">
+            <input
+              type="text"
+              className="squad-team-row__name"
+              placeholder="Team name"
+              value={team.name}
+              onChange={e => updateTeam(i, 'name', e.target.value)}
+            />
+            <select
+              className="squad-team-row__agent"
+              value={team.agentSlug}
+              onChange={e => updateTeam(i, 'agentSlug', e.target.value)}
+            >
+              <option value="">— Select agent —</option>
+              {agents.map(a => (
+                <option key={a.slug} value={a.slug}>{a.displayName}</option>
+              ))}
+            </select>
+            <button
+              type="button"
+              className="squad-team-row__remove"
+              title="Remove team"
+              onClick={() => removeTeam(i)}
+            >✕</button>
+          </div>
+        ))}
+        <button type="button" className="squad-teams__add" onClick={addTeam}>
+          + Add team
+        </button>
       </div>
     </div>
   );

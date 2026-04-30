@@ -70,7 +70,7 @@ export function useHostMessages(): void {
           break;
         }
         case 'agentsAvailable':
-          dispatch({ type: 'AGENTS_AVAILABLE', agents: msg.agents ?? [] });
+          dispatch({ type: 'AGENTS_AVAILABLE', agents: msg.agents ?? [], squadTeams: msg.squadTeams });
           break;
         case 'branchesAvailable':
           dispatch({ type: 'BRANCHES_AVAILABLE', branches: msg.branches ?? [], current: msg.current ?? '' });
