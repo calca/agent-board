@@ -162,12 +162,16 @@ export function boardReducer(state: BoardState, action: BoardAction): BoardState
       const teamsSame = JSON.stringify(state.squadTeams) === JSON.stringify(newTeams);
       if (agentsSame && teamsSame) { return state; }
 
+      const teamSlugs = new Set(newTeams.map(t => t.agentSlug));
       let slug = state.selectedAgentSlug;
-      if (slug && !action.agents.some(a => a.slug === slug && a.canSquad)) {
+      // Reset slug if it's no longer valid (not a team member and not canSquad)
+      if (slug && !teamSlugs.has(slug) && !action.agents.some(a => a.slug === slug && a.canSquad)) {
         slug = '';
       }
       if (!slug) {
-        const first = action.agents.find(a => a.canSquad);
+        // Prefer first team member, fallback to first canSquad agent
+        const firstTeam = newTeams.length > 0 ? action.agents.find(a => a.slug === newTeams[0].agentSlug) : undefined;
+        const first = firstTeam ?? action.agents.find(a => a.canSquad);
         if (first) { slug = first.slug; }
       }
       return { ...state, availableAgents: action.agents, squadTeams: newTeams, selectedAgentSlug: slug };

@@ -358,12 +358,13 @@ function FvActions({ task, sessionInfo, isRunning, isMerged, hasWorktree, active
   const isCompleteOrDone = sessionInfo?.state === 'completed' || task.status === 'done';
   const squadAgents = availableAgents.filter(a => a.canSquad);
 
-  // Split agents: team members first, then the rest
+  // Split agents: team members first (from all agents), then other canSquad agents
   const teamSlugs = new Set(squadTeams.map(t => t.agentSlug));
-  const teamAgents = squadTeams
-    .map(t => squadAgents.find(a => a.slug === t.agentSlug))
-    .filter((a): a is NonNullable<typeof a> => !!a);
+  const teamEntries = squadTeams
+    .filter(t => availableAgents.some(a => a.slug === t.agentSlug))
+    .map(t => ({ slug: t.agentSlug, label: t.name }));
   const otherAgents = squadAgents.filter(a => !teamSlugs.has(a.slug));
+  const hasAgents = teamEntries.length > 0 || otherAgents.length > 0;
   const [selectedSquadAgent, setSelectedSquadAgent] = useState<string>(task.squadAgent ?? '');
 
   // Keep local state in sync when the task prop changes (e.g. after save)
@@ -400,7 +401,7 @@ function FvActions({ task, sessionInfo, isRunning, isMerged, hasWorktree, active
         </>
       ) : sessionInfo?.state !== 'completed' && !isMerged ? (
         <>
-          {squadAgents.length > 0 && (
+          {hasAgents && (
             <div className="fv-squad-agent-selector">
               <label className="fv-squad-agent-selector__label">Squad Agent</label>
               <select
@@ -409,10 +410,10 @@ function FvActions({ task, sessionInfo, isRunning, isMerged, hasWorktree, active
                 onChange={e => handleSquadAgentChange(e.target.value)}
               >
                 <option value="">(none)</option>
-                {teamAgents.length > 0
+                {teamEntries.length > 0
                   ? <>
-                      {teamAgents.map(a => (
-                        <option key={a.slug} value={a.slug}>{a.displayName}</option>
+                      {teamEntries.map(t => (
+                        <option key={t.slug} value={t.slug}>{t.label}</option>
                       ))}
                       {otherAgents.length > 0 && <option disabled>───</option>}
                       {otherAgents.map(a => (

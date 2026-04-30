@@ -19,12 +19,13 @@ export function Toolbar() {
   const squadProviders = genAiProviders.filter(p => !p.disabled && p.canSquad !== false);
   const squadAgents = availableAgents.filter(a => a.canSquad);
 
-  // Split agents: team members first, then the rest
+  // Split agents: team members first (from all agents), then other canSquad agents
   const teamSlugs = new Set(squadTeams.map(t => t.agentSlug));
-  const teamAgents = squadTeams
-    .map(t => squadAgents.find(a => a.slug === t.agentSlug))
-    .filter((a): a is NonNullable<typeof a> => !!a);
+  const teamEntries = squadTeams
+    .filter(t => availableAgents.some(a => a.slug === t.agentSlug))
+    .map(t => ({ slug: t.agentSlug, label: t.name }));
   const otherAgents = squadAgents.filter(a => !teamSlugs.has(a.slug));
+  const hasAgents = teamEntries.length > 0 || otherAgents.length > 0;
 
   function getFilteredCount() {
     if (!searchText) { return state.tasks.length; }
@@ -137,16 +138,16 @@ export function Toolbar() {
           <select
             className="toolbar__select"
             title="Agent"
-            disabled={!squadAgents.some(a => a.canSquad)}
-            value={selectedAgentSlug || (squadAgents[0]?.slug ?? '')}
+            disabled={!hasAgents}
+            value={selectedAgentSlug || (teamEntries[0]?.slug ?? otherAgents[0]?.slug ?? '')}
             onChange={e => dispatch({ type: 'SET_SELECTED_AGENT', slug: e.target.value })}
           >
-            {squadAgents.length === 0
+            {!hasAgents
               ? <option value="">No agents</option>
-              : teamAgents.length > 0
+              : teamEntries.length > 0
                 ? <>
-                    {teamAgents.map(a => (
-                      <option key={a.slug} value={a.slug}>{a.displayName}</option>
+                    {teamEntries.map(t => (
+                      <option key={t.slug} value={t.slug}>{t.label}</option>
                     ))}
                     {otherAgents.length > 0 && <option disabled>───</option>}
                     {otherAgents.map(a => (
