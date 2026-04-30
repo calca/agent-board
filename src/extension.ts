@@ -11,7 +11,6 @@ import { CopilotLauncher } from './genai-provider/CopilotLauncher';
 import { GenAiProviderRegistry } from './genai-provider/GenAiProviderRegistry';
 import { ModelSelector } from './genai-provider/ModelSelector';
 import { ChatGenAiProvider } from './genai-provider/providers/ChatGenAiProvider';
-import { CopilotFlowGenAiProvider } from './genai-provider/providers/copilot-flow/CopilotFlowGenAiProvider';
 import { mapEventToBlock } from './genai-provider/providers/copilot-sdk/eventMapper';
 import { CopilotCliGenAiProvider } from './genai-provider/providers/CopilotCliGenAiProvider';
 import { CopilotSdkGenAiProvider } from './genai-provider/providers/CopilotSdkGenAiProvider';
@@ -167,12 +166,6 @@ export function activate(context: vscode.ExtensionContext): void {
     model: (sdkCfg.model as string | undefined) ?? vscode.workspace.getConfiguration('agentBoard').get<string>('copilotModel', 'gpt-4o'),
   };
   genAiRegistry.register(new CopilotSdkGenAiProvider(sdkConfig));
-
-  // CopilotFlow — orchestration provider (delegates to GitHub Copilot CLI)
-  const copilotFlowCfg = ProjectConfig.getProjectConfig()?.genAiProviders?.['copilot-flow'] ?? {};
-  const copilotFlowGenAi = new CopilotFlowGenAiProvider(copilotFlowCfg);
-  copilotFlowGenAi.setInnerProvider(ghCopilotGenAi);
-  genAiRegistry.register(copilotFlowGenAi);
 
   // ── MCP server registration ────────────────────────────────────────────
 
