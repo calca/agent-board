@@ -16,7 +16,8 @@ export function SquadSection() {
   }
 
   function addTeam() {
-    const newTeam = { name: '', agentSlug: agents.find(a => a.canSquad)?.slug ?? '' };
+    const defaultName = `Team ${teams.length + 1}`;
+    const newTeam = { name: defaultName, agentSlug: agents.find(a => a.canSquad)?.slug ?? '' };
     update({ teams: [...teams, newTeam] });
   }
 
