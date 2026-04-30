@@ -43,6 +43,11 @@ export interface AgentOption {
   canSquad?: boolean;
 }
 
+export interface SquadTeam {
+  name: string;
+  agentSlug: string;
+}
+
 export interface GenAiProviderOption {
   id: string;
   displayName: string;

@@ -41,6 +41,12 @@ export interface AgentOption {
   canSquad?: boolean;
 }
 
+/** Named squad team entry from project config. */
+export interface SquadTeam {
+  name: string;
+  agentSlug: string;
+}
+
 /** Minimal GenAI provider info sent to the WebView. */
 export interface GenAiProviderOption {
   id: string;
@@ -86,7 +92,7 @@ export type HostToWebView =
   | { type: 'providerStatus'; providerId: string; status: 'ok' | 'error' | 'loading'; message?: string }
   | { type: 'themeChange'; kind: 'dark' | 'light' | 'hc' }
   | { type: 'squadStatus'; status: SquadStatus }
-  | { type: 'agentsAvailable'; agents: AgentOption[] }
+  | { type: 'agentsAvailable'; agents: AgentOption[]; squadTeams?: SquadTeam[] }
   | { type: 'branchesAvailable'; branches: string[]; current: string }
   | { type: 'mcpStatus'; enabled: boolean }
   | { type: 'showTaskForm'; columns: Column[]; currentUser?: string }

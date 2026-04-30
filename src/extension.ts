@@ -35,7 +35,7 @@ import { LocalApiServer } from './server/LocalApiServer';
 import { SettingsPanel } from './settings/SettingsPanel';
 import { TaskTreeItem } from './tasksTreeProvider';
 import { buildColumnOrder, DEFAULT_COLUMN_COLORS, DEFAULT_COLUMN_LABELS } from './types/ColumnId';
-import type { AgentOption } from './types/Messages';
+import type { AgentOption, SquadTeam } from './types/Messages';
 import { Logger, LogLevel } from './utils/logger';
 import { handleStartSquad, handleToggleAutoSquad, sendTasksToPanel, updateStatusBar } from './utils/panelHelpers';
 import { getLocalIPv4, isAzureDevOpsRepository, isGitHubRepository, isGitRepository } from './utils/repoDetection';
@@ -219,6 +219,8 @@ export function activate(context: vscode.ExtensionContext): void {
   let discoveredAgents: AgentInfo[] = [];
   const agentOptions = (): AgentOption[] =>
     discoveredAgents.map(a => ({ slug: a.slug, displayName: a.displayName, canSquad: a.canSquad }));
+  const getSquadTeams = (): SquadTeam[] =>
+    ProjectConfig.getProjectConfig()?.squad?.teams ?? [];
 
   function refreshAgents(): void {
     const folders = vscode.workspace.workspaceFolders;
@@ -230,6 +232,44 @@ export function activate(context: vscode.ExtensionContext): void {
   }
 
   refreshAgents();
+
+  // Watch .github/agents/ for changes and auto-refresh agents
+  const agentsPattern = new vscode.RelativePattern(
+    vscode.workspace.workspaceFolders![0],
+    '.github/agents/*.md'
+  );
+  const agentsWatcher = vscode.workspace.createFileSystemWatcher(agentsPattern);
+  const onAgentsChanged = () => {
+    refreshAgents();
+    const activePanel = KanbanPanel.getInstance();
+    if (activePanel) {
+      activePanel.updateAgents(agentOptions(), getSquadTeams());
+    }
+  };
+  agentsWatcher.onDidCreate(onAgentsChanged);
+  agentsWatcher.onDidDelete(onAgentsChanged);
+  agentsWatcher.onDidChange(onAgentsChanged);
+  context.subscriptions.push(agentsWatcher);
+
+  // Watch config file for squad team changes (debounced to avoid re-render storms)
+  const configPattern = new vscode.RelativePattern(
+    vscode.workspace.workspaceFolders![0],
+    '.agent-board/config.json'
+  );
+  const configWatcher = vscode.workspace.createFileSystemWatcher(configPattern);
+  let configDebounce: ReturnType<typeof setTimeout> | undefined;
+  const onConfigChanged = () => {
+    if (configDebounce) { clearTimeout(configDebounce); }
+    configDebounce = setTimeout(() => {
+      const activePanel = KanbanPanel.getInstance();
+      if (activePanel) {
+        activePanel.updateAgents(agentOptions(), getSquadTeams());
+      }
+    }, 500);
+  };
+  configWatcher.onDidCreate(onConfigChanged);
+  configWatcher.onDidChange(onConfigChanged);
+  context.subscriptions.push(configWatcher);
 
   // Cache repo status for the mobile status provider (sync callback)
   let cachedIsGit = false;
@@ -479,6 +519,7 @@ export function activate(context: vscode.ExtensionContext): void {
       jsonProvider,
       prManager,
       agentOptions,
+      getSquadTeams,
       refreshAgents,
       refresh,
       pushMobileStatus: (p) => pushMobileStatus(p),

@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useBoard } from '../context/BoardContext';
 import { DataProvider } from '../DataProvider';
 import { postMessage } from '../hooks/useVsCodeApi';
-import type { AgentOption, Column, KanbanTask } from '../types';
+import type { AgentOption, Column, KanbanTask, SquadTeam } from '../types';
 import { relativeWorktreePath } from '../utils';
 import { ChatContainer } from './chat';
 import { FlatButton } from './FlatButton';
@@ -14,7 +14,7 @@ const logSourceIcons: Record<string, string> = { board: '☰', agent: '◆', too
 
 export function FullView() {
   const { state, dispatch, imp } = useBoard();
-  const { fullViewTaskId, tasks, columns, genAiProviders, repoIsGit, repoIsGitHub, repoIsAzureDevOps, workspaceRoot, availableAgents } = state;
+  const { fullViewTaskId, tasks, columns, genAiProviders, repoIsGit, repoIsGitHub, repoIsAzureDevOps, workspaceRoot, availableAgents, squadTeams } = state;
   const logScrollRef = useRef<HTMLDivElement>(null);
   const [mobileTab, setMobileTab] = useState<'details' | 'session' | 'files' | 'actions' | 'chat'>('details');
 
@@ -146,6 +146,7 @@ export function FullView() {
                 activeProviderId={activeProviderId}
                 genAiProviders={genAiProviders}
                 availableAgents={availableAgents}
+                squadTeams={squadTeams}
                 repoIsGitHub={repoIsGitHub}
                 repoIsAzureDevOps={repoIsAzureDevOps}
                 columns={columns}
@@ -337,7 +338,7 @@ function FvSessionPanel({ sessionInfo, task, isMerged, workspaceRoot }: {
   );
 }
 
-function FvActions({ task, sessionInfo, isRunning, isMerged, hasWorktree, activeProviderId, genAiProviders, availableAgents, repoIsGitHub, repoIsAzureDevOps, columns, dispatch, availableBranches, selectedBaseBranch }: {
+function FvActions({ task, sessionInfo, isRunning, isMerged, hasWorktree, activeProviderId, genAiProviders, availableAgents, squadTeams, repoIsGitHub, repoIsAzureDevOps, columns, dispatch, availableBranches, selectedBaseBranch }: {
   task: KanbanTask;
   sessionInfo: KanbanTask['copilotSession'];
   isRunning: boolean;
@@ -346,6 +347,7 @@ function FvActions({ task, sessionInfo, isRunning, isMerged, hasWorktree, active
   activeProviderId: string | undefined;
   genAiProviders: { id: string; displayName: string; disabled?: boolean }[];
   availableAgents: AgentOption[];
+  squadTeams: SquadTeam[];
   repoIsGitHub: boolean;
   repoIsAzureDevOps: boolean;
   columns: Column[];
@@ -355,6 +357,13 @@ function FvActions({ task, sessionInfo, isRunning, isMerged, hasWorktree, active
 }) {
   const isCompleteOrDone = sessionInfo?.state === 'completed' || task.status === 'done';
   const squadAgents = availableAgents.filter(a => a.canSquad);
+
+  // Split agents: team members first, then the rest
+  const teamSlugs = new Set(squadTeams.map(t => t.agentSlug));
+  const teamAgents = squadTeams
+    .map(t => squadAgents.find(a => a.slug === t.agentSlug))
+    .filter((a): a is NonNullable<typeof a> => !!a);
+  const otherAgents = squadAgents.filter(a => !teamSlugs.has(a.slug));
   const [selectedSquadAgent, setSelectedSquadAgent] = useState<string>(task.squadAgent ?? '');
 
   // Keep local state in sync when the task prop changes (e.g. after save)
@@ -400,9 +409,19 @@ function FvActions({ task, sessionInfo, isRunning, isMerged, hasWorktree, active
                 onChange={e => handleSquadAgentChange(e.target.value)}
               >
                 <option value="">(none)</option>
-                {squadAgents.map(a => (
-                  <option key={a.slug} value={a.slug}>{a.displayName}</option>
-                ))}
+                {teamAgents.length > 0
+                  ? <>
+                      {teamAgents.map(a => (
+                        <option key={a.slug} value={a.slug}>{a.displayName}</option>
+                      ))}
+                      {otherAgents.length > 0 && <option disabled>───</option>}
+                      {otherAgents.map(a => (
+                        <option key={a.slug} value={a.slug}>{a.displayName}</option>
+                      ))}
+                    </>
+                  : squadAgents.map(a => (
+                      <option key={a.slug} value={a.slug}>{a.displayName}</option>
+                    ))}
               </select>
             </div>
           )}

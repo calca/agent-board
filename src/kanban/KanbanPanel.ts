@@ -2,7 +2,7 @@ import * as vscode from 'vscode';
 import { ProjectConfig } from '../config/ProjectConfig';
 import { DEFAULT_COLUMN_COLORS, DEFAULT_COLUMN_LABELS, buildColumnOrder } from '../types/ColumnId';
 import { KanbanTask } from '../types/KanbanTask';
-import { AgentOption, Column, FileChangeInfo, GenAiProviderOption, HostToWebView, SquadStatus, UIBlockMsg, WebViewToHost } from '../types/Messages';
+import { AgentOption, Column, FileChangeInfo, GenAiProviderOption, HostToWebView, SquadStatus, SquadTeam, UIBlockMsg, WebViewToHost } from '../types/Messages';
 import { Logger } from '../utils/logger';
 
 /**
@@ -131,8 +131,8 @@ export class KanbanPanel {
   }
 
   /** Push the list of discovered agents to the WebView. */
-  updateAgents(agents: AgentOption[]): void {
-    this.postMessage({ type: 'agentsAvailable', agents });
+  updateAgents(agents: AgentOption[], squadTeams?: SquadTeam[]): void {
+    this.postMessage({ type: 'agentsAvailable', agents, squadTeams });
   }
 
   /** Push the current MCP server status to the WebView. */

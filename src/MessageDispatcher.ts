@@ -26,7 +26,7 @@ import type { JsonProvider } from './providers/JsonProvider';
 import type { ProviderRegistry } from './providers/ProviderRegistry';
 import { buildColumnOrder, DEFAULT_COLUMN_COLORS, DEFAULT_COLUMN_LABELS } from './types/ColumnId';
 import type { KanbanTask } from './types/KanbanTask';
-import type { AgentOption } from './types/Messages';
+import type { AgentOption, SquadTeam } from './types/Messages';
 import { Logger } from './utils/logger';
 import { handleStartSquad, handleToggleAutoSquad, sendTasksToPanel } from './utils/panelHelpers';
 import { execPromise, isAzureDevOpsRepository, isGitHubRepository, isGitRepository, sendBranchesToPanel } from './utils/repoDetection';
@@ -41,6 +41,7 @@ export interface MessageDispatcherDeps {
   jsonProvider: JsonProvider;
   prManager: PullRequestManager;
   agentOptions: () => AgentOption[];
+  getSquadTeams: () => SquadTeam[];
   refreshAgents: () => void;
   refresh: () => void;
   pushMobileStatus: (panel: KanbanPanel) => Promise<void>;
@@ -58,6 +59,7 @@ export function wireMessageDispatcher(deps: MessageDispatcherDeps): void {
     jsonProvider,
     prManager,
     agentOptions,
+    getSquadTeams,
     refreshAgents,
     refresh,
     pushMobileStatus,
@@ -74,7 +76,7 @@ export function wireMessageDispatcher(deps: MessageDispatcherDeps): void {
       case 'ready':
         await sendTasksToPanel(panel, providerRegistry, genAiRegistry, squadManager, sessionStateManager);
         panel.updateSquadStatus(squadManager.getStatus());
-        panel.updateAgents(agentOptions());
+        panel.updateAgents(agentOptions(), getSquadTeams());
         panel.updateMcpStatus(ProjectConfig.getProjectConfig()?.mcp?.enabled ?? false);
         panel.postMessage({
           type: 'repoStatus',
@@ -94,7 +96,7 @@ export function wireMessageDispatcher(deps: MessageDispatcherDeps): void {
         } catch { /* logged in refreshTasksCommand */ }
         await sendTasksToPanel(panel, providerRegistry, genAiRegistry, squadManager, sessionStateManager);
         refreshAgents();
-        panel.updateAgents(agentOptions());
+        panel.updateAgents(agentOptions(), getSquadTeams());
         await sendBranchesToPanel(panel);
         await pushMobileStatus(panel);
         break;

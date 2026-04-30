@@ -7,7 +7,7 @@ export function Toolbar() {
   const { state, dispatch } = useBoard();
   const {
     workspaceName, mcpEnabled, squadStatus, repoIsGit,
-    genAiProviders, availableAgents, selectedSquadProviderId,
+    genAiProviders, availableAgents, squadTeams, selectedSquadProviderId,
     selectedAgentSlug, selectedBaseBranch, availableBranches,
     searchText, showSearchInput, syncing,
     mobileServerRunning, mobileDevices, mobileRefreshing,
@@ -18,6 +18,13 @@ export function Toolbar() {
   const filtered = getFilteredCount();
   const squadProviders = genAiProviders.filter(p => !p.disabled && p.canSquad !== false);
   const squadAgents = availableAgents.filter(a => a.canSquad);
+
+  // Split agents: team members first, then the rest
+  const teamSlugs = new Set(squadTeams.map(t => t.agentSlug));
+  const teamAgents = squadTeams
+    .map(t => squadAgents.find(a => a.slug === t.agentSlug))
+    .filter((a): a is NonNullable<typeof a> => !!a);
+  const otherAgents = squadAgents.filter(a => !teamSlugs.has(a.slug));
 
   function getFilteredCount() {
     if (!searchText) { return state.tasks.length; }
@@ -136,9 +143,19 @@ export function Toolbar() {
           >
             {squadAgents.length === 0
               ? <option value="">No agents</option>
-              : squadAgents.map(a => (
-                <option key={a.slug} value={a.slug}>{a.displayName}</option>
-              ))}
+              : teamAgents.length > 0
+                ? <>
+                    {teamAgents.map(a => (
+                      <option key={a.slug} value={a.slug}>{a.displayName}</option>
+                    ))}
+                    {otherAgents.length > 0 && <option disabled>───</option>}
+                    {otherAgents.map(a => (
+                      <option key={a.slug} value={a.slug}>{a.displayName}</option>
+                    ))}
+                  </>
+                : squadAgents.map(a => (
+                    <option key={a.slug} value={a.slug}>{a.displayName}</option>
+                  ))}
           </select>
           <FlatButton
             variant="primary"
