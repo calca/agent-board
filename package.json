@@ -366,7 +366,7 @@
     "typescript-eslint": "^8.58.1"
   },
   "dependencies": {
-    "@github/copilot-sdk": "^0.2.2",
+    "@github/copilot-sdk": "^0.3.0",
     "@types/localtunnel": "^2.0.4",
     "@types/qrcode": "^1.5.6",
     "localtunnel": "^2.0.2",
