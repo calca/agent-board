@@ -6,7 +6,7 @@ import * as vscode from 'vscode';
 import { KanbanTask } from '../../types/KanbanTask';
 import { formatError } from '../../utils/errorUtils';
 import { Logger } from '../../utils/logger';
-import { buildOptimisationPrefix } from '../copilotCliUtils';
+import { buildOptimisationPrefix, isGitHubRepository } from '../copilotCliUtils';
 import { GenAiProviderConfig, GenAiProviderScope, GenAiSettingDescriptor, IGenAiProvider } from '../IGenAiProvider';
 import type { CopilotEvent } from './copilot-sdk/types';
 
@@ -27,6 +27,8 @@ export class CopilotCliGenAiProvider implements IGenAiProvider {
   private yolo: boolean;
   private fleet: boolean;
   private silent: boolean;
+  private remote: boolean;
+  private rubberDuck: boolean;
   private _proc: ChildProcess | undefined;
   private _resumeSessionId: string | undefined;
   private _lastSessionId: string | undefined;
@@ -38,9 +40,11 @@ export class CopilotCliGenAiProvider implements IGenAiProvider {
   readonly onDidCopilotEvent: vscode.Event<CopilotEvent> = this._onDidCopilotEventEmitter.event;
 
   constructor(config?: GenAiProviderConfig) {
-    this.yolo   = (config?.yolo   as boolean | undefined) ?? true;
-    this.fleet  = (config?.fleet  as boolean | undefined) ?? false;
-    this.silent = (config?.silent as boolean | undefined) ?? true;
+    this.yolo       = (config?.yolo       as boolean | undefined) ?? true;
+    this.fleet      = (config?.fleet      as boolean | undefined) ?? false;
+    this.silent     = (config?.silent     as boolean | undefined) ?? true;
+    this.remote     = (config?.remote     as boolean | undefined) ?? false;
+    this.rubberDuck = (config?.rubberDuck as boolean | undefined) ?? false;
   }
 
   getSettingsDescriptors(): GenAiSettingDescriptor[] {
@@ -48,13 +52,17 @@ export class CopilotCliGenAiProvider implements IGenAiProvider {
       { key: 'yolo', title: 'Yolo mode', description: 'Auto-approve all changes without confirmation', type: 'boolean', defaultValue: true },
       { key: 'fleet', title: 'Fleet mode', description: 'Optimise prompt for parallel fleet execution', type: 'boolean', defaultValue: false },
       { key: 'silent', title: 'Silent mode', description: 'Suppress interactive prompts and progress output', type: 'boolean', defaultValue: true },
+      { key: 'remote', title: 'Remote mode', description: 'Run session against the remote GitHub repository (--remote; requires GitHub remote)', type: 'boolean', defaultValue: false },
+      { key: 'rubberDuck', title: 'Rubber Duck mode', description: 'Use a second model family for a second opinion review (--rubber-duck)', type: 'boolean', defaultValue: false },
     ];
   }
 
   applyConfig(config: GenAiProviderConfig): void {
     if (config.yolo !== undefined)   { this.yolo   = Boolean(config.yolo); }
     if (config.fleet !== undefined)  { this.fleet  = Boolean(config.fleet); }
-    if (config.silent !== undefined) { this.silent = Boolean(config.silent); }
+    if (config.silent     !== undefined) { this.silent     = Boolean(config.silent); }
+    if (config.remote     !== undefined) { this.remote     = Boolean(config.remote); }
+    if (config.rubberDuck !== undefined) { this.rubberDuck = Boolean(config.rubberDuck); }
   }
 
   /** Set-up a resume session ID so the next `run()` adds `--resume=<id>`. */
@@ -83,14 +91,27 @@ export class CopilotCliGenAiProvider implements IGenAiProvider {
     const cwd = worktreePath ?? vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
     const resumeId = this._resumeSessionId;
     this._resumeSessionId = undefined;
+
+    // --remote is only supported for GitHub repositories.
+    let useRemote = false;
+    if (this.remote) {
+      useRemote = cwd ? await isGitHubRepository(cwd) : false;
+      if (!useRemote) {
+        this._emit('[github-copilot] Warning: --remote ignorato — il workspace non è un repository GitHub.\n');
+        this.logger.warn('CopilotCliGenAiProvider: --remote richiesto ma il workspace non è un repository GitHub; flag ignorato.');
+      }
+    }
+
     const resumeLabel = resumeId ? ` --resume=${resumeId}` : '';
     const flagParts: string[] = [];
     if (this.yolo) { flagParts.push('--allow-all', '--autopilot'); }
     if (this.silent) { flagParts.push('--silent'); }
+    if (useRemote) { flagParts.push('--remote'); }
+    if (this.rubberDuck) { flagParts.push('--rubber-duck'); }
     const flags = flagParts.length ? ` ${flagParts.join(' ')}` : '';
     this._emit(`[github-copilot] Avvio: copilot${flags}${resumeLabel}\n`);
     this._onDidCopilotEventEmitter.fire({ type: 'start' });
-    await this._spawnCopilot(fullPrompt, cwd, resumeId);
+    await this._spawnCopilot(fullPrompt, cwd, resumeId, useRemote);
   }
 
   cancel(): void {
@@ -106,7 +127,7 @@ export class CopilotCliGenAiProvider implements IGenAiProvider {
 
   private _emit(text: string): void { this._onDidStreamEmitter.fire(text); }
 
-  private _spawnCopilot(prompt: string, cwd?: string, resumeId?: string): Promise<void> {
+  private _spawnCopilot(prompt: string, cwd?: string, resumeId?: string, useRemote?: boolean): Promise<void> {
     return new Promise<void>((resolve, reject) => {
       const args: string[] = [];
       if (resumeId) {
@@ -118,6 +139,12 @@ export class CopilotCliGenAiProvider implements IGenAiProvider {
       }
       if (this.silent) {
         args.push('--silent');
+      }
+      if (useRemote) {
+        args.push('--remote');
+      }
+      if (this.rubberDuck) {
+        args.push('--rubber-duck');
       }
 
       // Snapshot existing session IDs so we can diff after the process exits.
