@@ -42,7 +42,7 @@ export function discoverAgents(workspaceRoot: string): AgentInfo[] {
 
   const entries = fs.readdirSync(dir).filter(f => f.endsWith('.md'));
   return entries.map(fileName => {
-    const slug = fileName.replace(/\.md$/i, '');
+    const slug = fileName.replace(/(?:\.agent)?\.md$/i, '');
     const filePath = path.join(dir, fileName);
     const content = readFileContent(filePath);
     const frontmatter = parseFrontmatter(content);

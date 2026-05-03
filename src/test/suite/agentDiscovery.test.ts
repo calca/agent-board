@@ -99,6 +99,28 @@ suite('agentDiscovery — discoverAgents', () => {
     assert.deepStrictEqual(slugs, ['alpha', 'beta']);
   });
 
+  test('strips .agent.md suffix to produce clean slug', () => {
+    const dir = path.join(tmpDir, AGENTS_DIR);
+    fs.mkdirSync(dir, { recursive: true });
+    fs.writeFileSync(path.join(dir, 'angular-senior.agent.md'), '# Angular Senior\n\nBe an Angular expert.');
+    const result = discoverAgents(tmpDir);
+    assert.strictEqual(result.length, 1);
+    assert.strictEqual(result[0].slug, 'angular-senior');
+    assert.strictEqual(result[0].displayName, 'Angular Senior');
+    assert.ok(result[0].filePath.endsWith('angular-senior.agent.md'));
+  });
+
+  test('mixes .md and .agent.md files', () => {
+    const dir = path.join(tmpDir, AGENTS_DIR);
+    fs.mkdirSync(dir, { recursive: true });
+    fs.writeFileSync(path.join(dir, 'plain.md'), '# Plain');
+    fs.writeFileSync(path.join(dir, 'dotted.agent.md'), '# Dotted');
+    const result = discoverAgents(tmpDir);
+    assert.strictEqual(result.length, 2);
+    const slugs = result.map(a => a.slug).sort();
+    assert.deepStrictEqual(slugs, ['dotted', 'plain']);
+  });
+
   test('AGENTS_DIR constant is .github/agents', () => {
     assert.strictEqual(AGENTS_DIR, '.github/agents');
   });
