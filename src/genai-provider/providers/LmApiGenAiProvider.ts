@@ -82,7 +82,7 @@ export class LmApiGenAiProvider implements IGenAiProvider {
     }
   }
 
-  async run(prompt: string, task?: KanbanTask, worktreePath?: string): Promise<void> {
+  async run(prompt: string, task?: KanbanTask, worktreePath?: string, _agentSlug?: string): Promise<void> {
     const model = await this.selectModel();
     if (!model) {
       vscode.window.showErrorMessage(

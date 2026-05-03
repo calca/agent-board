@@ -173,9 +173,13 @@ export class CopilotLauncher {
       const agentInfo = this.agents.find(a => a.slug === agentSlug);
       if (agentInfo) {
         agentDisplayName = agentInfo.displayName;
-        const instructions = readAgentInstructions(agentInfo.filePath);
-        if (instructions) {
-          prompt = AGENT_PROMPT_PREFIX(agentInfo.displayName, instructions) + prompt;
+        // When the provider handles agents natively (e.g. `copilot --agent <slug>`),
+        // skip the prompt prefix — the provider will load instructions itself.
+        if (!provider.handlesAgentNatively) {
+          const instructions = readAgentInstructions(agentInfo.filePath);
+          if (instructions) {
+            prompt = AGENT_PROMPT_PREFIX(agentInfo.displayName, instructions) + prompt;
+          }
         }
       }
     }
@@ -243,7 +247,7 @@ export class CopilotLauncher {
     let sessionSucceeded = false;
     let sessionError: string | undefined;
     try {
-      await provider.run(prompt, task, worktree?.path);
+      await provider.run(prompt, task, worktree?.path, agentSlug);
       sessionSucceeded = true;
     } catch (runErr) {
       sessionError = formatError(runErr);

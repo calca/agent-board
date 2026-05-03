@@ -27,6 +27,7 @@ export class CopilotSdkGenAiProvider implements IGenAiProvider {
   readonly scope: GenAiProviderScope = 'global';
   readonly supportsWorktree = true;
   readonly requiresGit = true;
+  readonly handlesAgentNatively = true;
 
   private model: string;
   private abortController: AbortController | undefined;
@@ -69,7 +70,7 @@ export class CopilotSdkGenAiProvider implements IGenAiProvider {
     }
   }
 
-  async run(prompt: string, _task?: KanbanTask, worktreePath?: string): Promise<void> {
+  async run(prompt: string, _task?: KanbanTask, worktreePath?: string, agentSlug?: string): Promise<void> {
     this.abortController = new AbortController();
     const signal = this.abortController.signal;
 
@@ -123,6 +124,7 @@ export class CopilotSdkGenAiProvider implements IGenAiProvider {
         streaming: true,
         onPermissionRequest: approveAll,
         ...(cwd ? { workingDirectory: cwd } : {}),
+        ...(agentSlug ? { agent: agentSlug } : {}),
       };
 
       this.currentSession = await this.client.createSession(sessionConfig);

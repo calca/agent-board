@@ -22,6 +22,7 @@ export class CopilotCliGenAiProvider implements IGenAiProvider {
   readonly scope: GenAiProviderScope = 'global';
   readonly supportsWorktree = true;
   readonly requiresGit = true;
+  readonly handlesAgentNatively = true;
 
   private readonly logger = Logger.getInstance();
   private yolo: boolean;
@@ -85,7 +86,7 @@ export class CopilotCliGenAiProvider implements IGenAiProvider {
     });
   }
 
-  async run(prompt: string, _task?: KanbanTask, worktreePath?: string): Promise<void> {
+  async run(prompt: string, _task?: KanbanTask, worktreePath?: string, agentSlug?: string): Promise<void> {
     const suffix = buildOptimisationPrefix(this.yolo, this.fleet);
     const fullPrompt = suffix ? `${prompt}\n\n${suffix}` : prompt;
     const cwd = worktreePath ?? vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
@@ -108,10 +109,11 @@ export class CopilotCliGenAiProvider implements IGenAiProvider {
     if (this.silent) { flagParts.push('--silent'); }
     if (useRemote) { flagParts.push('--remote'); }
     if (this.rubberDuck) { flagParts.push('--rubber-duck'); }
+    if (agentSlug) { flagParts.push('--agent', agentSlug); }
     const flags = flagParts.length ? ` ${flagParts.join(' ')}` : '';
     this._emit(`[github-copilot] Avvio: copilot${flags}${resumeLabel}\n`);
     this._onDidCopilotEventEmitter.fire({ type: 'start' });
-    await this._spawnCopilot(fullPrompt, cwd, resumeId, useRemote);
+    await this._spawnCopilot(fullPrompt, cwd, resumeId, useRemote, agentSlug);
   }
 
   cancel(): void {
@@ -127,11 +129,14 @@ export class CopilotCliGenAiProvider implements IGenAiProvider {
 
   private _emit(text: string): void { this._onDidStreamEmitter.fire(text); }
 
-  private _spawnCopilot(prompt: string, cwd?: string, resumeId?: string, useRemote?: boolean): Promise<void> {
+  private _spawnCopilot(prompt: string, cwd?: string, resumeId?: string, useRemote?: boolean, agentSlug?: string): Promise<void> {
     return new Promise<void>((resolve, reject) => {
       const args: string[] = [];
       if (resumeId) {
         args.push(`--resume=${resumeId}`);
+      }
+      if (agentSlug) {
+        args.push('--agent', agentSlug);
       }
       args.push('-p', prompt);
       if (this.yolo) {

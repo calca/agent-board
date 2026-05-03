@@ -36,7 +36,7 @@ export class ChatGenAiProvider implements IGenAiProvider {
     return commands.includes('workbench.action.chat.open');
   }
 
-  async run(prompt: string, task?: KanbanTask): Promise<void> {
+  async run(prompt: string, task?: KanbanTask, _worktreePath?: string, _agentSlug?: string): Promise<void> {
     const logger = Logger.getInstance();
 
     // Lazily initialise AgentTools with workspace root

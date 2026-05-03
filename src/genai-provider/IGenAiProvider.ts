@@ -112,6 +112,15 @@ export interface IGenAiProvider {
   readonly requiresGitHub?: boolean;
 
   /**
+   * When `true`, the provider handles agent selection natively
+   * (e.g. via a `--agent` CLI flag) instead of relying on the
+   * `AGENT_PROMPT_PREFIX` injected by `CopilotLauncher`.
+   *
+   * Defaults to `false` when not set.
+   */
+  readonly handlesAgentNatively?: boolean;
+
+  /**
    * Optional streaming event. When present, `CopilotLauncher` automatically
    * subscribes and forwards chunks to the `StreamController` / KanbanPanel.
    */
@@ -133,8 +142,11 @@ export interface IGenAiProvider {
    * Execute the provider with the given prompt and optional task context.
    * `worktreePath` — when available, the isolated git worktree path that
    * the provider should operate in. Providers that don't use it can ignore it.
+   * `agentSlug` — when present, the slug of the custom agent selected by the
+   * user.  Providers with `handlesAgentNatively` use this to delegate agent
+   * resolution to their backend (e.g. `copilot --agent <slug>`).
    */
-  run(prompt: string, task?: KanbanTask, worktreePath?: string): Promise<void>;
+  run(prompt: string, task?: KanbanTask, worktreePath?: string, agentSlug?: string): Promise<void>;
   /**
    * Send a follow-up user message into the current multi-turn session.
    * Only supported by providers that maintain conversation history (e.g. VS Code API / vscode-api).
