@@ -3,11 +3,11 @@ import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
 import {
-    AGENTS_DIR,
-    AgentInfo,
-    discoverAgents,
-    readAgentInstructions,
-    titleCase,
+  AGENTS_DIR,
+  AgentInfo,
+  discoverAgents,
+  readAgentInstructions,
+  titleCase,
 } from '../../genai-provider/agentDiscovery';
 
 suite('agentDiscovery — titleCase', () => {
