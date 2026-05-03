@@ -101,6 +101,7 @@ export async function createWorktree(
 
   // Already exists — reuse
   if (fs.existsSync(wtPath)) {
+    syncUntrackedPaths(repoRoot, wtPath);
     return { path: wtPath, branch };
   }
 
@@ -113,6 +114,9 @@ export async function createWorktree(
   const args = ['worktree', 'add', '-b', branch, wtPath];
   if (baseBranch) { args.push(baseBranch); }
   await exec('git', args, repoRoot);
+
+  // Sync untracked config files (agents, skills, etc.) into the new worktree.
+  syncUntrackedPaths(repoRoot, wtPath);
 
   return { path: wtPath, branch };
 }
@@ -131,4 +135,58 @@ export async function removeWorktree(
     return;
   }
   await exec('git', ['worktree', 'remove', '--force', wtPath], repoRoot);
+}
+
+// ── Untracked paths sync ──────────────────────────────────────────────────
+
+/**
+ * Paths (relative to the workspace root) that may contain untracked
+ * configuration files needed at runtime inside a worktree.
+ *
+ * Each entry specifies:
+ * - `dir`    – relative directory to sync (e.g. `.github/agents`)
+ * - `glob`   – filename glob filter (only `*.ext` patterns)
+ *
+ * Extend this array when new convention directories appear.
+ */
+export const WORKTREE_SYNC_PATHS: ReadonlyArray<{ dir: string; glob: string }> = [
+  { dir: '.github/agents',  glob: '*.md' },
+  { dir: '.github/skills',  glob: '*.md' },
+  { dir: '.agents',         glob: '*.md' },
+  { dir: '.agents/skills',  glob: '*.md' },
+];
+
+/**
+ * Copy untracked configuration files from the workspace root into a
+ * worktree so that tools running inside the worktree (e.g. `copilot
+ * --agent <slug>`) can discover them.
+ *
+ * Only files that don't already exist in the worktree are copied;
+ * existing files (e.g. tracked by git) are never overwritten.
+ *
+ * @returns the number of files copied.
+ */
+export function syncUntrackedPaths(repoRoot: string, wtPath: string): number {
+  let copied = 0;
+  for (const entry of WORKTREE_SYNC_PATHS) {
+    const srcDir = path.join(repoRoot, entry.dir);
+    if (!fs.existsSync(srcDir) || !fs.statSync(srcDir).isDirectory()) { continue; }
+
+    const ext = entry.glob.replace('*', '');          // '*.md' → '.md'
+    const files = fs.readdirSync(srcDir).filter(f => f.endsWith(ext));
+    if (files.length === 0) { continue; }
+
+    const dstDir = path.join(wtPath, entry.dir);
+    if (!fs.existsSync(dstDir)) {
+      fs.mkdirSync(dstDir, { recursive: true });
+    }
+    for (const file of files) {
+      const dst = path.join(dstDir, file);
+      if (!fs.existsSync(dst)) {
+        fs.copyFileSync(path.join(srcDir, file), dst);
+        copied++;
+      }
+    }
+  }
+  return copied;
 }
