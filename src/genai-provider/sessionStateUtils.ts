@@ -1,4 +1,21 @@
 import { CopilotSessionInfo, CopilotSessionState } from '../types/KanbanTask';
+import { randomBytes } from 'crypto';
+
+/** Generate a RFC-4122 v4 UUID for use as a CLI session ID. */
+export function generateAgentSessionId(): string {
+  const bytes = randomBytes(16);
+  // Set version (4) and variant bits per RFC 4122
+  bytes[6] = (bytes[6] & 0x0f) | 0x40;
+  bytes[8] = (bytes[8] & 0x3f) | 0x80;
+  const hex = bytes.toString('hex');
+  return [
+    hex.slice(0, 8),
+    hex.slice(8, 12),
+    hex.slice(12, 16),
+    hex.slice(16, 20),
+    hex.slice(20, 32),
+  ].join('-');
+}
 
 /**
  * Extended session state that includes `starting` and `paused`
@@ -23,6 +40,11 @@ export interface PersistedSession {
   cliSessionId?: string;
   /** Git branch the worktree was created from (for diff & merge). */
   baseBranch?: string;
+  /**
+   * Pre-generated UUID passed to the CLI via `--resume` on the very first
+   * launch so the session ID is known before the process starts.
+   */
+  agentSessionId?: string;
 }
 
 // ── Pure utilities (testable without VS Code) ─────────────────────────
@@ -81,6 +103,7 @@ export function toCopilotSessionInfo(session: PersistedSession): CopilotSessionI
     worktreePath: session.worktreePath,
     errorMessage: session.errorMessage,
     merged: session.merged,
+    agentSessionId: session.agentSessionId,
   };
 }
 

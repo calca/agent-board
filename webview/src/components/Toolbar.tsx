@@ -18,6 +18,7 @@ export function Toolbar() {
   const filtered = getFilteredCount();
   const squadProviders = genAiProviders.filter(p => !p.disabled && p.canSquad !== false);
   const squadAgents = availableAgents.filter(a => a.canSquad);
+  console.log('[Toolbar] availableAgents:', availableAgents, 'squadAgents:', squadAgents, 'branches:', availableBranches, 'repoIsGit:', state.repoIsGit);
 
   // Split agents: team members first (from all agents), then other canSquad agents
   const teamSlugs = new Set(squadTeams.map(t => t.agentSlug));

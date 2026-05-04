@@ -2,6 +2,7 @@ import * as vscode from 'vscode';
 import { Logger } from '../utils/logger';
 import {
     fixInterruptedSessions,
+    generateAgentSessionId,
     PersistedSession,
     SessionState,
     toCopilotSessionInfo as toCopilotInfo,
@@ -12,6 +13,7 @@ export {
     badgeColor,
     badgeIcon,
     fixInterruptedSessions,
+    generateAgentSessionId,
     isActive,
     mapStateToCopilot,
     toCopilotSessionInfo
@@ -64,6 +66,7 @@ export class SessionStateManager {
       logPath,
       baseBranch,
       startedAt: new Date().toISOString(),
+      agentSessionId: generateAgentSessionId(),
     };
     this.sessions.set(taskId, session);
     this.persist();
