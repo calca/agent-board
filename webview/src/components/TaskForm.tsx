@@ -343,49 +343,60 @@ export function TaskForm() {
               </div>
             ))}
 
-          <div className="task-form__row">
+          <div className="task-form__meta-panel">
             {!(isEdit && isRemote) && (
-              <div className="task-form__field">
-                <label className="task-form__label" htmlFor="tf-status">Status</label>
-                {isEdit
-                  ? <select className="task-form__select" id="tf-status" defaultValue={task!.status}>
-                      {cols.map(c => <option key={c.id} value={c.id}>{c.label}</option>)}
-                    </select>
-                  : <input className="task-form__input" id="tf-status" type="text" value={cols[0]?.label ?? ''} disabled />}
+              <div className="task-form__meta-row task-form__meta-row--status">
+                <label className="task-form__meta-label" htmlFor="tf-status">Status</label>
+                <div className="task-form__meta-value task-form__meta-value--editable">
+                  {isEdit
+                    ? <select className="task-form__select" id="tf-status" defaultValue={task!.status}>
+                        {cols.map(c => <option key={c.id} value={c.id}>{c.label}</option>)}
+                      </select>
+                    : <input className="task-form__input" id="tf-status" type="text" value={cols[0]?.label ?? ''} disabled />}
+                </div>
               </div>
             )}
-            <div className="task-form__field">
-              <label className="task-form__label" htmlFor={isRemote ? undefined : 'tf-labels'}>Labels</label>
-              {isEdit && isRemote
-                ? (task!.labels.length > 0
-                    ? <span className="task-form__label-pills">{task!.labels.map(l => <span key={l} className="task-form__label-pill">{l}</span>)}</span>
-                    : <span className="task-form__readonly-value task-form__readonly-value--muted">—</span>)
-                : <input className="task-form__input" id="tf-labels" type="text" defaultValue={task?.labels.join(', ') ?? ''} placeholder="bug, feature" />}
+
+            <div className="task-form__meta-row">
+              <label className="task-form__meta-label" htmlFor={isRemote ? undefined : 'tf-labels'}>Labels</label>
+              <div className={`task-form__meta-value${isEdit && isRemote ? ' task-form__meta-value--readonly' : ' task-form__meta-value--editable'}`}>
+                {isEdit && isRemote
+                  ? (task!.labels.length > 0
+                      ? <span className="task-form__label-pills">{task!.labels.map(l => <span key={l} className="task-form__label-pill">{l}</span>)}</span>
+                      : <span className="task-form__readonly-value task-form__readonly-value--muted">—</span>)
+                  : <input className="task-form__input" id="tf-labels" type="text" defaultValue={task?.labels.join(', ') ?? ''} placeholder="bug, feature" />}
+              </div>
             </div>
-            <div className="task-form__field">
-              <label className="task-form__label">Assignee</label>
-              {isEdit && isRemote
-                ? (task!.assignee
-                    ? <span className="task-form__assignee-value">{task!.assignee}</span>
-                    : <span className="task-form__readonly-value task-form__readonly-value--muted">—</span>)
-                : !isEdit
-                  ? <input className="task-form__input task-form__input--readonly" id="tf-assignee" type="text" value={currentUser || 'me'} readOnly />
-                  : <input className="task-form__input task-form__input--readonly" id="tf-assignee" type="text" value={task?.assignee ?? (currentUser || 'me')} readOnly />}
+
+            <div className="task-form__meta-row">
+              <label className="task-form__meta-label" htmlFor="tf-assignee">Assignee</label>
+              <div className={`task-form__meta-value${isEdit && isRemote ? ' task-form__meta-value--readonly' : ' task-form__meta-value--editable'}`}>
+                {isEdit && isRemote
+                  ? (task!.assignee
+                      ? <span className="task-form__assignee-value">{task!.assignee}</span>
+                      : <span className="task-form__readonly-value task-form__readonly-value--muted">—</span>)
+                  : <>
+                      <input id="tf-assignee" type="hidden" value={task?.assignee ?? (currentUser || 'me')} readOnly />
+                      <span className="task-form__assignee-chip">{task?.assignee ?? (currentUser || 'me')}</span>
+                    </>}
+              </div>
             </div>
           </div>
 
           <div className="task-form__actions">
-            <FlatButton type="submit" variant="primary">
-              {isRemote ? 'Update Status' : 'Save'}
-            </FlatButton>
-            <FlatButton type="button" variant="secondary" onClick={requestClose}>
-              {isEdit ? 'Close' : 'Cancel'}
-            </FlatButton>
             {isEdit && !isRemote && editableProviderIds.includes(task!.providerId) && (
-              <FlatButton type="button" variant="danger" icon="⊘" onClick={handleDelete} className="task-form__delete-btn">
+              <FlatButton type="button" variant="danger" icon="⊘" onClick={handleDelete}>
                 Delete
               </FlatButton>
             )}
+            <div className="task-form__actions-right">
+              <FlatButton type="button" variant="secondary" onClick={requestClose}>
+                {isEdit ? 'Close' : 'Cancel'}
+              </FlatButton>
+              <FlatButton type="submit" variant="primary">
+                {isRemote ? 'Update Status' : 'Save'}
+              </FlatButton>
+            </div>
           </div>
         </form>
       </div>

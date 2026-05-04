@@ -2087,6 +2087,7 @@ html, body, #root {
 
 .task-form__actions {
   display: flex;
+  align-items: center;
   gap: 10px;
   margin-top: auto;
   padding-top: 18px;
@@ -2097,12 +2098,11 @@ html, body, #root {
   bottom: 0;
   background: linear-gradient(to top, var(--vscode-sideBar-background) 75%, color-mix(in srgb, var(--vscode-sideBar-background) 15%, transparent));
 }
-.task-form__actions .task-form__btn--delete {
+.task-form__actions-right {
   margin-left: auto;
-}
-
-.task-form__delete-btn {
-  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 10px;
 }
 
 .task-form__row {
@@ -2119,6 +2119,148 @@ html, body, #root {
 
 .task-form__row--compact {
   margin-top: 0;
+}
+
+.task-form__meta-panel {
+  --tf-meta-hover-bg: color-mix(in srgb, var(--vscode-list-hoverBackground, transparent) 72%, transparent);
+  --tf-meta-status-bg: color-mix(in srgb, var(--vscode-focusBorder) 8%, transparent);
+  --tf-meta-status-hover-bg: color-mix(in srgb, var(--vscode-focusBorder) 13%, transparent);
+  --tf-meta-divider: color-mix(in srgb, var(--vscode-panel-border) 72%, transparent);
+  margin-top: 10px;
+  border: 1px solid var(--tf-meta-divider);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--vscode-editor-background) 76%, var(--vscode-sideBar-background));
+  overflow: hidden;
+}
+
+.task-form__meta-row {
+  display: grid;
+  grid-template-columns: 132px minmax(0, 1fr);
+  align-items: center;
+  gap: 0;
+  border-top: 1px solid var(--tf-meta-divider);
+  transition: background-color 0.12s ease, box-shadow 0.12s ease;
+}
+
+.task-form__meta-row:hover {
+  background: var(--tf-meta-hover-bg);
+}
+
+.task-form__meta-row:first-child {
+  border-top: none;
+}
+
+.task-form__meta-row--status {
+  background: var(--tf-meta-status-bg);
+}
+
+.task-form__meta-row--status:hover {
+  background: var(--tf-meta-status-hover-bg);
+}
+
+.task-form__meta-label {
+  padding: 12px 14px;
+  border-right: 1px solid var(--tf-meta-divider);
+  font-size: 0.78em;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  opacity: 0.7;
+}
+
+body.vscode-light .task-form__meta-panel {
+  --tf-meta-hover-bg: color-mix(in srgb, var(--vscode-list-hoverBackground, transparent) 84%, transparent);
+  --tf-meta-status-bg: color-mix(in srgb, var(--vscode-focusBorder) 10%, transparent);
+  --tf-meta-status-hover-bg: color-mix(in srgb, var(--vscode-focusBorder) 15%, transparent);
+  --tf-meta-divider: color-mix(in srgb, var(--vscode-panel-border) 78%, transparent);
+  background: color-mix(in srgb, var(--vscode-editor-background) 90%, var(--vscode-sideBar-background));
+}
+
+body.vscode-light .task-form__meta-label {
+  opacity: 0.82;
+}
+
+body.vscode-light .task-form__assignee-chip {
+  background: color-mix(in srgb, var(--vscode-input-background) 80%, transparent);
+}
+
+body.vscode-dark .task-form__meta-panel {
+  --tf-meta-hover-bg: color-mix(in srgb, var(--vscode-list-hoverBackground, transparent) 62%, transparent);
+}
+
+body.vscode-high-contrast .task-form__meta-panel,
+body.vscode-high-contrast-light .task-form__meta-panel {
+  --tf-meta-divider: var(--vscode-contrastBorder);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .task-form__meta-row {
+    transition: none;
+  }
+}
+
+.task-form__meta-value {
+  min-width: 0;
+  padding: 10px 12px;
+}
+
+.task-form__meta-value--editable .task-form__input,
+.task-form__meta-value--editable .task-form__select {
+  border-color: transparent;
+  background: color-mix(in srgb, var(--vscode-input-background) 55%, transparent);
+}
+
+.task-form__meta-value--editable .task-form__input:focus,
+.task-form__meta-value--editable .task-form__select:focus {
+  border-color: var(--vscode-focusBorder);
+  background: var(--vscode-input-background);
+}
+
+.task-form__meta-value--readonly {
+  opacity: 0.95;
+}
+
+.task-form__meta-value .task-form__label-pills {
+  padding: 0;
+  min-height: 30px;
+  align-items: center;
+}
+
+.task-form__assignee-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 30px;
+  padding: 3px 10px;
+  border: 1px solid var(--vscode-panel-border, rgba(255,255,255,0.12));
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--vscode-input-background) 55%, transparent);
+  font-size: 0.9em;
+  color: var(--vscode-foreground);
+}
+
+.task-form__assignee-chip::before {
+  content: '';
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--vscode-badge-background, rgba(255,255,255,0.2));
+}
+
+@media (max-width: 760px) {
+  .task-form__meta-row {
+    grid-template-columns: 1fr;
+  }
+
+  .task-form__meta-label {
+    border-right: none;
+    border-bottom: 1px solid var(--vscode-panel-border, rgba(255,255,255,0.08));
+    padding-bottom: 8px;
+  }
+
+  .task-form__meta-value {
+    padding-top: 8px;
+  }
 }
 
 .task-form__field {
