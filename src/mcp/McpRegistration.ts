@@ -7,13 +7,57 @@
  *  2. `.vscode/mcp.json` — Copilot CLI and other MCP clients
  */
 import * as fs from 'fs';
-import * as jsonc from 'jsonc-parser';
 import * as path from 'path';
 import * as vscode from 'vscode';
 import { Logger } from '../utils/logger';
 
 const logger = Logger.getInstance();
 const MCP_SERVER_KEY = 'agent-board';
+
+interface McpJson {
+  servers?: Record<string, unknown>;
+  [key: string]: unknown;
+}
+
+/**
+ * Strip single-line (//) and block comments from a JSONC string
+ * so it can be parsed with JSON.parse.  Respects quoted strings.
+ */
+function stripJsoncComments(text: string): string {
+  let result = '';
+  let i = 0;
+  while (i < text.length) {
+    const ch = text[i];
+    // String literal — copy verbatim
+    if (ch === '"') {
+      let j = i + 1;
+      while (j < text.length) {
+        if (text[j] === '\\') { j += 2; continue; }
+        if (text[j] === '"') { j++; break; }
+        j++;
+      }
+      result += text.slice(i, j);
+      i = j;
+      continue;
+    }
+    // Line comment
+    if (ch === '/' && text[i + 1] === '/') {
+      const nl = text.indexOf('\n', i);
+      i = nl === -1 ? text.length : nl;
+      continue;
+    }
+    // Block comment
+    if (ch === '/' && text[i + 1] === '*') {
+      const end = text.indexOf('*/', i + 2);
+      i = end === -1 ? text.length : end + 2;
+      continue;
+    }
+    result += ch;
+    i++;
+  }
+  // Strip trailing commas before } or ]
+  return result.replace(/,\s*([}\]])/g, '$1');
+}
 
 export class McpRegistration implements vscode.Disposable {
   private enabled = false;
@@ -77,47 +121,43 @@ export class McpRegistration implements vscode.Disposable {
 
   private writeMcpJson(mcpJsonPath: string): void {
     const serverJs = path.join(this.extensionPath, 'dist', 'mcpServer.js');
-    const text = this.readMcpJsonText(mcpJsonPath);
+    const existing = this.readMcpJson(mcpJsonPath);
 
-    // Use jsonc.modify to add the server entry, preserving comments & formatting
-    const edits = jsonc.modify(text, ['servers', MCP_SERVER_KEY], {
+    existing.servers = existing.servers ?? {};
+    existing.servers[MCP_SERVER_KEY] = {
       type: 'stdio',
       command: 'node',
       args: [serverJs],
-    }, { formattingOptions: { tabSize: 2, insertSpaces: true } });
-    const updated = jsonc.applyEdits(text, edits);
+    };
 
     const dir = path.dirname(mcpJsonPath);
     if (!fs.existsSync(dir)) { fs.mkdirSync(dir, { recursive: true }); }
-    fs.writeFileSync(mcpJsonPath, updated, 'utf-8');
+    fs.writeFileSync(mcpJsonPath, JSON.stringify(existing, null, 2) + '\n', 'utf-8');
   }
 
   private removeMcpEntry(mcpJsonPath: string): void {
     if (!fs.existsSync(mcpJsonPath)) { return; }
-    const text = this.readMcpJsonText(mcpJsonPath);
-    const parsed = jsonc.parse(text) as Record<string, unknown> | undefined;
+    const existing = this.readMcpJson(mcpJsonPath);
 
-    if (parsed?.servers && typeof parsed.servers === 'object' &&
-        MCP_SERVER_KEY in (parsed.servers as Record<string, unknown>)) {
-      const servers = parsed.servers as Record<string, unknown>;
+    if (existing.servers?.[MCP_SERVER_KEY]) {
+      delete existing.servers[MCP_SERVER_KEY];
 
-      // If this is the only server and no other top-level keys, remove the file
-      if (Object.keys(servers).length === 1 && Object.keys(parsed).length === 1) {
+      // If no servers left, remove the file entirely
+      if (Object.keys(existing.servers).length === 0 && Object.keys(existing).length === 1) {
         fs.unlinkSync(mcpJsonPath);
       } else {
-        const edits = jsonc.modify(text, ['servers', MCP_SERVER_KEY], undefined,
-          { formattingOptions: { tabSize: 2, insertSpaces: true } });
-        fs.writeFileSync(mcpJsonPath, jsonc.applyEdits(text, edits), 'utf-8');
+        fs.writeFileSync(mcpJsonPath, JSON.stringify(existing, null, 2) + '\n', 'utf-8');
       }
     }
   }
 
-  private readMcpJsonText(mcpJsonPath: string): string {
-    if (!fs.existsSync(mcpJsonPath)) { return '{}'; }
+  private readMcpJson(mcpJsonPath: string): McpJson {
+    if (!fs.existsSync(mcpJsonPath)) { return {}; }
     try {
-      return fs.readFileSync(mcpJsonPath, 'utf-8');
+      const raw = fs.readFileSync(mcpJsonPath, 'utf-8');
+      return JSON.parse(stripJsoncComments(raw)) as McpJson;
     } catch {
-      return '{}';
+      return {};
     }
   }
 
