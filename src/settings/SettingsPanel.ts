@@ -139,37 +139,45 @@ export class SettingsPanel {
       case 'save':
         if (msg.config) {
           const log = Logger.getInstance();
-          log.info('SettingsPanel save: received config → %s', JSON.stringify(msg.config).slice(0, 2000));
-          // Cancel any pending file-watcher reload to prevent stale data echo
-          if (this.configDebounce) { clearTimeout(this.configDebounce); }
-          // Suppress file-watcher reloads for 1s
-          this.suppressUntil = Date.now() + 1000;
-          ProjectConfig.updateConfig(msg.config);
-          // Send the merged config back — the webview may have sent a partial
-          // config (e.g. missing `states` array), so the authoritative merged
-          // version from disk must replace the webview state.
-          const merged = ProjectConfig.getProjectConfig() ?? {};
-          log.info('SettingsPanel save: merged config → %s', JSON.stringify(merged).slice(0, 2000));
-          this.panel.webview.postMessage({ type: 'configSaved', config: merged });
-          vscode.window.showInformationMessage('Agent Board settings saved.');
-          Logger.getInstance().refreshLevel();
-          // Refresh all providers so they re-read the updated config
-          if (this.registry) {
-            for (const p of this.registry.getAll()) {
-              void p.refresh();
-            }
-          }
-          // Apply updated config to GenAI providers at runtime
-          if (this.genAiRegistry) {
-            const genAiCfg = merged.genAiProviders ?? {};
-            for (const p of this.genAiRegistry.getAll()) {
-              const providerCfg = genAiCfg[p.id];
-              if (providerCfg) {
-                p.applyConfig(providerCfg as Record<string, unknown>);
+          try {
+            log.info('SettingsPanel save: received config → %s', JSON.stringify(msg.config).slice(0, 2000));
+            // Cancel any pending file-watcher reload to prevent stale data echo
+            if (this.configDebounce) { clearTimeout(this.configDebounce); }
+            // Suppress file-watcher reloads for 1s
+            this.suppressUntil = Date.now() + 1000;
+            ProjectConfig.updateConfig(msg.config);
+            // Send the merged config back — the webview may have sent a partial
+            // config (e.g. missing `states` array), so the authoritative merged
+            // version from disk must replace the webview state.
+            const merged = ProjectConfig.getProjectConfig() ?? {};
+            log.info('SettingsPanel save: merged config → %s', JSON.stringify(merged).slice(0, 2000));
+            this.panel.webview.postMessage({ type: 'configSaved', config: merged });
+            this.panel.webview.postMessage({ type: 'saveOk' });
+            vscode.window.showInformationMessage('Agent Board settings saved.');
+            Logger.getInstance().refreshLevel();
+            // Refresh all providers so they re-read the updated config
+            if (this.registry) {
+              for (const p of this.registry.getAll()) {
+                void p.refresh();
               }
             }
+            // Apply updated config to GenAI providers at runtime
+            if (this.genAiRegistry) {
+              const genAiCfg = merged.genAiProviders ?? {};
+              for (const p of this.genAiRegistry.getAll()) {
+                const providerCfg = genAiCfg[p.id];
+                if (providerCfg) {
+                  p.applyConfig(providerCfg as Record<string, unknown>);
+                }
+              }
+            }
+            void this.sendProviderDiagnostics();
+          } catch (error) {
+            const message = error instanceof Error ? error.message : String(error);
+            log.error('SettingsPanel save failed: %s', message);
+            this.panel.webview.postMessage({ type: 'saveError', message });
+            vscode.window.showErrorMessage(`Failed to save Agent Board settings: ${message}`);
           }
-          void this.sendProviderDiagnostics();
         }
         break;
       case 'requestConfig':

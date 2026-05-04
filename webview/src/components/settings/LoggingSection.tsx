@@ -16,7 +16,9 @@ export function LoggingSection() {
   const [selectedFile, setSelectedFile] = useState('');
   const [autoScroll, setAutoScroll] = useState(true);
   const [filter, setFilter] = useState('');
+  const [showAdvanced, setShowAdvanced] = useState(false);
   const consoleRef = useRef<HTMLPreElement>(null);
+  const retentionInvalid = typeof retentionDays === 'number' && (retentionDays < 1 || retentionDays > 90);
 
   // Request log files list when section mounts
   useEffect(() => {
@@ -78,6 +80,9 @@ export function LoggingSection() {
   return (
     <div className="section section--logging">
       <div className="section__title">Logging</div>
+      <p className="section__intro">
+        Control how much diagnostic data is written and quickly inspect recent logs directly from this panel.
+      </p>
 
       <div className="cols-2">
         <div className="field">
@@ -96,6 +101,16 @@ export function LoggingSection() {
           </select>
           <span className="hint">Minimum severity written to output channel and log file.</span>
         </div>
+      </div>
+
+      <div className="settings-advanced-toggle">
+        <FlatButton variant="ghost" size="sm" onClick={() => setShowAdvanced(v => !v)}>
+          {showAdvanced ? 'Hide advanced logging settings' : 'Show advanced logging settings'}
+        </FlatButton>
+      </div>
+
+      {showAdvanced && (
+        <div className="cols-2 settings-advanced-grid">
         <div className="field">
           <label htmlFor="retention-days">Retention (days)</label>
           <input
@@ -106,9 +121,12 @@ export function LoggingSection() {
             value={retentionDays}
             onChange={e => update({ retentionDays: numOrUndef(e.target.value) })}
           />
-          <span className="hint">How many days of log files to keep before auto-cleanup.</span>
+          {retentionInvalid
+            ? <span className="hint hint--error">Retention must be between 1 and 90 days.</span>
+            : <span className="hint">How many days of log files to keep before auto-cleanup.</span>}
         </div>
-      </div>
+        </div>
+      )}
 
       <div className="log-console-header">
         <div className="log-console-header__left">

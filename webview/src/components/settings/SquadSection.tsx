@@ -1,4 +1,6 @@
+import { useState } from 'react';
 import { useSettings } from '../../context/SettingsContext';
+import { FlatButton } from '../FlatButton';
 
 function numOrUndef(val: string): number | undefined {
   const n = Number(val);
@@ -8,6 +10,7 @@ function numOrUndef(val: string): number | undefined {
 export function SquadSection() {
   const { state, dispatch } = useSettings();
   const sq = state.config.squad ?? {};
+  const [showAdvanced, setShowAdvanced] = useState(false);
   const agents = state.agents;
   const teams: Array<{ name: string; agentSlug: string }> = sq.teams ?? [];
 
@@ -33,6 +36,9 @@ export function SquadSection() {
   return (
     <div className="section">
       <div className="section__title">Squad</div>
+      <p className="section__intro">
+        Use squad mode to run multiple tasks in parallel with dedicated agents. Start with the core routing fields, then tune advanced limits only if needed.
+      </p>
       <p className="section__hint">
         Only agents with <code>agent-board-squad: true</code> in their frontmatter appear in the squad agent selector.
         Add this to your <code>.github/agents/*.md</code> files to enable them for squad mode.
@@ -44,10 +50,10 @@ export function SquadSection() {
             onChange={e => update({ maxSessions: numOrUndef(e.target.value) })} />
         </div>
         <div className="field">
-          <label htmlFor="sq-timeout">Session timeout (ms)</label>
-          <input type="number" id="sq-timeout" value={sq.sessionTimeout ?? 300000}
-            onChange={e => update({ sessionTimeout: numOrUndef(e.target.value) })} />
-          <span className="hint">0 = no timeout</span>
+          <label htmlFor="sq-interval">Auto-squad interval (ms)</label>
+          <input type="number" id="sq-interval" value={sq.autoSquadInterval ?? 15000}
+            onChange={e => update({ autoSquadInterval: numOrUndef(e.target.value) })} />
+          <span className="hint">How often the queue is scanned for new sessions.</span>
         </div>
         <div className="field">
           <label htmlFor="sq-source">Source column</label>
@@ -64,21 +70,6 @@ export function SquadSection() {
           <input type="text" id="sq-done" value={sq.doneColumn ?? ''} placeholder="review"
             onChange={e => update({ doneColumn: e.target.value || undefined })} />
         </div>
-        <div className="field">
-          <label htmlFor="sq-cooldown">Cooldown (ms)</label>
-          <input type="number" id="sq-cooldown" value={sq.cooldownMs ?? 0}
-            onChange={e => update({ cooldownMs: numOrUndef(e.target.value) })} />
-        </div>
-        <div className="field">
-          <label htmlFor="sq-retries">Max retries</label>
-          <input type="number" id="sq-retries" value={sq.maxRetries ?? 0}
-            onChange={e => update({ maxRetries: numOrUndef(e.target.value) })} />
-        </div>
-        <div className="field">
-          <label htmlFor="sq-interval">Auto-squad interval (ms)</label>
-          <input type="number" id="sq-interval" value={sq.autoSquadInterval ?? 15000}
-            onChange={e => update({ autoSquadInterval: numOrUndef(e.target.value) })} />
-        </div>
         <div className="field field--checkbox">
           <label htmlFor="sq-autopr">
             <input type="checkbox" id="sq-autopr" checked={sq.autoPR ?? false}
@@ -88,6 +79,33 @@ export function SquadSection() {
           <span className="hint">Automatically create a Pull Request when a squad session completes</span>
         </div>
       </div>
+
+      <div className="settings-advanced-toggle">
+        <FlatButton variant="ghost" size="sm" onClick={() => setShowAdvanced(v => !v)}>
+          {showAdvanced ? 'Hide advanced settings' : 'Show advanced settings'}
+        </FlatButton>
+      </div>
+
+      {showAdvanced && (
+        <div className="cols-2 settings-advanced-grid">
+          <div className="field">
+            <label htmlFor="sq-timeout">Session timeout (ms)</label>
+            <input type="number" id="sq-timeout" value={sq.sessionTimeout ?? 300000}
+              onChange={e => update({ sessionTimeout: numOrUndef(e.target.value) })} />
+            <span className="hint">0 = no timeout</span>
+          </div>
+          <div className="field">
+            <label htmlFor="sq-cooldown">Cooldown (ms)</label>
+            <input type="number" id="sq-cooldown" value={sq.cooldownMs ?? 0}
+              onChange={e => update({ cooldownMs: numOrUndef(e.target.value) })} />
+          </div>
+          <div className="field">
+            <label htmlFor="sq-retries">Max retries</label>
+            <input type="number" id="sq-retries" value={sq.maxRetries ?? 0}
+              onChange={e => update({ maxRetries: numOrUndef(e.target.value) })} />
+          </div>
+        </div>
+      )}
 
       <div className="section__subtitle">Teams</div>
       <p className="section__hint">

@@ -100,6 +100,7 @@ function ProviderCard({ provider, onRemove }: { provider: ProviderInfo; onRemove
               );
             }
             if (f.type === 'number') {
+              const hasError = !!f.required && (val === '' || val === undefined || Number.isNaN(val));
               return (
                 <div className="field" key={f.key}>
                   <label htmlFor={fieldId}>{f.label}{f.required ? ' *' : ''}</label>
@@ -110,7 +111,9 @@ function ProviderCard({ provider, onRemove }: { provider: ProviderInfo; onRemove
                     placeholder={f.placeholder}
                     onChange={e => updateField(f.key, e.target.value === '' ? undefined : Number(e.target.value))}
                   />
-                  {f.hint && <span className="hint">{f.hint}</span>}
+                  {hasError
+                    ? <span className="hint hint--error">This field is required.</span>
+                    : f.hint && <span className="hint">{f.hint}</span>}
                 </div>
               );
             }
@@ -138,7 +141,9 @@ function ProviderCard({ provider, onRemove }: { provider: ProviderInfo; onRemove
                   placeholder={f.placeholder}
                   onChange={e => updateField(f.key, e.target.value || undefined)}
                 />
-                {f.hint && <span className="hint">{f.hint}</span>}
+                {!!f.required && !val
+                  ? <span className="hint hint--error">This field is required.</span>
+                  : f.hint && <span className="hint">{f.hint}</span>}
               </div>
             );
           })}
@@ -241,13 +246,16 @@ export function ProvidersSection() {
   return (
     <div className="section">
       <div className="section__title">Issue Providers</div>
+      <p className="section__intro">
+        Enable only the issue sources you actually use in this project. Configure credentials here to avoid runtime failures when syncing tasks.
+      </p>
 
       {providers.length === 0 && (
-        <p style={{ opacity: 0.5, fontSize: '0.85em' }}>Loading provider information…</p>
+        <p className="section-empty">Loading provider information…</p>
       )}
 
       {active.length === 0 && providers.length > 0 && (
-        <p style={{ opacity: 0.5, fontSize: '0.85em', marginBottom: 14 }}>No providers enabled. Add one below.</p>
+        <p className="section-empty">No providers enabled. Add one below.</p>
       )}
 
       {active.map(p => {
@@ -267,7 +275,7 @@ export function ProvidersSection() {
 
       {available.length > 0 && (
         <>
-          <div style={{ marginTop: 18, marginBottom: 10, fontWeight: 600, fontSize: '0.88em', opacity: 0.6 }}>
+          <div className="section-subhead">
             + Add Provider
           </div>
           <div className="available-list">

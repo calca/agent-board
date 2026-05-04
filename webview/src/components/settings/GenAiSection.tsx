@@ -22,12 +22,12 @@ export function GenAiSection() {
   return (
     <div className="section">
       <div className="section__title">GenAI Providers</div>
-      <p className="section__subtitle" style={{ opacity: 0.6, fontSize: '0.85em', marginBottom: 16 }}>
-        Configure GenAI providers for agent sessions. Global providers use VS Code settings by default — override per-project here.
+      <p className="section__intro">
+        Choose which GenAI backends are available in this repository and override defaults only when the project needs special behavior.
       </p>
 
       {providers.length === 0 && (
-        <p style={{ opacity: 0.5, fontStyle: 'italic' }}>Loading provider information…</p>
+        <p className="section-empty">Loading provider information…</p>
       )}
 
       {providers.map(p => (
@@ -50,15 +50,15 @@ function ProviderCard({ provider, entry, onChange }: {
   const enabled = (entry.enabled as boolean | undefined) ?? (provider.settings.length > 0);
 
   return (
-    <div className={`provider-card${enabled ? '' : ' provider-card--disabled'}`} style={{ marginBottom: 16 }}>
-      <div className="provider-header" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+    <div className={`provider-card${enabled ? '' : ' provider-card--disabled'}`}>
+      <div className="provider-header">
         <input type="checkbox" id={`genai-${provider.id}-enabled`} checked={enabled}
           onChange={e => onChange({ enabled: e.target.checked })} />
-        <label htmlFor={`genai-${provider.id}-enabled`} style={{ fontWeight: 600 }}>{provider.displayName}</label>
-        <span className="hint" style={{ marginLeft: 'auto' }}>{provider.description}</span>
+        <label htmlFor={`genai-${provider.id}-enabled`}>{provider.displayName}</label>
+        <span className="hint">{provider.description}</span>
       </div>
       {enabled && provider.settings.length > 0 && (
-        <div className="cols-2" style={{ marginTop: 8 }}>
+        <div className="cols-2">
           {provider.settings.map(s => (
             <SettingField
               key={s.key}

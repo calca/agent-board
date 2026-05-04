@@ -11,6 +11,9 @@ export function WorktreeSection() {
   return (
     <div className="section">
       <div className="section__title">Worktree</div>
+      <p className="section__intro">
+        Keep each agent session isolated in its own git worktree to reduce branch conflicts and accidental cross-task edits.
+      </p>
       <div className="cols-2">
         <div className="field field--row">
           <input

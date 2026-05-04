@@ -11,6 +11,9 @@ export function McpSection() {
   return (
     <div className="section">
       <div className="section__title">MCP Server</div>
+      <p className="section__intro">
+        Enable MCP only if you want external tools or agents to access Agent Board capabilities through the local server.
+      </p>
       <div className="cols-2">
         <div className="field field--row">
           <input

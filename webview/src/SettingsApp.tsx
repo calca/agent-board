@@ -36,6 +36,20 @@ export function SettingsApp() {
   }
 
   const ActiveSection = SECTION_COMPONENTS[state.activeSection];
+  const saveDisabled = !state.dirty || state.saveState === 'saving';
+
+  let statusLabel = 'Saved';
+  let statusClass = 'settings-status settings-status--saved';
+  if (state.saveState === 'dirty') {
+    statusLabel = 'Unsaved changes';
+    statusClass = 'settings-status settings-status--dirty';
+  } else if (state.saveState === 'saving') {
+    statusLabel = 'Saving...';
+    statusClass = 'settings-status settings-status--saving';
+  } else if (state.saveState === 'error') {
+    statusLabel = state.saveError ? `Save failed: ${state.saveError}` : 'Save failed';
+    statusClass = 'settings-status settings-status--error';
+  }
 
   return (
     <>
@@ -44,16 +58,23 @@ export function SettingsApp() {
           <div className="settings-header__text">
             <h1>⚙ Project Settings</h1>
             <p className="settings-header__subtitle">.agent-board/config.json</p>
+            <p className={statusClass} aria-live="polite">{statusLabel}</p>
           </div>
           <div className="settings-header__actions">
             <FlatButton variant="secondary" onClick={resetToFile}>Reset to file</FlatButton>
-            <FlatButton variant="primary" onClick={save}>Save</FlatButton>
+            <FlatButton variant="primary" onClick={save} disabled={saveDisabled}>Save</FlatButton>
           </div>
         </div>
         <SettingsPillNav />
       </header>
       <main className={`settings-content${state.activeSection === 'logging' ? ' settings-content--fill' : ''}`}>
-        <ActiveSection />
+        <section
+          role="tabpanel"
+          id={`settings-panel-${state.activeSection}`}
+          aria-labelledby={`settings-tab-${state.activeSection}`}
+        >
+          <ActiveSection />
+        </section>
       </main>
     </>
   );

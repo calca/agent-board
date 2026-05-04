@@ -24,6 +24,9 @@ export function useSettingsMessages(): void {
         case 'saveOk':
           dispatch({ type: 'markClean' });
           break;
+        case 'saveError':
+          dispatch({ type: 'setSaveError', message: msg.message });
+          break;
         case 'providerDiagnostics':
           dispatch({ type: 'setProviders', providers: msg.providers ?? [] });
           break;

@@ -11,6 +11,9 @@ export interface SettingsState {
   agents: Array<{ slug: string; displayName: string; canSquad?: boolean }>;
   activeSection: SectionId;
   dirty: boolean;
+  saveState: 'saved' | 'dirty' | 'saving' | 'error';
+  saveError?: string;
+  dirtySections: Partial<Record<SectionId, boolean>>;
   /** Log content received from the host. */
   logContent: string;
   /** Available log file names (most recent first). */
@@ -25,9 +28,25 @@ const initialState: SettingsState = {
   agents: [],
   activeSection: 'providers',
   dirty: false,
+  saveState: 'saved',
+  saveError: undefined,
+  dirtySections: {},
   logContent: '',
   logFiles: [],
 };
+
+function sectionFromConfigKey(key: string): SectionId | undefined {
+  if (key === 'genAiProviders') { return 'genai'; }
+  if (key === 'kanban') { return 'kanban'; }
+  if (key === 'worktree') { return 'worktree'; }
+  if (key === 'squad') { return 'squad'; }
+  if (key === 'mcp') { return 'mcp'; }
+  if (key === 'logging' || key === 'logLevel') { return 'logging'; }
+  if (key === 'github' || key === 'jsonProvider' || key === 'markdownProvider' || key === 'beadsProvider' || key === 'azureDevOps') {
+    return 'providers';
+  }
+  return undefined;
+}
 
 // ── Actions ────────────────────────────────────────────────────
 
@@ -40,6 +59,8 @@ type Action =
   | { type: 'updateConfig'; patch: SettingsConfig }
   | { type: 'updateSectionField'; section: string; key: string; value: unknown }
   | { type: 'markClean' }
+  | { type: 'setSaving' }
+  | { type: 'setSaveError'; message?: string }
   | { type: 'setLogContent'; content: string }
   | { type: 'setLogFiles'; files: string[] };
 
@@ -49,7 +70,15 @@ function reducer(state: SettingsState, action: Action): SettingsState {
       // When the user has unsaved edits, ignore file-watcher reloads
       // to avoid overwriting in-progress changes. Force is used by resetToFile.
       if (state.loaded && state.dirty && !action.force) { return state; }
-      return { ...state, config: action.config, loaded: true, dirty: false };
+      return {
+        ...state,
+        config: action.config,
+        loaded: true,
+        dirty: false,
+        saveState: 'saved',
+        saveError: undefined,
+        dirtySections: {},
+      };
     case 'setProviders':
       return { ...state, providers: action.providers };
     case 'setGenAiProviders':
@@ -69,10 +98,23 @@ function reducer(state: SettingsState, action: Action): SettingsState {
           next[key] = value;
         }
       }
-      return { ...state, config: next, dirty: true };
+      const dirtySections = { ...state.dirtySections };
+      for (const key of Object.keys(action.patch)) {
+        const section = sectionFromConfigKey(key);
+        if (section) { dirtySections[section] = true; }
+      }
+      return {
+        ...state,
+        config: next,
+        dirty: true,
+        saveState: 'dirty',
+        saveError: undefined,
+        dirtySections,
+      };
     }
     case 'updateSectionField': {
       const prev = state.config[action.section] ?? {};
+      const section = sectionFromConfigKey(action.section);
       return {
         ...state,
         config: {
@@ -80,10 +122,23 @@ function reducer(state: SettingsState, action: Action): SettingsState {
           [action.section]: { ...prev, enabled: true, [action.key]: action.value },
         },
         dirty: true,
+        saveState: 'dirty',
+        saveError: undefined,
+        dirtySections: section ? { ...state.dirtySections, [section]: true } : state.dirtySections,
       };
     }
     case 'markClean':
-      return { ...state, dirty: false };
+      return {
+        ...state,
+        dirty: false,
+        saveState: 'saved',
+        saveError: undefined,
+        dirtySections: {},
+      };
+    case 'setSaving':
+      return { ...state, saveState: 'saving', saveError: undefined };
+    case 'setSaveError':
+      return { ...state, saveState: 'error', saveError: action.message ?? 'Failed to save settings.' };
     case 'setLogContent':
       return { ...state, logContent: action.content };
     case 'setLogFiles':
@@ -137,6 +192,7 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
   configRef.current = state.config;
 
   const save = useCallback(() => {
+    dispatch({ type: 'setSaving' });
     postSettingsMessage({ type: 'save', config: configRef.current });
     // Don't markClean here — wait for host's saveOk confirmation.
     // This keeps dirty=true to block any file-watcher configData in transit.
