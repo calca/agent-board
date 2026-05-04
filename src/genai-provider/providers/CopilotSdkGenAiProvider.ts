@@ -12,10 +12,10 @@ import * as vscode from 'vscode';
 import { KanbanTask } from '../../types/KanbanTask';
 import { formatError } from '../../utils/errorUtils';
 import {
-  GenAiProviderConfig,
-  GenAiProviderScope,
-  GenAiSettingDescriptor,
-  IGenAiProvider,
+    GenAiProviderConfig,
+    GenAiProviderScope,
+    GenAiSettingDescriptor,
+    IGenAiProvider,
 } from '../IGenAiProvider';
 import type { CopilotEvent } from './copilot-sdk/types';
 
@@ -108,8 +108,15 @@ export class CopilotSdkGenAiProvider implements IGenAiProvider {
     // relying on the SDK's default getBundledCliPath() which returns a .js file.
     // When cliPath ends with .js the SDK spawns it via process.execPath, which
     // inside VS Code is the Electron binary — not Node.js — causing argument errors.
-    const copilotPkgDir = path.dirname(require.resolve('@github/copilot/package.json'));
-    const copilotBin = path.join(copilotPkgDir, '..', '..', '.bin', 'copilot');
+    //
+    // @github/copilot does not expose ./package.json via its "exports" field, so
+    // we resolve the node_modules root by walking up from @github/copilot-sdk.
+    const sdkResolved = require.resolve('@github/copilot-sdk');
+    let nmDir = path.dirname(sdkResolved);
+    while (path.basename(nmDir) !== 'node_modules' && nmDir !== path.dirname(nmDir)) {
+      nmDir = path.dirname(nmDir);
+    }
+    const copilotBin = path.join(nmDir, '.bin', 'copilot');
 
     const clientOpts: CopilotClientOptions = {
       cliPath: copilotBin,
