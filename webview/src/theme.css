@@ -638,6 +638,57 @@ html, body, #root {
   font-style: italic;
 }
 
+/* ── Drag-over highlight ────────────────────────────────────────────── */
+
+.kanban__column--drag-over {
+  outline: 2px solid var(--vscode-focusBorder, #007fd4);
+  outline-offset: -2px;
+}
+
+.kanban__column--drag-over .kanban__column-body {
+  background: color-mix(in srgb, var(--vscode-focusBorder, #007fd4) 6%, transparent);
+}
+
+/* ── Move-error toast ───────────────────────────────────────────────── */
+
+.kanban__move-error {
+  position: fixed;
+  top: 12px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 14px 8px 12px;
+  background: color-mix(in srgb, var(--vscode-errorForeground, #f44747) 12%, var(--vscode-editor-background));
+  border: 1px solid var(--vscode-errorForeground, #f44747);
+  border-radius: 6px;
+  font-size: 0.82em;
+  color: var(--vscode-foreground);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.18);
+  white-space: nowrap;
+  max-width: calc(100vw - 48px);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  animation: kanban-toast-in 0.2s ease-out;
+}
+
+@keyframes kanban-toast-in {
+  from { opacity: 0; transform: translateX(-50%) translateY(-6px); }
+  to   { opacity: 1; transform: translateX(-50%) translateY(0); }
+}
+
+.kanban__move-error-close {
+  all: unset;
+  cursor: pointer;
+  font-size: 0.9em;
+  opacity: 0.6;
+  flex-shrink: 0;
+  line-height: 1;
+}
+.kanban__move-error-close:hover { opacity: 1; }
+
 /* ── Task Card ─────────────────────────────────────────────────────── */
 
 .task-card {
@@ -656,6 +707,13 @@ html, body, #root {
 .task-card:hover {
   box-shadow: 0 2px 10px rgba(0, 0, 0, 0.12);
   border-color: var(--vscode-focusBorder);
+}
+
+/* Keyboard focus ring for card (role=button) */
+.task-card:focus-visible {
+  outline: 2px solid var(--vscode-focusBorder, #007fd4);
+  outline-offset: 1px;
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--vscode-focusBorder, #007fd4) 20%, transparent);
 }
 
 .task-card--dragging {
@@ -4209,6 +4267,15 @@ body.vscode-high-contrast .md-editor-container {
 
   .kanban__column-header {
     display: none;  /* Tab selector already shows column info */
+  }
+
+  /* Exception: show Done-column header when it has bulk actions */
+  .kanban__column-header[data-has-actions="true"] {
+    display: flex;
+  }
+  .kanban__column-header[data-has-actions="true"] > span:first-child,
+  .kanban__column-header[data-has-actions="true"] .kanban__column-count {
+    display: none;
   }
 
   .kanban__column-body {

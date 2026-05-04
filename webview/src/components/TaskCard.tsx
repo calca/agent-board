@@ -84,6 +84,13 @@ export function TaskCard({ task }: { task: KanbanTask }) {
     postMessage({ type: 'requestFileChanges', sessionId: task.id });
   }, [dispatch, task.id]);
 
+  const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      handleClick();
+    }
+  }, [handleClick]);
+
   const handleEdit = useCallback((e: React.MouseEvent) => {
     e.stopPropagation();
     dispatch({ type: 'SET_EDITING_TASK', task });
@@ -101,10 +108,14 @@ export function TaskCard({ task }: { task: KanbanTask }) {
     <div
       className={`task-card${stateModifier}`}
       data-task-id={task.id}
+      role="button"
+      tabIndex={0}
+      aria-label={task.title}
       draggable
       onDragStart={handleDragStart}
       onDragEnd={handleDragEnd}
       onClick={handleClick}
+      onKeyDown={handleKeyDown}
     >
       <div className="task-card__header">
         <span className="task-card__id">{shortId}</span>

@@ -339,7 +339,7 @@ function ConnectionIndicator() {
   if (!state.connectionError) { return null; }
 
   return (
-    <span className="connection-error" title="Connessione al server persa">
+    <span className="connection-error" title="Connection to server lost">
       <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
         <path d="M8 1a7 7 0 1 0 0 14A7 7 0 0 0 8 1Zm0 1.5a5.5 5.5 0 1 1 0 11 5.5 5.5 0 0 1 0-11ZM7.25 4v5h1.5V4h-1.5ZM8 10.5a.75.75 0 1 0 0 1.5.75.75 0 0 0 0-1.5Z"/>
       </svg>
