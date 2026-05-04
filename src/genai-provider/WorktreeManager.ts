@@ -111,9 +111,20 @@ export async function createWorktree(
     fs.mkdirSync(parentDir, { recursive: true });
   }
 
-  const args = ['worktree', 'add', '-b', branch, wtPath];
-  if (baseBranch) { args.push(baseBranch); }
-  await exec('git', args, repoRoot);
+  try {
+    const args = ['worktree', 'add', '-b', branch, wtPath];
+    if (baseBranch) { args.push(baseBranch); }
+    await exec('git', args, repoRoot);
+  } catch (err) {
+    // If the branch already exists (e.g. worktree path was removed manually
+    // but the branch was kept), fall back to attaching the existing branch.
+    const msg = err instanceof Error ? err.message : String(err);
+    if (msg.includes('already exists')) {
+      await exec('git', ['worktree', 'add', wtPath, branch], repoRoot);
+    } else {
+      throw err;
+    }
+  }
 
   // Sync untracked config files (agents, skills, etc.) into the new worktree.
   syncUntrackedPaths(repoRoot, wtPath);
@@ -150,6 +161,7 @@ export async function removeWorktree(
  * Extend this array when new convention directories appear.
  */
 export const WORKTREE_SYNC_PATHS: ReadonlyArray<{ dir: string; glob: string }> = [
+  { dir: '.github',         glob: 'copilot-instructions.md' },
   { dir: '.github/agents',  glob: '*.md' },
   { dir: '.github/skills',  glob: '*.md' },
   { dir: '.agents',         glob: '*.md' },
