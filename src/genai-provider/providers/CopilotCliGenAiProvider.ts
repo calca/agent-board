@@ -34,6 +34,9 @@ export class CopilotCliGenAiProvider implements IGenAiProvider {
   private _resumeSessionId: string | undefined;
   private _lastSessionId: string | undefined;
 
+  /** Pre-set the session ID for the next run (used on first launch). */
+  setInitSessionId(id: string): void { this._resumeSessionId = id; }
+
   private readonly _onDidStreamEmitter = new vscode.EventEmitter<string>();
   readonly onDidStream: vscode.Event<string> = this._onDidStreamEmitter.event;
 
@@ -177,8 +180,13 @@ export class CopilotCliGenAiProvider implements IGenAiProvider {
       });
       proc.on('close', (code) => {
         this._proc = undefined;
-        // Detect the CLI session ID created during this run.
-        this._lastSessionId = resumeId ?? CopilotCliGenAiProvider._detectNewSessionId(existingIds);
+        // If we started with a known ID (init or resume), keep it.
+        // Otherwise fall back to filesystem diffing to detect a newly created session.
+        if (resumeId) {
+          this._lastSessionId = resumeId;
+        } else {
+          this._lastSessionId = CopilotCliGenAiProvider._detectNewSessionId(existingIds);
+        }
         if (this._lastSessionId) {
           this._emit(`[github-copilot] session-id: ${this._lastSessionId}\n`);
         }

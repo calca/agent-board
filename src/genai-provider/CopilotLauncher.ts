@@ -105,16 +105,30 @@ export class CopilotLauncher {
 
   /**
    * Send a follow-up message to the active provider for a task.
-   * Only works when the provider supports `sendFollowUp` (e.g. VS Code API / vscode-api).
+   * For CLI providers that are no longer active but have a stored session ID,
+   * a new run is started with `--resume` so the conversation continues.
    */
   async sendFollowUp(taskId: string, text: string): Promise<void> {
     const provider = this.activeProviders.get(taskId);
-    if (!provider?.sendFollowUp) {
-      // Provider not running or doesn't support multi-turn — fall back quietly
-      this.logger.warn(`CopilotLauncher: sendFollowUp not available for task ${taskId}`);
+    if (provider?.sendFollowUp) {
+      await provider.sendFollowUp(text);
       return;
     }
-    await provider.sendFollowUp(text);
+
+    // Provider not running — check if we can resume a CLI session
+    const session = this.sessionStateManager?.getSession(taskId);
+    if (session?.cliSessionId) {
+      const sessionState = session.state;
+      if (sessionState === 'running' || sessionState === 'starting') {
+        this.logger.warn(`CopilotLauncher: sendFollowUp skipped for task ${taskId} — session already active`);
+        return;
+      }
+      this.logger.info(`CopilotLauncher: sendFollowUp re-launching CLI session ${session.cliSessionId} for task ${taskId}`);
+      await this.launch(taskId, session.providerId, undefined, text);
+      return;
+    }
+
+    this.logger.warn(`CopilotLauncher: sendFollowUp not available for task ${taskId}`);
   }
 
   /** Update the cached list of discovered agents. */
@@ -225,12 +239,17 @@ export class CopilotLauncher {
     }
 
     // ── CLI session resume ────────────────────────────────────────────
-    // If a previous CLI session ID is stored, tell the provider to resume it.
+    // Use the stored CLI session ID (from a prior run) to resume.
+    // On the very first launch use the pre-generated agentSessionId so the
+    // session ID is known before the process starts (--resume creates the dir).
     if (provider instanceof CopilotCliGenAiProvider) {
       const existingSession = this.sessionStateManager?.getSession(taskId);
       if (existingSession?.cliSessionId) {
         provider.setResumeSessionId(existingSession.cliSessionId);
         this.logger.info(`CopilotLauncher: resuming CLI session ${existingSession.cliSessionId} for task ${taskId}`);
+      } else if (existingSession?.agentSessionId) {
+        provider.setInitSessionId(existingSession.agentSessionId);
+        this.logger.info(`CopilotLauncher: initialising CLI session ${existingSession.agentSessionId} for task ${taskId}`);
       }
     }
 

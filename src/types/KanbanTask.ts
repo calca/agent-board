@@ -31,6 +31,8 @@ export interface CopilotSessionInfo {
   errorMessage?: string;
   /** Whether the worktree branch has been merged locally. */
   merged?: boolean;
+  /** Pre-generated session ID passed to the CLI via --resume on first launch. */
+  agentSessionId?: string;
 }
 
 /**
