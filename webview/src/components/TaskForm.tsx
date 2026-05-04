@@ -11,15 +11,39 @@ function normalizeMd(raw: string): string {
   return raw.replace(/[\u200b\u00a0]/g, '').replace(/^\s+$/, '').trim();
 }
 
+type FormSnapshot = {
+  title: string;
+  body: string;
+  status: string;
+  labels: string;
+  assignee: string;
+  notes: string;
+};
+
+function getFocusableElements(container: HTMLElement): HTMLElement[] {
+  const candidates = container.querySelectorAll<HTMLElement>(
+    'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"]), [contenteditable="true"]'
+  );
+  return Array.from(candidates).filter(el => !el.hasAttribute('disabled') && el.getAttribute('aria-hidden') !== 'true' && el.offsetParent !== null);
+}
+
 export function TaskForm() {
   const { state, dispatch } = useBoard();
-  const { showTaskForm, editingTask, columns, formColumns, editableProviderIds, genAiProviders, currentUser } = state;
+  const { showTaskForm, editingTask, columns, formColumns, editableProviderIds, currentUser } = state;
   const bodyRef = useRef<MDXEditorMethods>(null);
   const notesRef = useRef<MDXEditorMethods>(null);
+  const notesAutosaveTimerRef = useRef<number | null>(null);
+  const notesSavedBadgeTimerRef = useRef<number | null>(null);
+  const formRef = useRef<HTMLFormElement>(null);
+  const panelRef = useRef<HTMLDivElement>(null);
+  const previouslyFocusedRef = useRef<HTMLElement | null>(null);
+  const initialSnapshotRef = useRef<FormSnapshot | null>(null);
   const [notesOpen, setNotesOpen] = useState(false);
+  const [notesSaveState, setNotesSaveState] = useState<'idle' | 'saving' | 'saved'>('idle');
   const notesTouched = useRef(false);
 
   const isEdit = !!editingTask;
+  const isOpen = showTaskForm || isEdit;
   const task = editingTask;
   const savedNotes = isEdit ? ((task?.meta as Record<string, unknown>)?.localNotes as string | undefined) : undefined;
 
@@ -27,24 +51,157 @@ export function TaskForm() {
   useEffect(() => {
     setNotesOpen(false);
     notesTouched.current = false;
+    setNotesSaveState('idle');
   }, [task?.id]);
   const cols = formColumns.length > 0 ? formColumns : columns;
   const remoteProviders = ['github', 'azure-devops', 'beads'];
   const isRemote = task ? remoteProviders.includes(task.providerId) : false;
 
-  const handleClose = useCallback(() => {
-    // Flush any pending local notes before closing
-    if (task && isRemote && notesTouched.current) {
-      const md = notesOpen && notesRef.current
-        ? normalizeMd(notesRef.current.getMarkdown())
-        : '';
-      postMessage({ type: 'saveLocalNotes', taskId: task.id, providerId: task.providerId, notes: md });
+  const getCurrentSnapshot = useCallback((): FormSnapshot => {
+    const form = formRef.current;
+    const titleEl = form?.querySelector('#tf-title') as HTMLInputElement | null;
+    const labelsEl = form?.querySelector('#tf-labels') as HTMLInputElement | null;
+    const assigneeEl = form?.querySelector('#tf-assignee') as HTMLInputElement | null;
+    const statusEl = form?.querySelector('#tf-status') as HTMLSelectElement | null;
+
+    const title = (titleEl?.value ?? task?.title ?? '').trim();
+    const body = normalizeMd(bodyRef.current?.getMarkdown() ?? task?.body ?? '');
+    const status = (statusEl?.value ?? task?.status ?? cols[0]?.id ?? 'todo').trim();
+    const labels = (labelsEl?.value ?? task?.labels.join(', ') ?? '').trim();
+    const assignee = (assigneeEl?.value ?? task?.assignee ?? (currentUser || 'me')).trim();
+    const notes = normalizeMd(notesOpen && notesRef.current ? notesRef.current.getMarkdown() : savedNotes ?? '');
+
+    return { title, body, status, labels, assignee, notes };
+  }, [cols, currentUser, notesOpen, savedNotes, task]);
+
+  const hasUnsavedChanges = useCallback(() => {
+    if (!initialSnapshotRef.current) { return false; }
+    const current = getCurrentSnapshot();
+    const initial = initialSnapshotRef.current;
+    return current.title !== initial.title
+      || current.body !== initial.body
+      || current.status !== initial.status
+      || current.labels !== initial.labels
+      || current.assignee !== initial.assignee
+      || current.notes !== initial.notes;
+  }, [getCurrentSnapshot]);
+
+  const flushLocalNotes = useCallback(() => {
+    if (!task || !isRemote || !notesTouched.current) { return; }
+    const notes = normalizeMd(notesOpen && notesRef.current ? notesRef.current.getMarkdown() : savedNotes ?? '');
+    setNotesSaveState('saving');
+    postMessage({ type: 'saveLocalNotes', taskId: task.id, providerId: task.providerId, notes });
+    notesTouched.current = false;
+
+    if (initialSnapshotRef.current) {
+      initialSnapshotRef.current = {
+        ...initialSnapshotRef.current,
+        notes,
+      };
     }
+
+    if (notesSavedBadgeTimerRef.current) {
+      window.clearTimeout(notesSavedBadgeTimerRef.current);
+    }
+    notesSavedBadgeTimerRef.current = window.setTimeout(() => {
+      setNotesSaveState('saved');
+      notesSavedBadgeTimerRef.current = window.setTimeout(() => {
+        setNotesSaveState('idle');
+      }, 1200);
+    }, 150);
+  }, [task, isRemote, notesOpen, savedNotes]);
+
+  const queueNotesAutosave = useCallback(() => {
+    if (!task || !isRemote || !notesOpen) { return; }
+    notesTouched.current = true;
+    setNotesSaveState('saving');
+    if (notesAutosaveTimerRef.current) {
+      window.clearTimeout(notesAutosaveTimerRef.current);
+    }
+    notesAutosaveTimerRef.current = window.setTimeout(() => {
+      flushLocalNotes();
+      notesAutosaveTimerRef.current = null;
+    }, 700);
+  }, [task, isRemote, notesOpen, flushLocalNotes]);
+
+  useEffect(() => {
+    return () => {
+      if (notesAutosaveTimerRef.current) {
+        window.clearTimeout(notesAutosaveTimerRef.current);
+      }
+      if (notesSavedBadgeTimerRef.current) {
+        window.clearTimeout(notesSavedBadgeTimerRef.current);
+      }
+    };
+  }, []);
+
+  const requestClose = useCallback(() => {
+    if (hasUnsavedChanges() && !window.confirm('Discard unsaved changes?')) {
+      return;
+    }
+    flushLocalNotes();
     dispatch({ type: 'CLOSE_TASK_FORM' });
-  }, [task, isRemote, notesOpen, dispatch]);
+  }, [dispatch, flushLocalNotes, hasUnsavedChanges]);
+
+  useEffect(() => {
+    if (!isOpen) { return; }
+    initialSnapshotRef.current = {
+      title: (task?.title ?? '').trim(),
+      body: normalizeMd(task?.body ?? ''),
+      status: (task?.status ?? cols[0]?.id ?? 'todo').trim(),
+      labels: (task?.labels.join(', ') ?? '').trim(),
+      assignee: (task?.assignee ?? (currentUser || 'me')).trim(),
+      notes: normalizeMd(savedNotes ?? ''),
+    };
+  }, [isOpen, task?.id, task?.title, task?.body, task?.status, task?.labels, task?.assignee, cols, currentUser, savedNotes]);
+
+  useEffect(() => {
+    if (!isOpen || !panelRef.current) { return; }
+
+    previouslyFocusedRef.current = document.activeElement as HTMLElement | null;
+    const panel = panelRef.current;
+    const rafId = window.requestAnimationFrame(() => {
+      const firstFocusable = getFocusableElements(panel)[0];
+      firstFocusable?.focus();
+    });
+
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        requestClose();
+        return;
+      }
+      if (event.key !== 'Tab') { return; }
+
+      const focusables = getFocusableElements(panel);
+      if (focusables.length === 0) { return; }
+
+      const active = document.activeElement as HTMLElement | null;
+      const first = focusables[0];
+      const last = focusables[focusables.length - 1];
+
+      if (event.shiftKey) {
+        if (!active || active === first || !panel.contains(active)) {
+          event.preventDefault();
+          last.focus();
+        }
+      } else if (!active || active === last || !panel.contains(active)) {
+        event.preventDefault();
+        first.focus();
+      }
+    };
+
+    panel.addEventListener('keydown', onKeyDown);
+    return () => {
+      window.cancelAnimationFrame(rafId);
+      panel.removeEventListener('keydown', onKeyDown);
+      previouslyFocusedRef.current?.focus();
+    };
+  }, [isOpen, requestClose]);
+
   const handleOverlayClick = useCallback((e: React.MouseEvent) => {
-    if ((e.target as HTMLElement).id === 'task-form-overlay') { handleClose(); }
-  }, [handleClose]);
+    if ((e.target as HTMLElement).id === 'task-form-overlay') { requestClose(); }
+  }, [requestClose]);
 
   const handleDelete = useCallback(() => {
     if (task) {
@@ -58,13 +215,7 @@ export function TaskForm() {
     e.preventDefault();
     const form = e.currentTarget;
 
-    // Flush any pending local notes before closing
-    if (task && isRemote && notesTouched.current) {
-      const md = notesOpen && notesRef.current
-        ? normalizeMd(notesRef.current.getMarkdown())
-        : '';
-      postMessage({ type: 'saveLocalNotes', taskId: task.id, providerId: task.providerId, notes: md });
-    }
+    flushLocalNotes();
 
     const titleEl = form.querySelector('#tf-title') as HTMLInputElement | null;
     const labelsEl = form.querySelector('#tf-labels') as HTMLInputElement | null;
@@ -89,20 +240,53 @@ export function TaskForm() {
       transport.send({ type: 'saveTask', data: { title, body, status, labels, assignee } });
     }
     dispatch({ type: 'CLOSE_TASK_FORM' });
-  }, [task, cols, isRemote, notesOpen, dispatch]);
+  }, [task, cols, isRemote, flushLocalNotes, dispatch]);
 
   if (!showTaskForm && !editingTask) { return null; }
 
   return (
     <div className="task-form-overlay" id="task-form-overlay" onClick={handleOverlayClick}>
-      <div className="task-form-panel">
-        <FlatButton variant="icon" icon="✕" className="task-form-panel__close" onClick={handleClose} title="Close" />
-        <div className="task-form-panel__heading">
-          {isEdit
-            ? <>Edit Issue{savedNotes && <span className="task-card__details-icon" title="Has technical notes" style={{ marginLeft: 8 }}><svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M4 0a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V4.5L9.5 0H4Zm5 1v3.5A1.5 1.5 0 0 0 10.5 6H14v8a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1h5ZM5 8.5a.5.5 0 0 1 .5-.5h5a.5.5 0 0 1 0 1h-5a.5.5 0 0 1-.5-.5Zm.5 1.5a.5.5 0 0 0 0 1h3a.5.5 0 0 0 0-1h-3Z"/></svg></span>}{isRemote && <span style={{ opacity: 0.45, fontSize: '0.75em', fontWeight: 400, marginLeft: 8 }}>(remote — read-only fields)</span>}</>
-            : 'New Issue'}
+      <div ref={panelRef} className="task-form-panel" role="dialog" aria-modal="true" aria-labelledby="task-form-title">
+        <FlatButton variant="icon" icon="✕" className="task-form-panel__close" onClick={requestClose} title="Close" aria-label="Close task form" />
+        <div className="task-form-panel__heading-wrap">
+          <h2 id="task-form-title" className="task-form-panel__heading">{isEdit ? 'Edit Issue' : 'New Issue'}</h2>
+          {(savedNotes || isRemote) && (
+            <div className="task-form-panel__heading-meta">
+              {savedNotes && (
+                <span className="task-form-panel__notes-indicator" title="Has technical notes">
+                  <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M4 0a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V4.5L9.5 0H4Zm5 1v3.5A1.5 1.5 0 0 0 10.5 6H14v8a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1h5ZM5 8.5a.5.5 0 0 1 .5-.5h5a.5.5 0 0 1 0 1h-5a.5.5 0 0 1-.5-.5Zm.5 1.5a.5.5 0 0 0 0 1h3a.5.5 0 0 0 0-1h-3Z"/></svg>
+                  Notes
+                </span>
+              )}
+              {isRemote && <span className="task-form-panel__heading-badge">Remote · read-only details</span>}
+            </div>
+          )}
         </div>
-        <form id="task-form" className="task-form" onSubmit={handleSubmit}>
+
+        {isEdit && isRemote && (
+          <div className="task-form__remote-hint">Only status and technical notes are editable for remote issues.</div>
+        )}
+
+        <form ref={formRef} id="task-form" className="task-form" onSubmit={handleSubmit}>
+          {isEdit && isRemote && (
+            <div className="task-form__section task-form__section--remote-priority">
+              <div className="task-form__row task-form__row--compact">
+                <div className="task-form__field">
+                  <label className="task-form__label" htmlFor="tf-status">Status</label>
+                  <select className="task-form__select" id="tf-status" defaultValue={task!.status}>
+                    {cols.map(c => <option key={c.id} value={c.id}>{c.label}</option>)}
+                  </select>
+                </div>
+                {!!task?.meta?.remoteStatus && (
+                  <div className="task-form__field">
+                    <label className="task-form__label">Remote Status</label>
+                    <span className="task-form__readonly-value task-form__readonly-value--badge">{String(task.meta.remoteStatus)}</span>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
           <div className="task-form__section">
             <label className="task-form__label">{isRemote ? 'Title' : 'Title *'}</label>
             {isEdit && isRemote
@@ -127,12 +311,16 @@ export function TaskForm() {
           {isEdit && isRemote && (notesOpen ? (
               <div className="task-form__section task-form__section--grow task-form__local-notes-inline">
                 <div className="task-form__local-notes-header">
-                  <label className="task-form__label"><svg className="task-form__notes-icon" width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M4 0a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V4.5L9.5 0H4Zm5 1v3.5A1.5 1.5 0 0 0 10.5 6H14v8a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1h5ZM5 8.5a.5.5 0 0 1 .5-.5h5a.5.5 0 0 1 0 1h-5a.5.5 0 0 1-.5-.5Zm.5 1.5a.5.5 0 0 0 0 1h3a.5.5 0 0 0 0-1h-3Z"/></svg> Technical Notes</label>
+                  <div className="task-form__local-notes-title-wrap">
+                    <label className="task-form__label"><svg className="task-form__notes-icon" width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M4 0a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V4.5L9.5 0H4Zm5 1v3.5A1.5 1.5 0 0 0 10.5 6H14v8a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1h5ZM5 8.5a.5.5 0 0 1 .5-.5h5a.5.5 0 0 1 0 1h-5a.5.5 0 0 1-.5-.5Zm.5 1.5a.5.5 0 0 0 0 1h3a.5.5 0 0 0 0-1h-3Z"/></svg> Technical Notes</label>
+                    {notesSaveState !== 'idle' && (
+                      <span className={`task-form__notes-save-status task-form__notes-save-status--${notesSaveState}`}>
+                        {notesSaveState === 'saving' ? 'Saving…' : 'Saved'}
+                      </span>
+                    )}
+                  </div>
                   <FlatButton type="button" variant="icon" icon="−" onClick={() => {
-                    if (task && notesRef.current) {
-                      const md = normalizeMd(notesRef.current.getMarkdown());
-                      postMessage({ type: 'saveLocalNotes', taskId: task.id, providerId: task.providerId, notes: md });
-                    }
+                    flushLocalNotes();
                     setNotesOpen(false);
                   }} title="Close technical notes" />
                 </div>
@@ -142,6 +330,7 @@ export function TaskForm() {
                     editorKey={`tf-notes-${task!.id}`}
                     markdown={savedNotes ?? ''}
                     placeholder="Add technical notes to enrich this task…"
+                    onChange={() => queueNotesAutosave()}
                   />
                 </div>
               </div>
@@ -155,18 +344,14 @@ export function TaskForm() {
             ))}
 
           <div className="task-form__row">
-            <div className="task-form__field">
-              <label className="task-form__label" htmlFor="tf-status">Status</label>
-              {isEdit
-                ? <select className="task-form__select" id="tf-status" defaultValue={task!.status}>
-                    {cols.map(c => <option key={c.id} value={c.id}>{c.label}</option>)}
-                  </select>
-                : <input className="task-form__input" id="tf-status" type="text" value={cols[0]?.label ?? ''} disabled />}
-            </div>
-            {isEdit && isRemote && !!task?.meta?.remoteStatus && (
+            {!(isEdit && isRemote) && (
               <div className="task-form__field">
-                <label className="task-form__label">Remote Status</label>
-                <span className="task-form__readonly-value task-form__readonly-value--badge">{String(task.meta.remoteStatus)}</span>
+                <label className="task-form__label" htmlFor="tf-status">Status</label>
+                {isEdit
+                  ? <select className="task-form__select" id="tf-status" defaultValue={task!.status}>
+                      {cols.map(c => <option key={c.id} value={c.id}>{c.label}</option>)}
+                    </select>
+                  : <input className="task-form__input" id="tf-status" type="text" value={cols[0]?.label ?? ''} disabled />}
               </div>
             )}
             <div className="task-form__field">
@@ -193,11 +378,11 @@ export function TaskForm() {
             <FlatButton type="submit" variant="primary">
               {isRemote ? 'Update Status' : 'Save'}
             </FlatButton>
-            <FlatButton type="button" variant="secondary" onClick={handleClose}>
+            <FlatButton type="button" variant="secondary" onClick={requestClose}>
               {isEdit ? 'Close' : 'Cancel'}
             </FlatButton>
             {isEdit && !isRemote && editableProviderIds.includes(task!.providerId) && (
-              <FlatButton type="button" variant="danger" icon="⊘" onClick={handleDelete} style={{ marginLeft: 'auto' }}>
+              <FlatButton type="button" variant="danger" icon="⊘" onClick={handleDelete} className="task-form__delete-btn">
                 Delete
               </FlatButton>
             )}

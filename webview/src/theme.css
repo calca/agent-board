@@ -1774,6 +1774,15 @@ html, body, #root {
   animation: fv-slide-in 0.22s ease-out;
 }
 
+@media (max-width: 1100px) {
+  .task-form-panel {
+    width: 100%;
+    min-width: 0;
+    border-left: none;
+    box-shadow: none;
+  }
+}
+
 .task-form-panel__close {
   position: absolute;
   top: 16px;
@@ -1797,9 +1806,49 @@ html, body, #root {
 .task-form-panel__heading {
   font-size: 1.05em;
   font-weight: 600;
-  margin-bottom: 20px;
+  margin: 0;
   flex-shrink: 0;
   letter-spacing: 0;
+}
+
+.task-form-panel__heading-wrap {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  margin: 0 0 14px;
+}
+
+.task-form-panel__heading-meta {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.task-form-panel__heading-badge {
+  font-size: 0.75em;
+  font-weight: 500;
+  opacity: 0.65;
+  white-space: nowrap;
+}
+
+.task-form-panel__notes-indicator {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.75em;
+  opacity: 0.8;
+}
+
+.task-form__remote-hint {
+  margin: 0 0 10px;
+  padding: 8px 10px;
+  border: 1px solid var(--vscode-panel-border);
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--vscode-sideBar-background) 88%, transparent);
+  font-size: 0.82em;
+  color: var(--vscode-descriptionForeground);
 }
 
 .task-form {
@@ -1813,6 +1862,10 @@ html, body, #root {
 
 .task-form__section {
   flex-shrink: 0;
+}
+
+.task-form__section--remote-priority {
+  margin-bottom: 2px;
 }
 .task-form__section--grow {
   flex: 1 1 auto;
@@ -2035,12 +2088,20 @@ html, body, #root {
 .task-form__actions {
   display: flex;
   gap: 10px;
-  margin-top: 20px;
+  margin-top: auto;
   padding-top: 18px;
+  padding-bottom: 8px;
   border-top: 1px solid var(--vscode-panel-border, rgba(255,255,255,0.08));
   flex-shrink: 0;
+  position: sticky;
+  bottom: 0;
+  background: linear-gradient(to top, var(--vscode-sideBar-background) 75%, color-mix(in srgb, var(--vscode-sideBar-background) 15%, transparent));
 }
 .task-form__actions .task-form__btn--delete {
+  margin-left: auto;
+}
+
+.task-form__delete-btn {
   margin-left: auto;
 }
 
@@ -2054,6 +2115,10 @@ html, body, #root {
   background: color-mix(in srgb, var(--vscode-sideBar-background, var(--vscode-editor-background)) 60%, transparent);
   flex-shrink: 0;
   overflow: hidden;
+}
+
+.task-form__row--compact {
+  margin-top: 0;
 }
 
 .task-form__field {
@@ -3193,6 +3258,29 @@ html, body, #root {
   align-items: center;
   justify-content: space-between;
   margin-bottom: 4px;
+}
+
+.task-form__local-notes-title-wrap {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.task-form__notes-save-status {
+  font-size: 0.75em;
+  font-weight: 500;
+  letter-spacing: 0.01em;
+}
+
+.task-form__notes-save-status--saving {
+  color: var(--vscode-descriptionForeground);
+  opacity: 0.85;
+}
+
+.task-form__notes-save-status--saved {
+  color: var(--vscode-terminal-ansiGreen, #89d185);
+  opacity: 0.95;
 }
 .task-form__local-notes-close {
   background: transparent;
