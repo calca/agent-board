@@ -164,10 +164,15 @@ export const WORKTREE_SYNC_PATHS: ReadonlyArray<{ dir: string; glob: string }> =
  * Only files that don't already exist in the worktree are copied;
  * existing files (e.g. tracked by git) are never overwritten.
  *
+ * Copied files are staged (`git add`) so that subsequent `git merge`
+ * operations don't fail with "untracked working tree files would be
+ * overwritten".
+ *
  * @returns the number of files copied.
  */
 export function syncUntrackedPaths(repoRoot: string, wtPath: string): number {
   let copied = 0;
+  const added: string[] = [];
   for (const entry of WORKTREE_SYNC_PATHS) {
     const srcDir = path.join(repoRoot, entry.dir);
     if (!fs.existsSync(srcDir) || !fs.statSync(srcDir).isDirectory()) { continue; }
@@ -184,9 +189,16 @@ export function syncUntrackedPaths(repoRoot: string, wtPath: string): number {
       const dst = path.join(dstDir, file);
       if (!fs.existsSync(dst)) {
         fs.copyFileSync(path.join(srcDir, file), dst);
+        added.push(path.join(entry.dir, file));
         copied++;
       }
     }
   }
+
+  // Stage copied files so git merge won't choke on untracked files.
+  if (added.length > 0) {
+    execFile('git', ['add', '--', ...added], { cwd: wtPath, timeout: 10_000 }, () => {/* fire-and-forget */});
+  }
+
   return copied;
 }
