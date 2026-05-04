@@ -157,10 +157,11 @@ export function boardReducer(state: BoardState, action: BoardAction): BoardState
     }
     case 'AGENTS_AVAILABLE': {
       const newTeams = action.squadTeams ?? [];
+      console.log('[BoardReducer] AGENTS_AVAILABLE', { agents: action.agents, teams: newTeams, prevAgents: state.availableAgents });
       // Skip update if nothing changed to avoid unnecessary re-renders
       const agentsSame = JSON.stringify(state.availableAgents) === JSON.stringify(action.agents);
       const teamsSame = JSON.stringify(state.squadTeams) === JSON.stringify(newTeams);
-      if (agentsSame && teamsSame) { return state; }
+      if (agentsSame && teamsSame) { console.log('[BoardReducer] AGENTS_AVAILABLE skipped (same)'); return state; }
 
       const teamSlugs = new Set(newTeams.map(t => t.agentSlug));
       let slug = state.selectedAgentSlug;
