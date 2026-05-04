@@ -181,7 +181,15 @@ function KanbanColumn({ column, tasks, allTasks, isActive, onMoveError }: {
         onDrop={handleDrop}
       >
         {tasks.length === 0
-          ? <div className="kanban__placeholder">No issues</div>
+          ? (
+            <div className="kanban__placeholder">
+              {/* Empty column — check-circle */}
+              <svg width="28" height="28" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
+                <path d="M8 0a8 8 0 1 1 0 16A8 8 0 0 1 8 0Zm0 1.5a6.5 6.5 0 1 0 0 13 6.5 6.5 0 0 0 0-13Zm3.28 4.22a.75.75 0 0 1 0 1.06l-3.5 3.5a.75.75 0 0 1-1.06 0l-1.5-1.5a.75.75 0 1 1 1.06-1.06l.97.97 2.97-2.97a.75.75 0 0 1 1.06 0Z"/>
+              </svg>
+              <span>No issues in this column</span>
+            </div>
+          )
           : tasks.map(t => <TaskCard key={t.id} task={t} />)}
       </div>
     </div>
