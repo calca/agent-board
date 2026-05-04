@@ -1756,7 +1756,7 @@ html, body, #root {
 }
 
 .task-form-panel {
-  width: 40%;
+  width: 60%;
   min-width: 480px;
   height: 100%;
   max-height: none;
