@@ -7,8 +7,8 @@
  *  2. `.vscode/mcp.json` — Copilot CLI and other MCP clients
  */
 import * as fs from 'fs';
-import * as path from 'path';
 import * as jsonc from 'jsonc-parser';
+import * as path from 'path';
 import * as vscode from 'vscode';
 import { Logger } from '../utils/logger';
 
