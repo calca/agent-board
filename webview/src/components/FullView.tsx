@@ -74,6 +74,7 @@ export function FullView() {
 
       {isInterrupted && <div className="session-interrupted-banner">↯ Session interrupted. Log is read-only.</div>}
 
+      <div className="fv-body">
       {/* Mobile tab selector — hidden on desktop via CSS */}
       <div className="fv-tab-selector" role="tablist">
         {([
@@ -223,6 +224,7 @@ export function FullView() {
             </div>
           </div>
         </div>
+      </div>
       </div>
     </div>
   );

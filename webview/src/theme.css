@@ -836,6 +836,7 @@ html, body, #root {
   font-weight: 600;
   font-size: 0.88em;
   display: -webkit-box;
+  line-clamp: 2;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
@@ -847,6 +848,7 @@ html, body, #root {
   opacity: 0.6;
   line-height: 1.4;
   display: -webkit-box;
+  line-clamp: 2;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
@@ -1748,26 +1750,28 @@ html, body, #root {
   inset: 0;
   z-index: 500;
   display: flex;
-  align-items: center;
-  justify-content: center;
-  background: rgba(0, 0, 0, 0.5);
+  align-items: stretch;
+  justify-content: flex-end;
+  background: rgba(0, 0, 0, 0.35);
 }
 
 .task-form-panel {
-  width: 92vw;
-  max-width: 880px;
-  height: 80vh;
-  min-height: 520px;
-  max-height: 92vh;
+  width: 40%;
+  min-width: 480px;
+  height: 100%;
+  max-height: none;
+  min-height: unset;
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  background: var(--vscode-editor-background);
-  border: 1px solid var(--vscode-panel-border);
-  border-radius: 10px;
-  box-shadow: 0 12px 48px rgba(0, 0, 0, 0.45);
-  padding: 32px 40px 28px;
+  background: var(--vscode-sideBar-background);
+  border: none;
+  border-left: 1px solid var(--vscode-panel-border);
+  border-radius: 0;
+  box-shadow: -4px 0 24px rgba(0, 0, 0, 0.20);
+  padding: 20px 24px 16px;
   position: relative;
+  animation: fv-slide-in 0.22s ease-out;
 }
 
 .task-form-panel__close {
@@ -1791,11 +1795,11 @@ html, body, #root {
 }
 
 .task-form-panel__heading {
-  font-size: 1.5em;
-  font-weight: 700;
-  margin-bottom: 28px;
+  font-size: 1.05em;
+  font-weight: 600;
+  margin-bottom: 20px;
   flex-shrink: 0;
-  letter-spacing: -0.01em;
+  letter-spacing: 0;
 }
 
 .task-form {
@@ -2626,6 +2630,11 @@ html, body, #root {
   display: none;
 }
 
+@keyframes fv-slide-in {
+  from { transform: translateX(16px); opacity: 0; }
+  to   { transform: translateX(0);   opacity: 1; }
+}
+
 .full-view {
   position: fixed;
   top: 0;
@@ -2844,17 +2853,15 @@ html, body, #root {
   overflow: hidden;
 }
 
-/* Files column in row 2: 1/3 width (same as top-row columns) */
 .fv-col.fv-col--files {
   flex: 1;
 }
 
-/* Activity log column in row 2: 2/3 width */
 .fv-col.fv-col--log {
   flex: 2;
 }
 
-/* Panel that fills its parent */
+/* Panel that fills its column */
 .fv-panel--fill {
   flex: 1;
   display: flex;
@@ -3233,8 +3240,10 @@ html, body, #root {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 10px 16px;
-  border-bottom: 1px solid var(--vscode-panel-border, #333);
+  padding: 12px 16px;
+  background: var(--vscode-sideBar-background);
+  border-bottom: 1px solid var(--vscode-panel-border);
+  flex-shrink: 0;
 }
 .local-notes-panel__title {
   font-weight: 600;
@@ -4805,11 +4814,6 @@ body.vscode-high-contrast .md-editor-container {
     display: flex;
     flex-direction: column;
     height: 100%;
-  }
-
-  /* When chat tab is active, hide the entire top row on mobile */
-  .fv-row--hidden-mobile {
-    /* Desktop: no effect; overridden here for mobile */
   }
 
   /* ── Bottom row (chat): hidden unless chat tab is active ── */
