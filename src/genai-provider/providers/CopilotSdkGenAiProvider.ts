@@ -12,10 +12,10 @@ import * as vscode from 'vscode';
 import { KanbanTask } from '../../types/KanbanTask';
 import { formatError } from '../../utils/errorUtils';
 import {
-    GenAiProviderConfig,
-    GenAiProviderScope,
-    GenAiSettingDescriptor,
-    IGenAiProvider,
+  GenAiProviderConfig,
+  GenAiProviderScope,
+  GenAiSettingDescriptor,
+  IGenAiProvider,
 } from '../IGenAiProvider';
 import type { CopilotEvent } from './copilot-sdk/types';
 
