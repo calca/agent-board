@@ -4,7 +4,7 @@ import { getVsCodeApi, postMessage } from '../hooks/useVsCodeApi';
 import { FlatButton } from './FlatButton';
 
 export function Toolbar() {
-  const { state, dispatch } = useBoard();
+  const { state, dispatch, imp, forceUpdate } = useBoard();
   const {
     workspaceName, mcpEnabled, squadStatus, repoIsGit,
     genAiProviders, availableAgents, squadTeams, selectedSquadProviderId,
@@ -44,6 +44,24 @@ export function Toolbar() {
       genAiProviderId: selectedSquadProviderId || undefined,
       baseBranch: selectedBaseBranch || undefined,
     };
+    if (action === 'startSquad') {
+      const sourceCol = state.columns.find(c => c.id === 'todo')?.id ?? state.columns[0]?.id;
+      const candidate = state.tasks.find(t =>
+        t.status === sourceCol
+        && (!t.copilotSession || (t.copilotSession.state !== 'running' && t.copilotSession.state !== 'starting'))
+      );
+      if (candidate) {
+        imp.current.recentlyMovedTaskIds.add(candidate.id);
+        imp.current.recentlyMovedTaskKinds.set(candidate.id, 'to-active');
+        forceUpdate();
+        setTimeout(() => {
+          imp.current.recentlyMovedTaskIds.delete(candidate.id);
+          imp.current.recentlyMovedTaskKinds.delete(candidate.id);
+          forceUpdate();
+        }, 850);
+      }
+      dispatch({ type: 'OPTIMISTIC_SQUAD_START' });
+    }
     if (isVsCodeWebview) {
       postMessage({ type: action, ...payload });
     } else {

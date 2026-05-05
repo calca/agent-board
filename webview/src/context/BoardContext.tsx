@@ -124,6 +124,7 @@ export type BoardAction =
   | { type: 'SET_SELECTED_BASE_BRANCH'; branch: string }
   | { type: 'SHOW_CLEAN_CONFIRM' }
   | { type: 'HIDE_CLEAN_CONFIRM' }
+  | { type: 'OPTIMISTIC_SQUAD_START' }
   | { type: 'START_SYNC' }
   | { type: 'SET_CONNECTION_ERROR'; error: boolean }
   | { type: 'SETTLE' };
@@ -254,6 +255,22 @@ export function boardReducer(state: BoardState, action: BoardAction): BoardState
       return { ...state, showCleanConfirm: true };
     case 'HIDE_CLEAN_CONFIRM':
       return { ...state, showCleanConfirm: false };
+    case 'OPTIMISTIC_SQUAD_START': {
+      const sourceCol = state.columns.find(c => c.id === 'todo')?.id ?? state.columns[0]?.id;
+      const activeCol = state.columns.find(c => c.id === 'inprogress')?.id ?? state.columns[1]?.id ?? sourceCol;
+      if (!sourceCol || !activeCol || sourceCol === activeCol) { return state; }
+
+      const candidate = state.tasks.find(t =>
+        t.status === sourceCol
+        && (!t.copilotSession || (t.copilotSession.state !== 'running' && t.copilotSession.state !== 'starting'))
+      );
+      if (!candidate) { return state; }
+
+      return {
+        ...state,
+        tasks: state.tasks.map(t => t.id === candidate.id ? { ...t, status: activeCol } : t),
+      };
+    }
     case 'SETTLE':
       return state;
     default:
@@ -265,6 +282,8 @@ export function boardReducer(state: BoardState, action: BoardAction): BoardState
 
 export interface ImperativeState {
   mergedSessions: Set<string>;
+  recentlyMovedTaskIds: Set<string>;
+  recentlyMovedTaskKinds: Map<string, 'to-active' | 'to-done' | 'to-source' | 'generic'>;
   toolCallStatus: Map<string, string>;
   fileChangeLists: Map<string, FileChangeInfo[]>;
   taskEventLogs: Map<string, TaskLogEntry[]>;
@@ -314,6 +333,8 @@ export function BoardProvider({ children }: { children: React.ReactNode }) {
   const [, setTick] = React.useState(0);
   const imp = useRef<ImperativeState>({
     mergedSessions: new Set(),
+    recentlyMovedTaskIds: new Set(),
+    recentlyMovedTaskKinds: new Map(),
     toolCallStatus: new Map(),
     fileChangeLists: new Map(),
     taskEventLogs: new Map(),

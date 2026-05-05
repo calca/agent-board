@@ -10,6 +10,15 @@
   --card-shadow-popup: var(--vscode-widget-shadow, 0 4px 16px rgba(0, 0, 0, 0.22));
   --column-gap: 12px;
   --card-gap: 8px;
+  --move-card-ease: cubic-bezier(0.22, 0.61, 0.36, 1);
+  --move-card-duration-generic: 520ms;
+  --move-card-duration-active: 500ms;
+  --move-card-duration-done: 500ms;
+  --move-card-duration-source: 520ms;
+  --move-card-x-distance: 3px;
+  --move-card-y-distance: 2px;
+  --move-card-scale-from: 1;
+  --move-card-scale-peak: 1;
 }
 
 * {
@@ -693,6 +702,64 @@ html, body, #root {
 
 .task-card:hover {
   background: var(--vscode-list-hoverBackground);
+}
+
+@keyframes task-card-move-in {
+  0% {
+    opacity: 0;
+    transform: translateY(calc(var(--move-card-y-distance) * 0.75)) scale(var(--move-card-scale-from));
+  }
+  60% {
+    opacity: 1;
+    transform: translateY(0) scale(var(--move-card-scale-peak));
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.task-card--moved {
+  animation: task-card-move-in var(--move-card-duration-generic) var(--move-card-ease);
+  will-change: transform, opacity;
+}
+
+@keyframes task-card-move-to-active {
+  0% { opacity: 0.05; transform: translateX(calc(var(--move-card-x-distance) * -1)) scale(var(--move-card-scale-from)); }
+  70% { opacity: 1; transform: translateX(0) scale(var(--move-card-scale-peak)); }
+  100% { opacity: 1; transform: translateX(0) scale(1); }
+}
+
+@keyframes task-card-move-to-done {
+  0% { opacity: 0.1; transform: translateY(var(--move-card-y-distance)) scale(var(--move-card-scale-from)); }
+  55% { opacity: 1; transform: translateY(0) scale(calc((var(--move-card-scale-peak) + 1) / 2)); }
+  100% { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@keyframes task-card-move-to-source {
+  0% { opacity: 0.1; transform: translateX(var(--move-card-x-distance)) scale(var(--move-card-scale-from)); }
+  55% { opacity: 1; transform: translateX(0) scale(calc((var(--move-card-scale-peak) + 1) / 2)); }
+  100% { opacity: 1; transform: translateX(0) scale(1); }
+}
+
+.task-card--moved-to-active {
+  animation: task-card-move-to-active var(--move-card-duration-active) var(--move-card-ease);
+  will-change: transform, opacity;
+}
+
+.task-card--moved-to-done {
+  animation: task-card-move-to-done var(--move-card-duration-done) var(--move-card-ease);
+  will-change: transform, opacity;
+}
+
+.task-card--moved-to-source {
+  animation: task-card-move-to-source var(--move-card-duration-source) var(--move-card-ease);
+  will-change: transform, opacity;
+}
+
+.task-card--moved-generic {
+  animation: task-card-move-in var(--move-card-duration-generic) var(--move-card-ease);
+  will-change: transform, opacity;
 }
 
 /* Keyboard focus ring for card (role=button) */
@@ -5164,6 +5231,17 @@ body.vscode-high-contrast .md-editor-container {
     .task-card,
     button {
       transition: none !important;
+    }
+
+    .task-card--moved {
+      animation: none !important;
+    }
+
+    .task-card--moved-to-active,
+    .task-card--moved-to-done,
+    .task-card--moved-to-source,
+    .task-card--moved-generic {
+      animation: none !important;
     }
   }
 }

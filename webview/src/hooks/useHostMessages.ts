@@ -13,8 +13,16 @@ import { getVsCodeApi, postMessage } from './useVsCodeApi';
 export function useHostMessages(): void {
   const { state, dispatch, imp, forceUpdate } = useBoard();
   const settleTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const moveAnimTimers = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
 
   useEffect(() => {
+    function classifyMoveKind(status: string): 'to-active' | 'to-done' | 'to-source' | 'generic' {
+      if (status === 'inprogress') { return 'to-active'; }
+      if (status === 'review' || status === 'done') { return 'to-done'; }
+      if (status === 'todo') { return 'to-source'; }
+      return 'generic';
+    }
+
     function handler(event: MessageEvent) {
       const msg = event.data;
       if (!msg || typeof msg.type !== 'string') { return; }
@@ -32,6 +40,18 @@ export function useHostMessages(): void {
               if (ot.status !== nt.status) {
                 const colLabel = columns.find(c => c.id === nt.status)?.label ?? nt.status;
                 addLog(nt.id, 'board', `Moved to "${colLabel}"`);
+
+                // Mark recently moved cards to trigger a visual transition in the board.
+                imp.current.recentlyMovedTaskIds.add(nt.id);
+                imp.current.recentlyMovedTaskKinds.set(nt.id, classifyMoveKind(nt.status));
+                const prevTimer = moveAnimTimers.current.get(nt.id);
+                if (prevTimer) { clearTimeout(prevTimer); }
+                moveAnimTimers.current.set(nt.id, setTimeout(() => {
+                  imp.current.recentlyMovedTaskIds.delete(nt.id);
+                  imp.current.recentlyMovedTaskKinds.delete(nt.id);
+                  moveAnimTimers.current.delete(nt.id);
+                  forceUpdate();
+                }, 850));
               }
               if (ot.copilotSession?.state !== nt.copilotSession?.state && nt.copilotSession) {
                 addLog(nt.id, 'board', `Session → ${nt.copilotSession.state}`);
@@ -255,7 +275,13 @@ export function useHostMessages(): void {
     }
 
     window.addEventListener('message', handler);
-    return () => window.removeEventListener('message', handler);
+    return () => {
+      window.removeEventListener('message', handler);
+      for (const timer of moveAnimTimers.current.values()) {
+        clearTimeout(timer);
+      }
+      moveAnimTimers.current.clear();
+    };
     // We intentionally use state refs that may be stale for some values;
     // the handler reads them at call time which is acceptable.
     // eslint-disable-next-line react-hooks/exhaustive-deps
