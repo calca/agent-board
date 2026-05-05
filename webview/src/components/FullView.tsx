@@ -461,7 +461,7 @@ function FvActions({ task, sessionInfo, isRunning, isMerged, hasWorktree, active
       {hasWorktree ? (
         isMerged ? (
           <FlatButton variant="danger" fullWidth icon={<svg className="fv-icon" width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M5.5 1.5A.5.5 0 0 1 6 1h4a.5.5 0 0 1 .5.5V3h3a.5.5 0 0 1 0 1h-.538l-.853 10.66A1 1 0 0 1 11.114 15H4.886a1 1 0 0 1-.995-.94L3.038 4H2.5a.5.5 0 0 1 0-1h3V1.5ZM6.5 2v1h3V2h-3Zm-2.457 2 .826 10h6.262l.826-10H4.043Z"/></svg>} onClick={() => postMessage({ type: 'deleteWorktree', sessionId: task.id })} title="Delete worktree directory and branch">
-            Delete Workspace
+            Delete Worktree
           </FlatButton>
         ) : (
           <>
