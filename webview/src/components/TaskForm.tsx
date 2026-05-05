@@ -385,7 +385,7 @@ export function TaskForm() {
 
           <div className="task-form__actions">
             {isEdit && !isRemote && editableProviderIds.includes(task!.providerId) && (
-              <FlatButton type="button" variant="danger" icon="⊘" onClick={handleDelete}>
+              <FlatButton type="button" variant="danger" onClick={handleDelete}>
                 Delete
               </FlatButton>
             )}
