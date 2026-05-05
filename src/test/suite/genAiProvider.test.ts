@@ -3,10 +3,10 @@ import * as childProcess from 'child_process';
 import { EventEmitter } from 'events';
 import * as os from 'os';
 import * as path from 'path';
-import { CopilotCliGenAiProvider } from '../../genai-provider/providers/CopilotCliGenAiProvider';
 import { GenAiProviderRegistry } from '../../genai-provider/GenAiProviderRegistry';
 import { GenAiProviderConfig, GenAiProviderScope, GenAiSettingDescriptor, IGenAiProvider } from '../../genai-provider/IGenAiProvider';
 import { buildOptimisationPrefix, FLEET_PREFIX, isGitHubRepository, YOLO_PREFIX } from '../../genai-provider/copilotCliUtils';
+import { CopilotCliGenAiProvider } from '../../genai-provider/providers/CopilotCliGenAiProvider';
 
 /** Minimal stub GenAI provider for testing the registry. */
 function makeGenAiProvider(
