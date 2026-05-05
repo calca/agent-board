@@ -3986,6 +3986,26 @@ body.vscode-high-contrast-light .task-form__meta-panel {
   margin-right: 4px;
 }
 
+.fv-log__json {
+  display: inline-block;
+  margin: 4px 0;
+  margin-left: 0;
+  padding: 8px;
+  background-color: var(--vscode-editor-background, #1e1e1e);
+  border-radius: 4px;
+  border-left: 2px solid var(--vscode-textLink-foreground, #3794ff);
+  max-width: 100%;
+  overflow-x: auto;
+  font-size: 0.85em;
+  white-space: pre;
+  word-break: break-word;
+  color: var(--vscode-editor-foreground, #d4d4d4);
+}
+
+.fv-log__text {
+  /* styles for regular text entries */
+}
+
 .fv-log__entry--board {
   color: var(--vscode-terminal-ansiYellow, #d9a500);
 }

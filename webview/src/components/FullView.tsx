@@ -12,6 +12,43 @@ import { MarkdownBody } from './MarkdownBody';
 const statusIcons: Record<string, string> = { added: '＋', modified: '✎', deleted: '✕' };
 const logSourceIcons: Record<string, string> = { board: '☰', agent: '◆', tool: '⚙', system: 'ⓘ' };
 
+/**
+ * Tries to parse and format text as JSON if it looks like JSON.
+ * Otherwise returns the text as-is.
+ */
+function tryFormatJson(text: string): { isJson: boolean; formatted: string } {
+  const trimmed = text.trim();
+  if (!trimmed.startsWith('{') && !trimmed.startsWith('[')) {
+    return { isJson: false, formatted: text };
+  }
+  try {
+    const parsed = JSON.parse(trimmed);
+    const formatted = JSON.stringify(parsed, null, 2);
+    return { isJson: true, formatted };
+  } catch {
+    return { isJson: false, formatted: text };
+  }
+}
+
+/**
+ * Renders a single log entry with proper formatting for JSON and text.
+ */
+function LogEntryComponent({ entry }: { entry: { ts: string; source: string; text: string } }) {
+  const { isJson, formatted } = tryFormatJson(entry.text);
+
+  return (
+    <div className={`fv-log__entry fv-log__entry--${entry.source}`}>
+      <span className="fv-log__ts">[{entry.ts}]</span>{' '}
+      <span className="fv-log__icon">{logSourceIcons[entry.source] ?? '●'}</span>{' '}
+      {isJson ? (
+        <pre className="fv-log__json">{formatted}</pre>
+      ) : (
+        <span className="fv-log__text">{formatted}</span>
+      )}
+    </div>
+  );
+}
+
 export function FullView() {
   const { state, dispatch, imp } = useBoard();
   const { fullViewTaskId, tasks, columns, genAiProviders, repoIsGit, repoIsGitHub, repoIsAzureDevOps, workspaceRoot, availableAgents, squadTeams } = state;
@@ -211,11 +248,7 @@ export function FullView() {
                 <div className="fv-log-scroll" ref={logScrollRef} onScroll={handleLogScroll}>
                   <div className="fv-log-entries">
                     {logs.map((e, i) => (
-                      <div key={i} className={`fv-log__entry fv-log__entry--${e.source}`}>
-                        <span className="fv-log__ts">[{e.ts}]</span>{' '}
-                        <span className="fv-log__icon">{logSourceIcons[e.source] ?? '●'}</span>{' '}
-                        <span className="fv-log__text">{e.text}</span>
-                      </div>
+                      <LogEntryComponent key={i} entry={e} />
                     ))}
                     {logs.length === 0 && <div className="fv-log__empty">No activity yet. Events will appear here in real time.</div>}
                   </div>
