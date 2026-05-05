@@ -375,13 +375,13 @@ export function activate(context: vscode.ExtensionContext): void {
   // Status bar item showing pending task count
   const statusBarItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 100);
   statusBarItem.command = 'agentBoard.openKanban';
-  void updateStatusBar(statusBarItem, jsonProvider);
+  void updateStatusBar(statusBarItem, providerRegistry, squadManager);
   statusBarItem.show();
 
   function refresh(): void {
     overviewProvider.refresh();
     agentsProvider.refresh();
-    void updateStatusBar(statusBarItem, jsonProvider);
+    void updateStatusBar(statusBarItem, providerRegistry, squadManager);
   }
 
   // Auto-refresh overview when squad status changes

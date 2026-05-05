@@ -78,17 +78,11 @@ export class ModelSelector {
     const providerId = this.getProviderId();
     const provider = this.genAiRegistry.get(providerId);
 
-    const sessionLabel = this.activeCount > 0
-      ? ` $(sync~spin) ${this.activeCount} session${this.activeCount === 1 ? '' : 's'}`
-      : '';
-
-    if (provider) {
-      this.statusBarItem.text = `$(robot) ${provider.displayName}${sessionLabel}`;
-    } else {
-      this.statusBarItem.text = `$(robot) ${providerId}${sessionLabel}`;
-    }
+    const sessionLabel = this.activeCount > 0 ? ' $(sync~spin)' : '';
+    const label = provider?.displayName ?? providerId;
+    this.statusBarItem.text = `$(robot) ${label}${sessionLabel}`;
     this.statusBarItem.tooltip = this.activeCount > 0
-      ? `${this.activeCount} active session(s) — click to open Kanban`
-      : 'Click to open Kanban board';
+      ? `${provider?.displayName ?? providerId} - ${this.activeCount} active session${this.activeCount === 1 ? '' : 's'} - click to open Kanban`
+      : `${provider?.displayName ?? providerId} - click to open Kanban`;
   }
 }

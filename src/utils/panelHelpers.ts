@@ -7,7 +7,6 @@ import type { GenAiProviderRegistry } from '../genai-provider/GenAiProviderRegis
 import type { SessionStateManager } from '../genai-provider/SessionStateManager';
 import type { SquadManager } from '../genai-provider/SquadManager';
 import type { KanbanPanel } from '../kanban/KanbanPanel';
-import type { ITaskProvider } from '../providers/ITaskProvider';
 import type { ProviderRegistry } from '../providers/ProviderRegistry';
 import type { KanbanTask } from '../types/KanbanTask';
 import type { GenAiProviderOption } from '../types/Messages';
@@ -140,10 +139,21 @@ export function handleToggleAutoSquad(squadManager: SquadManager, agentSlug?: st
   );
 }
 
-export function updateStatusBar(item: vscode.StatusBarItem, provider: ITaskProvider): Promise<void> {
-  return provider.getTasks().then(tasks => {
-    const pending = tasks.filter(t => t.status !== 'done').length;
-    item.text = pending > 0 ? `$(tasklist) ${pending} task${pending === 1 ? '' : 's'}` : '$(tasklist) Agent Board';
-    item.tooltip = pending > 0 ? `${pending} pending task${pending === 1 ? '' : 's'} – click to add` : 'Agent Board – click to add a task';
-  });
+export async function updateStatusBar(
+  item: vscode.StatusBarItem,
+  registry: ProviderRegistry,
+  squadMgr?: SquadManager,
+): Promise<void> {
+  const providers = registry.getAll().filter(p => p.isEnabled());
+  const allTasks = (await Promise.allSettled(providers.map(p => p.getTasks())))
+    .filter((r): r is PromiseFulfilledResult<KanbanTask[]> => r.status === 'fulfilled')
+    .flatMap(r => r.value);
+
+  const deduped = [...new Map(allTasks.map(t => [t.id, t])).values()];
+  const openCount = deduped.filter(t => t.status !== 'done').length;
+  const runningCount = squadMgr?.getStatus().activeCount ?? 0;
+
+  const runningLabel = runningCount > 0 ? ` $(sync~spin) ${runningCount}` : '';
+  item.text = `$(tasklist) ${openCount}${runningLabel}`;
+  item.tooltip = `${openCount} open task${openCount === 1 ? '' : 's'}${runningCount > 0 ? ` - ${runningCount} running` : ''} • click to open Kanban`;
 }
