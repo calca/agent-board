@@ -136,6 +136,17 @@ export interface IGenAiProvider {
    * webview ChatContainer via `chatBlock`/`chatStart`/`chatEnd` messages.
    */
   readonly onDidCopilotEvent?: vscode.Event<import('./providers/copilot-sdk/types').CopilotEvent>;
+
+  /**
+   * Create a provider instance isolated for a single run.
+   *
+   * Useful for providers with internal mutable state/event emitters that
+   * are not safe when multiple tasks run in parallel (e.g. squad mode).
+   *
+   * When omitted, the shared registry instance is used.
+   */
+  createIsolatedInstance?(): IGenAiProvider;
+
   /** Check whether the provider can be used in the current environment. */
   isAvailable(): Promise<boolean>;
   /**

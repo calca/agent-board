@@ -37,6 +37,8 @@ export class CopilotLauncher {
   private readonly diffWatchers = new Map<string, DiffWatcher>();
   /** Tracks the provider currently running for a given taskId (for cancellation). */
   private readonly activeProviders = new Map<string, import('./IGenAiProvider').IGenAiProvider>();
+  /** Active runs using the shared registry instance, keyed by provider id. */
+  private readonly activeSharedProviderRuns = new Map<string, number>();
 
   private readonly _onDidChangeDiff = new vscode.EventEmitter<{
     sessionId: string;
@@ -147,10 +149,28 @@ export class CopilotLauncher {
   async launch(taskId: string, providerId: string, agentSlug?: string, promptOverride?: string, baseBranch?: string): Promise<void> {
     this.logger.info(`CopilotLauncher: launching provider "${providerId}" for task ${taskId}${agentSlug ? ` with agent "${agentSlug}"` : ''}`);
 
-    const provider = this.genAiRegistry.get(providerId);
-    if (!provider) {
+    const baseProvider = this.genAiRegistry.get(providerId);
+    if (!baseProvider) {
       vscode.window.showErrorMessage(`GenAI provider "${providerId}" not found.`);
       return;
+    }
+
+    // Harden parallel execution: providers without isolated instances cannot
+    // safely run concurrently using a shared registry object.
+    const sharedRuns = this.activeSharedProviderRuns.get(providerId) ?? 0;
+    if (!baseProvider.createIsolatedInstance && sharedRuns > 0) {
+      const message = `Provider "${baseProvider.displayName}" does not support parallel sessions. Wait for the current run to finish.`;
+      this.logger.warn(`CopilotLauncher: parallel launch blocked for non-isolated provider ${providerId}`);
+      vscode.window.showErrorMessage(message);
+      this.sessionStateManager?.startSession(taskId, providerId, undefined, undefined, baseBranch);
+      this.sessionStateManager?.markError(taskId, message);
+      return;
+    }
+
+    const provider = baseProvider.createIsolatedInstance?.() ?? baseProvider;
+    const usesSharedProvider = provider === baseProvider;
+    if (usesSharedProvider) {
+      this.activeSharedProviderRuns.set(providerId, sharedRuns + 1);
     }
 
     const task = await this.resolveTask(taskId);
@@ -324,6 +344,20 @@ export class CopilotLauncher {
       if (dw) {
         dw.dispose();
         this.diffWatchers.delete(taskId);
+      }
+
+      // Isolated run instances are disposable and must not leak across tasks.
+      if (provider !== baseProvider) {
+        provider.dispose();
+      }
+
+      if (usesSharedProvider) {
+        const current = this.activeSharedProviderRuns.get(providerId) ?? 1;
+        if (current <= 1) {
+          this.activeSharedProviderRuns.delete(providerId);
+        } else {
+          this.activeSharedProviderRuns.set(providerId, current - 1);
+        }
       }
     }
   }

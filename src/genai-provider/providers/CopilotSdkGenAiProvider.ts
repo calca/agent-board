@@ -61,6 +61,10 @@ export class CopilotSdkGenAiProvider implements IGenAiProvider {
     this.model = (config.model as string | undefined) ?? this.model;
   }
 
+  createIsolatedInstance(): IGenAiProvider {
+    return new CopilotSdkGenAiProvider({ model: this.model });
+  }
+
   async isAvailable(): Promise<boolean> {
     try {
       require.resolve('@github/copilot-sdk');

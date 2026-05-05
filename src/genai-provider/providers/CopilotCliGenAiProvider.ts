@@ -69,6 +69,16 @@ export class CopilotCliGenAiProvider implements IGenAiProvider {
     if (config.rubberDuck !== undefined) { this.rubberDuck = Boolean(config.rubberDuck); }
   }
 
+  createIsolatedInstance(): IGenAiProvider {
+    return new CopilotCliGenAiProvider({
+      yolo: this.yolo,
+      fleet: this.fleet,
+      silent: this.silent,
+      remote: this.remote,
+      rubberDuck: this.rubberDuck,
+    });
+  }
+
   /** Set-up a resume session ID so the next `run()` adds `--resume=<id>`. */
   setResumeSessionId(id: string): void { this._resumeSessionId = id; }
 

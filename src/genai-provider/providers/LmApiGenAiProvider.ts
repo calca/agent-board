@@ -56,6 +56,13 @@ export class LmApiGenAiProvider implements IGenAiProvider {
     if (config.autopilot !== undefined) { this.autopilot  = Boolean(config.autopilot); }
   }
 
+  createIsolatedInstance(): IGenAiProvider {
+    return new LmApiGenAiProvider({
+      yolo: this.yolo,
+      autopilot: this.autopilot,
+    });
+  }
+
   /** Event emitter for streaming chunks (consumed by StreamController). */
   private readonly onDidStreamEmitter = new vscode.EventEmitter<string>();
   /** Subscribe to streaming output from the model. */

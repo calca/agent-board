@@ -85,6 +85,10 @@ export class ChatGenAiProvider implements IGenAiProvider {
   getSettingsDescriptors(): GenAiSettingDescriptor[] { return []; }
   applyConfig(_config: GenAiProviderConfig): void { /* no configurable settings */ }
 
+  createIsolatedInstance(): IGenAiProvider {
+    return new ChatGenAiProvider();
+  }
+
   dispose(): void {
     // Nothing to clean up
   }
