@@ -115,16 +115,24 @@ export class CopilotLauncher {
       return;
     }
 
-    // Provider not running — check if we can resume a CLI session
+    // If a provider is still active but doesn't support follow-up messages,
+    // avoid spawning a second concurrent run for the same task.
+    if (provider) {
+      this.logger.warn(`CopilotLauncher: sendFollowUp skipped for task ${taskId} — active provider does not support follow-ups`);
+      return;
+    }
+
+    // Provider not running — re-launch using the last session metadata.
+    // For CLI providers this will resume when a cliSessionId is present.
     const session = this.sessionStateManager?.getSession(taskId);
-    if (session?.cliSessionId) {
-      const sessionState = session.state;
-      if (sessionState === 'running' || sessionState === 'starting') {
-        this.logger.warn(`CopilotLauncher: sendFollowUp skipped for task ${taskId} — session already active`);
-        return;
+    if (session) {
+      if (session.cliSessionId) {
+        this.logger.info(`CopilotLauncher: sendFollowUp re-launching CLI session ${session.cliSessionId} for task ${taskId}`);
+      } else {
+        this.logger.info(`CopilotLauncher: sendFollowUp re-launching provider ${session.providerId} for task ${taskId}`);
       }
-      this.logger.info(`CopilotLauncher: sendFollowUp re-launching CLI session ${session.cliSessionId} for task ${taskId}`);
-      await this.launch(taskId, session.providerId, undefined, text);
+
+      await this.launch(taskId, session.providerId, undefined, text, session.baseBranch);
       return;
     }
 
