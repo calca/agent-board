@@ -1,6 +1,9 @@
 import * as assert from 'assert';
+import * as childProcess from 'child_process';
+import { EventEmitter } from 'events';
 import * as os from 'os';
 import * as path from 'path';
+import { CopilotCliGenAiProvider } from '../../genai-provider/providers/CopilotCliGenAiProvider';
 import { GenAiProviderRegistry } from '../../genai-provider/GenAiProviderRegistry';
 import { GenAiProviderConfig, GenAiProviderScope, GenAiSettingDescriptor, IGenAiProvider } from '../../genai-provider/IGenAiProvider';
 import { buildOptimisationPrefix, FLEET_PREFIX, isGitHubRepository, YOLO_PREFIX } from '../../genai-provider/copilotCliUtils';
@@ -303,5 +306,81 @@ suite('IGenAiProvider.applyConfig', () => {
   test('applyConfig ignores unknown keys gracefully', () => {
     const p = makeGenAiProvider('stub', 'Stub');
     assert.doesNotThrow(() => p.applyConfig({ unknownKey: 42 }));
+  });
+});
+
+suite('CopilotCliGenAiProvider process exits', () => {
+  test('run rejects when copilot exits with non-zero code', async () => {
+    const originalSpawn = childProcess.spawn;
+
+    class MockSpawnedProcess extends EventEmitter {
+      stdout = new EventEmitter();
+      stderr = new EventEmitter();
+      stdin = { end: () => undefined };
+    }
+
+    try {
+      (childProcess as { spawn: (...args: unknown[]) => unknown }).spawn = ((cmd: string) => {
+        const proc = new MockSpawnedProcess();
+
+        // isAvailable() calls `copilot --version` and expects exit 0.
+        if (cmd === 'copilot') {
+          process.nextTick(() => {
+            proc.stderr.emit('data', Buffer.from("error: unknown option '--rubber-duck'\n", 'utf-8'));
+            proc.emit('close', 2);
+          });
+        }
+
+        return proc;
+      }) as (...args: unknown[]) => unknown;
+
+      const provider = new CopilotCliGenAiProvider({
+        yolo: false,
+        silent: true,
+        remote: false,
+        rubberDuck: false,
+      });
+
+      await assert.rejects(
+        () => provider.run('hello', undefined, os.tmpdir()),
+        /exited with code 2/i,
+      );
+    } finally {
+      (childProcess as { spawn: (...args: unknown[]) => unknown }).spawn = originalSpawn as (...args: unknown[]) => unknown;
+    }
+  });
+
+  test('run resolves when copilot exits with code 0', async () => {
+    const originalSpawn = childProcess.spawn;
+
+    class MockSpawnedProcess extends EventEmitter {
+      stdout = new EventEmitter();
+      stderr = new EventEmitter();
+      stdin = { end: () => undefined };
+    }
+
+    try {
+      (childProcess as { spawn: (...args: unknown[]) => unknown }).spawn = (() => {
+        const proc = new MockSpawnedProcess();
+        process.nextTick(() => {
+          proc.stdout.emit('data', Buffer.from('ok\n', 'utf-8'));
+          proc.emit('close', 0);
+        });
+        return proc;
+      }) as (...args: unknown[]) => unknown;
+
+      const provider = new CopilotCliGenAiProvider({
+        yolo: false,
+        silent: true,
+        remote: false,
+        rubberDuck: false,
+      });
+
+      await assert.doesNotReject(
+        () => provider.run('hello', undefined, os.tmpdir()),
+      );
+    } finally {
+      (childProcess as { spawn: (...args: unknown[]) => unknown }).spawn = originalSpawn as (...args: unknown[]) => unknown;
+    }
   });
 });

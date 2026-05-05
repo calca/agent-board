@@ -135,6 +135,7 @@ export class CopilotCliGenAiProvider implements IGenAiProvider {
   private _spawnCopilot(prompt: string, cwd?: string, resumeId?: string, useRemote?: boolean, agentSlug?: string): Promise<void> {
     return new Promise<void>((resolve, reject) => {
       const args: string[] = [];
+      let stderrOutput = '';
       if (resumeId) {
         args.push(`--resume=${resumeId}`);
       }
@@ -174,6 +175,7 @@ export class CopilotCliGenAiProvider implements IGenAiProvider {
       });
       proc.stderr?.on("data", (chunk: Buffer) => {
         const t = chunk.toString("utf-8");
+        stderrOutput += t;
         this._emit(t);
         this._onDidCopilotEventEmitter.fire({ type: 'error', content: t });
         this.logger.warn("[github-copilot] stderr: %s", t.trimEnd());
@@ -192,7 +194,17 @@ export class CopilotCliGenAiProvider implements IGenAiProvider {
         }
         this._emit(`\n[github-copilot] exit ${code ?? 'null'}.\n`);
         this._onDidCopilotEventEmitter.fire({ type: 'end' });
-        resolve();
+
+        if (code === 0) {
+          resolve();
+          return;
+        }
+
+        const details = stderrOutput.trim();
+        const message = details
+          ? `Copilot CLI exited with code ${code ?? 'null'}: ${details}`
+          : `Copilot CLI exited with code ${code ?? 'null'}`;
+        reject(new Error(message));
       });
       proc.on("error", (err) => {
         this._proc = undefined;
