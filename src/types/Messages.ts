@@ -143,6 +143,7 @@ export type WebViewToHost =
   | { type: 'openWorktree'; worktreePath: string }
   | { type: 'startSquad'; agentSlug?: string; genAiProviderId?: string; baseBranch?: string }
   | { type: 'toggleAutoSquad'; agentSlug?: string; genAiProviderId?: string; baseBranch?: string }
+  | { type: 'setSelectedGenAiProvider'; genAiProviderId: string }
   | { type: 'toggleMcp' }
   | { type: 'toggleMobileServer' }
   | { type: 'setMobileTunnelEnabled'; enabled: boolean }

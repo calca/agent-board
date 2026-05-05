@@ -52,6 +52,15 @@ export class ModelSelector {
     return selected?.providerId;
   }
 
+  /** Persist and apply a provider selection coming from external UI (e.g. webview toolbar). */
+  async setProviderId(providerId: string): Promise<void> {
+    if (!this.genAiRegistry.get(providerId)) {
+      return;
+    }
+    await this.context.workspaceState.update(ModelSelector.STATE_KEY, providerId);
+    this.updateStatusBar();
+  }
+
   /** Get the currently selected provider id. */
   getProviderId(): string {
     const defaultId = this.genAiRegistry.getAll()[0]?.id ?? 'chat';

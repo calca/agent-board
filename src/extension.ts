@@ -375,19 +375,25 @@ export function activate(context: vscode.ExtensionContext): void {
   // Status bar item showing pending task count
   const statusBarItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 100);
   statusBarItem.command = 'agentBoard.openKanban';
-  void updateStatusBar(statusBarItem, providerRegistry, squadManager);
+
+  function syncStatusBars(): void {
+    void updateStatusBar(statusBarItem, providerRegistry, squadManager);
+    modelSelector.updateSquadStatus(squadManager.getStatus());
+  }
+
+  syncStatusBars();
   statusBarItem.show();
 
   function refresh(): void {
     overviewProvider.refresh();
     agentsProvider.refresh();
-    void updateStatusBar(statusBarItem, providerRegistry, squadManager);
+    syncStatusBars();
   }
 
   // Auto-refresh overview when squad status changes
   squadManager.onDidChangeStatus(() => {
     overviewProvider.refresh();
-    modelSelector.updateSquadStatus(squadManager.getStatus());
+    syncStatusBars();
   });
 
   // ── WebView panel serializer ───────────────────────────────────────────
@@ -517,6 +523,8 @@ export function activate(context: vscode.ExtensionContext): void {
       getSquadTeams,
       refreshAgents,
       refresh,
+      syncStatusBars,
+      setSelectedGenAiProvider: (providerId: string) => modelSelector.setProviderId(providerId),
       pushMobileStatus: (p) => pushMobileStatus(p),
       mcpRegistration,
     });
@@ -560,6 +568,7 @@ export function activate(context: vscode.ExtensionContext): void {
     const squadSub = squadManager.onDidChangeStatus(async () => {
       panel.updateSquadStatus(squadManager.getStatus());
       await sendTasksToPanel(panel, providerRegistry, genAiRegistry, squadManager, sessionStateManager);
+      syncStatusBars();
     });
     panel.onDispose(() => squadSub.dispose());
 
@@ -608,6 +617,7 @@ export function activate(context: vscode.ExtensionContext): void {
     // Auto-refresh board when session state changes (worktree creation, running, done, error)
     const sessionSub = sessionStateManager.onDidChangeState(async () => {
       await sendTasksToPanel(panel, providerRegistry, genAiRegistry, squadManager, sessionStateManager);
+      syncStatusBars();
     });
     panel.onDispose(() => sessionSub.dispose());
 
@@ -663,6 +673,7 @@ export function activate(context: vscode.ExtensionContext): void {
       githubProvider.startPolling(30_000);
       const ghPollSub = githubProvider.onDidDetectRemoteChange(async () => {
         await sendTasksToPanel(panel, providerRegistry, genAiRegistry, squadManager, sessionStateManager);
+        syncStatusBars();
       });
       panel.onDispose(() => {
         githubProvider.stopPolling();
@@ -695,8 +706,10 @@ export function activate(context: vscode.ExtensionContext): void {
     const isGitHub = await isGitHubRepository();
     const genAiProviderId = await pickGenAiProvider(genAiRegistry, isGit, isGitHub);
     if (genAiProviderId === undefined) { return; }
+    await modelSelector.setProviderId(genAiProviderId);
     const agentSlug = await pickAgent(discoveredAgents);
     await handleStartSquad(squadManager, agentSlug, genAiProviderId);
+    syncStatusBars();
   });
 
   const toggleAutoSquad = vscode.commands.registerCommand('agentBoard.toggleAutoSquad', async () => {
@@ -709,8 +722,10 @@ export function activate(context: vscode.ExtensionContext): void {
     const isGitHub = await isGitHubRepository();
     const genAiProviderId = await pickGenAiProvider(genAiRegistry, isGit, isGitHub);
     if (genAiProviderId === undefined) { return; }
+    await modelSelector.setProviderId(genAiProviderId);
     const agentSlug = await pickAgent(discoveredAgents);
     handleToggleAutoSquad(squadManager, agentSlug, genAiProviderId);
+    syncStatusBars();
   });
 
   const toggleMaximize = vscode.commands.registerCommand('agentBoard.toggleMaximize', () => {

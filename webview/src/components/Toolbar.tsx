@@ -146,7 +146,13 @@ export function Toolbar() {
             className="toolbar__select"
             title="Provider"
             value={selectedSquadProviderId || (squadProviders[0]?.id ?? '')}
-            onChange={e => dispatch({ type: 'SET_SELECTED_SQUAD_PROVIDER', id: e.target.value })}
+            onChange={e => {
+              const id = e.target.value;
+              dispatch({ type: 'SET_SELECTED_SQUAD_PROVIDER', id });
+              if (isVsCodeWebview && id) {
+                postMessage({ type: 'setSelectedGenAiProvider', genAiProviderId: id });
+              }
+            }}
           >
             {squadProviders.length === 0
               ? <option value="">No providers</option>

@@ -44,6 +44,8 @@ export interface MessageDispatcherDeps {
   getSquadTeams: () => SquadTeam[];
   refreshAgents: () => void;
   refresh: () => void;
+  syncStatusBars: () => void;
+  setSelectedGenAiProvider: (providerId: string) => Promise<void>;
   pushMobileStatus: (panel: KanbanPanel) => Promise<void>;
   mcpRegistration: McpRegistration;
 }
@@ -62,6 +64,8 @@ export function wireMessageDispatcher(deps: MessageDispatcherDeps): void {
     getSquadTeams,
     refreshAgents,
     refresh,
+    syncStatusBars,
+    setSelectedGenAiProvider,
     pushMobileStatus,
     mcpRegistration,
   } = deps;
@@ -70,6 +74,28 @@ export function wireMessageDispatcher(deps: MessageDispatcherDeps): void {
 
   // Clear any previously registered handlers to avoid duplicates on re-wire.
   panel.clearMessageHandlers();
+
+  const syncStatusBarMessageTypes = new Set<string>([
+    'ready',
+    'refreshRequest',
+    'taskMoved',
+    'openCopilot',
+    'startSquad',
+    'toggleAutoSquad',
+    'saveTask',
+    'editTask',
+    'deleteTask',
+    'hideTask',
+    'launchProvider',
+    'cancelSession',
+    'resetSession',
+    'mergeWorktree',
+    'alignWorktree',
+    'agentMerge',
+    'deleteWorktree',
+    'createPullRequest',
+    'setSelectedGenAiProvider',
+  ]);
 
   panel.onMessage(async (msg) => {
     switch (msg.type) {
@@ -141,6 +167,10 @@ export function wireMessageDispatcher(deps: MessageDispatcherDeps): void {
         }
         handleToggleAutoSquad(squadManager, msg.agentSlug, msg.genAiProviderId, msg.baseBranch);
         panel.updateSquadStatus(squadManager.getStatus());
+        break;
+
+      case 'setSelectedGenAiProvider':
+        await setSelectedGenAiProvider(msg.genAiProviderId);
         break;
 
       case 'toggleMcp': {
@@ -753,6 +783,10 @@ export function wireMessageDispatcher(deps: MessageDispatcherDeps): void {
         }
         break;
       }
+    }
+
+    if (syncStatusBarMessageTypes.has(msg.type)) {
+      syncStatusBars();
     }
   });
 }
