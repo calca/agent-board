@@ -11,15 +11,6 @@ function normalizeMd(raw: string): string {
   return raw.replace(/[\u200b\u00a0]/g, '').replace(/^\s+$/, '').trim();
 }
 
-type FormSnapshot = {
-  title: string;
-  body: string;
-  status: string;
-  labels: string;
-  assignee: string;
-  notes: string;
-};
-
 function getFocusableElements(container: HTMLElement): HTMLElement[] {
   const candidates = container.querySelectorAll<HTMLElement>(
     'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"]), [contenteditable="true"]'
@@ -37,7 +28,6 @@ export function TaskForm() {
   const formRef = useRef<HTMLFormElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
   const previouslyFocusedRef = useRef<HTMLElement | null>(null);
-  const initialSnapshotRef = useRef<FormSnapshot | null>(null);
   const [notesOpen, setNotesOpen] = useState(false);
   const [notesSaveState, setNotesSaveState] = useState<'idle' | 'saving' | 'saved'>('idle');
   const notesTouched = useRef(false);
@@ -57,48 +47,12 @@ export function TaskForm() {
   const remoteProviders = ['github', 'azure-devops', 'beads'];
   const isRemote = task ? remoteProviders.includes(task.providerId) : false;
 
-  const getCurrentSnapshot = useCallback((): FormSnapshot => {
-    const form = formRef.current;
-    const titleEl = form?.querySelector('#tf-title') as HTMLInputElement | null;
-    const labelsEl = form?.querySelector('#tf-labels') as HTMLInputElement | null;
-    const assigneeEl = form?.querySelector('#tf-assignee') as HTMLInputElement | null;
-    const statusEl = form?.querySelector('#tf-status') as HTMLSelectElement | null;
-
-    const title = (titleEl?.value ?? task?.title ?? '').trim();
-    const body = normalizeMd(bodyRef.current?.getMarkdown() ?? task?.body ?? '');
-    const status = (statusEl?.value ?? task?.status ?? cols[0]?.id ?? 'todo').trim();
-    const labels = (labelsEl?.value ?? task?.labels.join(', ') ?? '').trim();
-    const assignee = (assigneeEl?.value ?? task?.assignee ?? (currentUser || 'me')).trim();
-    const notes = normalizeMd(notesOpen && notesRef.current ? notesRef.current.getMarkdown() : savedNotes ?? '');
-
-    return { title, body, status, labels, assignee, notes };
-  }, [cols, currentUser, notesOpen, savedNotes, task]);
-
-  const hasUnsavedChanges = useCallback(() => {
-    if (!initialSnapshotRef.current) { return false; }
-    const current = getCurrentSnapshot();
-    const initial = initialSnapshotRef.current;
-    return current.title !== initial.title
-      || current.body !== initial.body
-      || current.status !== initial.status
-      || current.labels !== initial.labels
-      || current.assignee !== initial.assignee
-      || current.notes !== initial.notes;
-  }, [getCurrentSnapshot]);
-
   const flushLocalNotes = useCallback(() => {
     if (!task || !isRemote || !notesTouched.current) { return; }
     const notes = normalizeMd(notesOpen && notesRef.current ? notesRef.current.getMarkdown() : savedNotes ?? '');
     setNotesSaveState('saving');
     postMessage({ type: 'saveLocalNotes', taskId: task.id, providerId: task.providerId, notes });
     notesTouched.current = false;
-
-    if (initialSnapshotRef.current) {
-      initialSnapshotRef.current = {
-        ...initialSnapshotRef.current,
-        notes,
-      };
-    }
 
     if (notesSavedBadgeTimerRef.current) {
       window.clearTimeout(notesSavedBadgeTimerRef.current);
@@ -136,24 +90,9 @@ export function TaskForm() {
   }, []);
 
   const requestClose = useCallback(() => {
-    if (hasUnsavedChanges() && !window.confirm('Discard unsaved changes?')) {
-      return;
-    }
     flushLocalNotes();
     dispatch({ type: 'CLOSE_TASK_FORM' });
-  }, [dispatch, flushLocalNotes, hasUnsavedChanges]);
-
-  useEffect(() => {
-    if (!isOpen) { return; }
-    initialSnapshotRef.current = {
-      title: (task?.title ?? '').trim(),
-      body: normalizeMd(task?.body ?? ''),
-      status: (task?.status ?? cols[0]?.id ?? 'todo').trim(),
-      labels: (task?.labels.join(', ') ?? '').trim(),
-      assignee: (task?.assignee ?? (currentUser || 'me')).trim(),
-      notes: normalizeMd(savedNotes ?? ''),
-    };
-  }, [isOpen, task?.id, task?.title, task?.body, task?.status, task?.labels, task?.assignee, cols, currentUser, savedNotes]);
+  }, [dispatch, flushLocalNotes]);
 
   useEffect(() => {
     if (!isOpen || !panelRef.current) { return; }
