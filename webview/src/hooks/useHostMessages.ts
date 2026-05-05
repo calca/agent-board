@@ -14,6 +14,7 @@ export function useHostMessages(): void {
   const { state, dispatch, imp, forceUpdate } = useBoard();
   const settleTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const moveAnimTimers = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
+  const newCardAnimTimers = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
 
   useEffect(() => {
     function classifyMoveKind(status: string): 'to-active' | 'to-done' | 'to-source' | 'generic' {
@@ -36,6 +37,17 @@ export function useHostMessages(): void {
           // Track state transitions for per-task logs
           for (const nt of newTasks) {
             const ot = prevTasks.find(t => t.id === nt.id);
+            if (!ot && prevTasks.length > 0) {
+              // Brand-new task: animate its entry
+              imp.current.recentlyNewTaskIds.add(nt.id);
+              const prevNewTimer = newCardAnimTimers.current.get(nt.id);
+              if (prevNewTimer) { clearTimeout(prevNewTimer); }
+              newCardAnimTimers.current.set(nt.id, setTimeout(() => {
+                imp.current.recentlyNewTaskIds.delete(nt.id);
+                newCardAnimTimers.current.delete(nt.id);
+                forceUpdate();
+              }, 700));
+            }
             if (ot) {
               if (ot.status !== nt.status) {
                 const colLabel = columns.find(c => c.id === nt.status)?.label ?? nt.status;

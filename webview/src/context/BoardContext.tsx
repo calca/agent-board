@@ -282,6 +282,7 @@ export function boardReducer(state: BoardState, action: BoardAction): BoardState
 
 export interface ImperativeState {
   mergedSessions: Set<string>;
+  recentlyNewTaskIds: Set<string>;
   recentlyMovedTaskIds: Set<string>;
   recentlyMovedTaskKinds: Map<string, 'to-active' | 'to-done' | 'to-source' | 'generic'>;
   toolCallStatus: Map<string, string>;
@@ -333,6 +334,7 @@ export function BoardProvider({ children }: { children: React.ReactNode }) {
   const [, setTick] = React.useState(0);
   const imp = useRef<ImperativeState>({
     mergedSessions: new Set(),
+    recentlyNewTaskIds: new Set(),
     recentlyMovedTaskIds: new Set(),
     recentlyMovedTaskKinds: new Map(),
     toolCallStatus: new Map(),

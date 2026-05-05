@@ -27,6 +27,7 @@ export function TaskCard({ task }: { task: KanbanTask }) {
   const stateModifier = session ? ` task-card--state-${session.state}` : '';
   const movedKind = imp.current.recentlyMovedTaskKinds.get(task.id) ?? 'generic';
   const movedModifier = imp.current.recentlyMovedTaskIds.has(task.id) ? ` task-card--moved task-card--moved-${movedKind}` : '';
+  const newModifier = (!imp.current.recentlyMovedTaskIds.has(task.id) && imp.current.recentlyNewTaskIds.has(task.id)) ? ' task-card--new' : '';
 
   const initials = task.assignee ? task.assignee.slice(0, 2).toUpperCase() : '';
   const avatarUrl = (task.meta as Record<string, unknown>)?.avatarUrl as string | undefined;
@@ -108,7 +109,7 @@ export function TaskCard({ task }: { task: KanbanTask }) {
 
   return (
     <div
-      className={`task-card${stateModifier}${movedModifier}`}
+      className={`task-card${stateModifier}${movedModifier}${newModifier}`}
       data-task-id={task.id}
       role="button"
       tabIndex={0}
