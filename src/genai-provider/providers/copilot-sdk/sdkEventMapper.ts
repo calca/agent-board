@@ -49,7 +49,7 @@ export function mapSdkEvent(e: RawSdkEvent, emit: CopilotEventHandler): void {
 
     case 'tool.execution_complete': {
       const raw = e.data?.result ?? e.data?.output ?? '';
-      const content = typeof raw === 'string' ? raw : JSON.stringify(raw);
+      const content = typeof raw === 'string' ? raw : JSON.stringify(raw, null, 2);
       emit({ type: 'result', content });
       break;
     }

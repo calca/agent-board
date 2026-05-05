@@ -154,7 +154,7 @@ export class CopilotSdkGenAiProvider implements IGenAiProvider {
 
         session.on('tool.execution_complete', (event) => {
           const output = event.data.result ?? '';
-          const content = typeof output === 'string' ? output : JSON.stringify(output);
+          const content = typeof output === 'string' ? output : JSON.stringify(output, null, 2);
           emit({ type: 'result', content });
         });
 
