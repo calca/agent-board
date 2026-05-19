@@ -246,8 +246,8 @@ export function wireMessageDispatcher(deps: MessageDispatcherDeps): void {
 
       case 'deleteTask': {
         const delProvider = providerRegistry.get(msg.providerId);
-        if (delProvider && 'deleteTaskById' in delProvider && typeof (delProvider as Record<string, unknown>).deleteTaskById === 'function') {
-          await (delProvider as unknown as { deleteTaskById(id: string): Promise<boolean> }).deleteTaskById(msg.taskId);
+        if (delProvider?.deleteTaskById) {
+          await delProvider.deleteTaskById(msg.taskId);
         }
         refresh();
         await sendTasksToPanel(panel, providerRegistry, genAiRegistry, squadManager, sessionStateManager);

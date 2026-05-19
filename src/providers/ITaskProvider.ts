@@ -71,4 +71,10 @@ export interface ITaskProvider {
    * retrieval needed".
    */
   getIssueRetrievalPrompt?(task: KanbanTask): string | undefined;
+
+  /**
+   * Delete a task by id. Returns true if the task existed and was deleted.
+   * Providers that don't support deletion may omit this method.
+   */
+  deleteTaskById?(id: string): Promise<boolean>;
 }
