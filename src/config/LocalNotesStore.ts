@@ -1,6 +1,7 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import * as vscode from 'vscode';
+import { Logger } from '../utils/logger';
 
 /**
  * Centralised store for per-task local notes.
@@ -44,10 +45,10 @@ export class LocalNotesStore {
             if (taskId && notes) {
               result[taskId] = notes;
             }
-          } catch { /* skip corrupt files */ }
+          } catch (err) { Logger.getInstance().debug('LocalNotesStore: failed to parse file %s: %s', fp, err); }
         }
       }
-    } catch { /* empty */ }
+    } catch (err) { Logger.getInstance().debug('LocalNotesStore: failed to enumerate providers: %s', err); }
     return result;
   }
 
@@ -69,7 +70,7 @@ export class LocalNotesStore {
   static delete(providerId: string, taskId: string): void {
     const fp = LocalNotesStore.notePath(providerId, taskId);
     if (!fp) { return; }
-    try { fs.unlinkSync(fp); } catch { /* already gone */ }
+    try { fs.unlinkSync(fp); } catch (err) { Logger.getInstance().debug('LocalNotesStore: unlink failed for %s: %s', fp, err); }
   }
 
   // ── internal ──────────────────────────────────────────────────────
@@ -94,8 +95,9 @@ export class LocalNotesStore {
       const obj = JSON.parse(raw) as Record<string, unknown>;
       const notes = obj?.notes;
       return typeof notes === 'string' && notes ? notes : undefined;
-    } catch {
-      return undefined;
+} catch (err) {
+       Logger.getInstance().debug('LocalNotesStore: failed to read notes from %s: %s', fp, err);
+       return undefined;
     }
   }
 }

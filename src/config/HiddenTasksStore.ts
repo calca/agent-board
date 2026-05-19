@@ -1,6 +1,7 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import * as vscode from 'vscode';
+import { Logger } from '../utils/logger';
 
 /**
  * Centralised store for hidden task IDs.
@@ -95,7 +96,8 @@ export class HiddenTasksStore {
         return parsed as string[];
       }
       return [];
-    } catch {
+    } catch (err) {
+      Logger.getInstance().debug('HiddenTasksStore: failed to read list from %s: %s', fp, err);
       return [];
     }
   }
