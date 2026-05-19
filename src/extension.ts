@@ -1,120 +1,38 @@
-import type * as LocalTunnelNS from 'localtunnel';
-import * as QRCode from 'qrcode';
 import * as vscode from 'vscode';
 import { AgentManager } from './agentManager';
 import { AgentsTreeProvider, AgentTreeItem } from './agentsTreeProvider';
+import { bootstrapGenAi, bootstrapMobile, bootstrapProviders, bootstrapSquad } from './bootstrap';
 import { refreshTasksCommand } from './commands/refreshTasks';
 import { ProjectConfig } from './config/ProjectConfig';
-import { GIT_REF_SCHEME, GitRefContentProvider } from './diff/DiffWatcher';
-import { AgentInfo, discoverAgents } from './genai-provider/agentDiscovery';
-import { CopilotLauncher } from './genai-provider/CopilotLauncher';
+import { AgentInfo } from './genai-provider/agentDiscovery';
 import { GenAiProviderRegistry } from './genai-provider/GenAiProviderRegistry';
-import { ModelSelector } from './genai-provider/ModelSelector';
-import { ChatGenAiProvider } from './genai-provider/providers/ChatGenAiProvider';
 import { mapEventToBlock } from './genai-provider/providers/copilot-sdk/eventMapper';
-import { CopilotCliGenAiProvider } from './genai-provider/providers/CopilotCliGenAiProvider';
-import { CopilotSdkGenAiProvider } from './genai-provider/providers/CopilotSdkGenAiProvider';
-import { LmApiGenAiProvider } from './genai-provider/providers/LmApiGenAiProvider';
-import { SessionStateManager } from './genai-provider/SessionStateManager';
-import { SquadManager } from './genai-provider/SquadManager';
 import { PullRequestManager } from './github/PullRequestManager';
 import { KanbanPanel } from './kanban/KanbanPanel';
 import { McpRegistration } from './mcp/McpRegistration';
 import { wireMessageDispatcher } from './MessageDispatcher';
 import { OverviewTreeProvider } from './overviewTreeProvider';
-import { AzureDevOpsProvider } from './providers/AzureDevOpsProvider';
-import { BeadsProvider } from './providers/BeadsProvider';
-import { GitHubProvider } from './providers/GitHubProvider';
 import type { ITaskProvider } from './providers/ITaskProvider';
-import { JsonProvider } from './providers/JsonProvider';
-import { MarkdownProvider } from './providers/MarkdownProvider';
 import { ProviderPicker } from './providers/ProviderPicker';
-import { ProviderRegistry } from './providers/ProviderRegistry';
-import { LocalApiServer } from './server/LocalApiServer';
 import { SettingsPanel } from './settings/SettingsPanel';
 import { TaskTreeItem } from './tasksTreeProvider';
 import { buildColumnOrder, DEFAULT_COLUMN_COLORS, DEFAULT_COLUMN_LABELS } from './types/ColumnId';
-import type { AgentOption, SquadTeam } from './types/Messages';
 import { Logger, LogLevel } from './utils/logger';
 import { handleStartSquad, handleToggleAutoSquad, sendTasksToPanel, updateStatusBar } from './utils/panelHelpers';
-import { getLocalIPv4, isAzureDevOpsRepository, isGitHubRepository, isGitRepository } from './utils/repoDetection';
+import { isAzureDevOpsRepository, isGitHubRepository, isGitRepository } from './utils/repoDetection';
 
 export function activate(context: vscode.ExtensionContext): void {
   const logger = Logger.getInstance();
   logger.info('Agent Board activating…');
 
-  // ── Provider infrastructure ────────────────────────────────────────────
+  // ── Bootstrap infrastructure ───────────────────────────────────────────
 
-  const providerRegistry = new ProviderRegistry();
+  const { providerRegistry, githubProvider, jsonProvider } = bootstrapProviders(context);
+  const { genAiRegistry } = bootstrapGenAi();
+  const { mobileServer, getMobileStatusPayload, setTunnelEnabled, isTunnelEnabled, ensureMobileTunnel, stopMobileTunnel } = bootstrapMobile(context.extensionUri.fsPath, vscode.workspace.name ?? vscode.workspace.workspaceFolders?.[0]?.name ?? '', providerRegistry);
+  const { sessionStateManager, copilotLauncher, modelSelector, squadManager, agentOptions, getSquadTeams, refreshAgents, getDiscoveredAgents } = bootstrapSquad(context, providerRegistry, genAiRegistry);
+
   const providerPicker = new ProviderPicker(providerRegistry, context);
-
-  const mobileServerPort = 3333;
-  const mobileServer = new LocalApiServer(providerRegistry, context.extensionUri.fsPath, vscode.workspace.name ?? vscode.workspace.workspaceFolders?.[0]?.name ?? '');
-  let mobileTunnelEnabled = false;
-  let mobileTunnel: LocalTunnelNS.Tunnel | undefined;
-
-  const stopMobileTunnel = async (): Promise<void> => {
-    if (!mobileTunnel) {
-      return;
-    }
-    try {
-      await mobileTunnel.close();
-    } catch {
-      // no-op
-    }
-    mobileTunnel = undefined;
-  };
-
-  const ensureMobileTunnel = async (): Promise<void> => {
-    if (!mobileTunnelEnabled || !mobileServer.isRunning() || mobileTunnel) {
-      return;
-    }
-    const ltModule = await import('localtunnel');
-    const ltFn = (ltModule as unknown as {
-      default?: (opts: { port: number }) => Promise<LocalTunnelNS.Tunnel>;
-      'module.exports'?: (opts: { port: number }) => Promise<LocalTunnelNS.Tunnel>;
-    }).default ?? (ltModule as unknown as {
-      default?: (opts: { port: number }) => Promise<LocalTunnelNS.Tunnel>;
-      'module.exports'?: (opts: { port: number }) => Promise<LocalTunnelNS.Tunnel>;
-    })['module.exports'];
-    if (!ltFn) {
-      throw new Error('localtunnel module did not expose a callable export');
-    }
-    const tunnel = await ltFn({ port: mobileServer.getPort() });
-    mobileTunnel = tunnel;
-    tunnel.on('close', () => {
-      mobileTunnel = undefined;
-    });
-  };
-
-  const getMobileStatusPayload = async () => {
-    const localIp = getLocalIPv4() ?? '127.0.0.1';
-    if (!mobileServer.isRunning()) {
-      await stopMobileTunnel();
-    } else if (mobileTunnelEnabled) {
-      await ensureMobileTunnel();
-    }
-
-    const baseUrl = mobileTunnelEnabled && mobileTunnel?.url
-      ? mobileTunnel.url
-      : `http://${localIp}:${mobileServer.getPort()}`;
-    const sessionToken = mobileServer.getSessionToken();
-    const url = sessionToken ? `${baseUrl}/?token=${sessionToken}` : baseUrl;
-    const qrSvg = await QRCode.toString(url, {
-      type: 'svg',
-      margin: 1,
-      width: 240,
-    });
-    return {
-      running: mobileServer.isRunning(),
-      url,
-      devices: mobileServer.getConnectedDevices().map(d => ({ ip: d.ip, lastAccess: d.lastAccess })),
-      qrSvg,
-      tunnelEnabled: mobileTunnelEnabled,
-      tunnelActive: Boolean(mobileTunnel?.url),
-      tunnelUrl: mobileTunnel?.url,
-    };
-  };
 
   const pushMobileStatus = async (panel: KanbanPanel): Promise<void> => {
     panel.postMessage({ type: 'mobileStatus', ...(await getMobileStatusPayload()) });
@@ -123,52 +41,6 @@ export function activate(context: vscode.ExtensionContext): void {
   // GitHub service layer
   const prManager = new PullRequestManager();
 
-  // Register the content provider for agent-board-git: URIs (used by diff views)
-  context.subscriptions.push(
-    vscode.workspace.registerTextDocumentContentProvider(GIT_REF_SCHEME, new GitRefContentProvider()),
-  );
-
-  // Register the GitHub provider (uses gh CLI)
-  const githubProvider = new GitHubProvider(context);
-  context.subscriptions.push(githubProvider);
-  providerRegistry.register(githubProvider);
-
-  // ── GenAI provider infrastructure ─────────────────────────────────────
-
-  const genAiRegistry = new GenAiProviderRegistry();
-
-  // Global providers (VS Code integrated) — always registered
-  genAiRegistry.register(new ChatGenAiProvider());
-
-  // LmApiGenAiProvider — reads initial config from project file / VS Code settings
-  const vsCodeApiCfg = ProjectConfig.getProjectConfig()?.genAiProviders?.['vscode-api'] ?? {};
-  const lmYolo = (vsCodeApiCfg.yolo as boolean | undefined) ?? vscode.workspace.getConfiguration('agentBoard').get<boolean>('githubCopilot.yolo', true);
-  genAiRegistry.register(new LmApiGenAiProvider({
-    yolo: lmYolo,
-    autopilot: lmYolo,
-  }));
-
-  // GitHub Copilot — reads initial config from project file / VS Code settings
-  const ghCopilotCfg = ProjectConfig.getProjectConfig()?.genAiProviders?.['github-copilot'] ?? {};
-  const ghCopilotConfig: Record<string, unknown> = {
-    ...ghCopilotCfg,
-    yolo: (ghCopilotCfg.yolo as boolean | undefined) ?? vscode.workspace.getConfiguration('agentBoard').get<boolean>('githubCopilot.yolo', true),
-    fleet: (ghCopilotCfg.fleet as boolean | undefined) ?? vscode.workspace.getConfiguration('agentBoard').get<boolean>('githubCopilot.fleet', false),
-    silent:     (ghCopilotCfg.silent     as boolean | undefined) ?? vscode.workspace.getConfiguration('agentBoard').get<boolean>('githubCopilot.silent', true),
-    remote:     (ghCopilotCfg.remote     as boolean | undefined) ?? vscode.workspace.getConfiguration('agentBoard').get<boolean>('githubCopilot.remote', false),
-    rubberDuck: (ghCopilotCfg.rubberDuck as boolean | undefined) ?? vscode.workspace.getConfiguration('agentBoard').get<boolean>('githubCopilot.rubberDuck', false),
-  };
-  const ghCopilotGenAi = new CopilotCliGenAiProvider(ghCopilotConfig);
-  genAiRegistry.register(ghCopilotGenAi);
-
-  // Copilot SDK — structured chat UI using @github/copilot-sdk
-  const sdkCfg = ProjectConfig.getProjectConfig()?.genAiProviders?.['copilot-sdk'] ?? {};
-  const sdkConfig: Record<string, unknown> = {
-    ...sdkCfg,
-    model: (sdkCfg.model as string | undefined) ?? vscode.workspace.getConfiguration('agentBoard').get<string>('copilotModel', 'gpt-4o'),
-  };
-  genAiRegistry.register(new CopilotSdkGenAiProvider(sdkConfig));
-
   // ── MCP server registration ────────────────────────────────────────────
 
   const mcpRegistration = new McpRegistration(context.extensionPath);
@@ -176,57 +48,11 @@ export function activate(context: vscode.ExtensionContext): void {
   mcpRegistration.register();
   mcpRegistration.setEnabled(ProjectConfig.getProjectConfig()?.mcp?.enabled ?? false);
 
-  // ── Copilot infrastructure ─────────────────────────────────────────────
-
-  // SessionStateManager is created first so it can be passed to CopilotLauncher
-  // and restore interrupted sessions before the kanban panel opens.
-  const sessionStateManager = new SessionStateManager(context);
-
-  const copilotLauncher = new CopilotLauncher(providerRegistry, context, genAiRegistry, [], sessionStateManager);
-  const modelSelector = new ModelSelector(context, genAiRegistry);
-  const squadManager = new SquadManager(
-    providerRegistry,
-    copilotLauncher,
-    () => modelSelector.getProviderId(),
-    genAiRegistry,
-  );
-
   // Wire session state changes → refresh overview + kanban
   sessionStateManager.onDidChangeState(({ taskId, state }) => {
     logger.info('SessionState changed: %s → %s', taskId, state);
     overviewProvider.refresh();
   });
-
-  // Restore any sessions that were interrupted when VS Code was last closed.
-  // Inject them into SquadManager so they appear on the kanban board.
-  for (const s of sessionStateManager.getInterruptedSessions()) {
-    squadManager.restoreInterruptedSession(s.taskId, {
-      state: 'interrupted',
-      providerId: s.providerId,
-      startedAt: s.startedAt,
-      finishedAt: s.finishedAt,
-    });
-    logger.info('Restored interrupted session for task %s', s.taskId);
-  }
-
-  // ── Agent discovery ────────────────────────────────────────────────────
-
-  let discoveredAgents: AgentInfo[] = [];
-  const agentOptions = (): AgentOption[] =>
-    discoveredAgents.map(a => ({ slug: a.slug, displayName: a.displayName, canSquad: a.canSquad }));
-  const getSquadTeams = (): SquadTeam[] =>
-    ProjectConfig.getProjectConfig()?.squad?.teams ?? [];
-
-  function refreshAgents(): void {
-    const folders = vscode.workspace.workspaceFolders;
-    if (folders && folders.length > 0) {
-      discoveredAgents = discoverAgents(folders[0].uri.fsPath);
-      copilotLauncher.setAgents(discoveredAgents);
-      logger.info('Agent discovery: found %d agent(s)', discoveredAgents.length);
-    }
-  }
-
-  refreshAgents();
 
   // Watch .github/agents/ for changes and auto-refresh agents
   const agentsPattern = new vscode.RelativePattern(
@@ -341,22 +167,6 @@ export function activate(context: vscode.ExtensionContext): void {
   // ── Internal stores ────────────────────────────────────────────────────
 
   const agentManager = new AgentManager(context, providerRegistry);
-
-  // JSON-backed task provider — always registered, persists to .agent-board/tasks.json
-  const jsonProvider = new JsonProvider();
-  providerRegistry.register(jsonProvider);
-
-  // Markdown-backed task provider — opt-in via .agent-board/config.json
-  const markdownProvider = new MarkdownProvider();
-  providerRegistry.register(markdownProvider);
-
-  // Azure DevOps task provider — opt-in via .agent-board/config.json
-  const azureDevOpsProvider = new AzureDevOpsProvider();
-  providerRegistry.register(azureDevOpsProvider);
-
-  // Beads task provider — opt-in via .agent-board/config.json
-  const beadsProvider = new BeadsProvider();
-  providerRegistry.register(beadsProvider);
 
   // Overview sidebar view
   const overviewProvider = new OverviewTreeProvider(providerRegistry, squadManager, mobileServer);
@@ -537,8 +347,8 @@ export function activate(context: vscode.ExtensionContext): void {
             mobileServer.stop();
             await stopMobileTunnel();
           } else {
-            mobileServer.start(mobileServerPort);
-            if (mobileTunnelEnabled) {
+            mobileServer.start(mobileServer.getPort());
+            if (isTunnelEnabled()) {
               await ensureMobileTunnel();
             }
           }
@@ -546,8 +356,8 @@ export function activate(context: vscode.ExtensionContext): void {
           overviewProvider.refresh();
           break;
         case 'setMobileTunnelEnabled':
-          mobileTunnelEnabled = msg.enabled;
-          if (!mobileTunnelEnabled) {
+          setTunnelEnabled(msg.enabled);
+          if (!isTunnelEnabled()) {
             await stopMobileTunnel();
           } else if (mobileServer.isRunning()) {
             await ensureMobileTunnel();
@@ -707,7 +517,7 @@ export function activate(context: vscode.ExtensionContext): void {
     const genAiProviderId = await pickGenAiProvider(genAiRegistry, isGit, isGitHub);
     if (genAiProviderId === undefined) { return; }
     await modelSelector.setProviderId(genAiProviderId);
-    const agentSlug = await pickAgent(discoveredAgents);
+    const agentSlug = await pickAgent(getDiscoveredAgents());
     await handleStartSquad(squadManager, agentSlug, genAiProviderId);
     syncStatusBars();
   });
@@ -723,7 +533,7 @@ export function activate(context: vscode.ExtensionContext): void {
     const genAiProviderId = await pickGenAiProvider(genAiRegistry, isGit, isGitHub);
     if (genAiProviderId === undefined) { return; }
     await modelSelector.setProviderId(genAiProviderId);
-    const agentSlug = await pickAgent(discoveredAgents);
+    const agentSlug = await pickAgent(getDiscoveredAgents());
     handleToggleAutoSquad(squadManager, agentSlug, genAiProviderId);
     syncStatusBars();
   });
@@ -733,7 +543,7 @@ export function activate(context: vscode.ExtensionContext): void {
   });
 
   const openSettings = vscode.commands.registerCommand('agentBoard.openSettings', () => {
-    SettingsPanel.createOrShow(context.extensionUri, providerRegistry, genAiRegistry, () => discoveredAgents);
+    SettingsPanel.createOrShow(context.extensionUri, providerRegistry, genAiRegistry, getDiscoveredAgents);
   });
 
   const openMobileCompanion = vscode.commands.registerCommand('agentBoard.openMobileCompanion', async () => {
@@ -837,7 +647,7 @@ export function activate(context: vscode.ExtensionContext): void {
   );
 
   context.subscriptions.push({ dispose: () => { void stopMobileTunnel(); mobileServer.stop(); } });
-  logger.info('Mobile companion server started on http://localhost:%d', mobileServerPort);
+  logger.info('Mobile companion server started on http://localhost:%d', mobileServer.getPort());
   logger.info('Agent Board activated — %d subscriptions registered', context.subscriptions.length);
 }
 
