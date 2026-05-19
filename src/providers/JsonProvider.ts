@@ -139,7 +139,7 @@ export class JsonProvider implements ITaskProvider {
     try {
       fs.accessSync(this.tasksDir, fs.constants.W_OK);
       return { severity: 'ok', message: 'Tasks directory is writable.' };
-    } catch {
+    } catch (err) { Logger.getInstance().debug('JsonProvider: tasks directory access check failed: %s', err);
       return { severity: 'warning', message: `Tasks directory does not exist yet (${this.tasksDir}). It will be created on first task.` };
     }
   }
@@ -195,7 +195,7 @@ export class JsonProvider implements ITaskProvider {
     }
     try {
       fs.mkdirSync(this.tasksDir, { recursive: true });
-    } catch {
+    } catch (err) { Logger.getInstance().debug('JsonProvider: failed to create tasks directory %s: %s', this.tasksDir, err);
       // ignore
     }
     try {
@@ -207,7 +207,7 @@ export class JsonProvider implements ITaskProvider {
           const entry = JSON.parse(raw) as JsonTaskEntry;
           if (entry.hidden) { continue; }
           parsed.push({ file, task: this.mapEntry(entry) });
-        } catch {
+        } catch (err) { Logger.getInstance().debug('JsonProvider: failed to parse task file %s: %s', file, err);
           // skip malformed files
         }
       }
@@ -237,13 +237,13 @@ export class JsonProvider implements ITaskProvider {
         try {
           fs.unlinkSync(path.join(this.tasksDir, orphan));
           Logger.getInstance().info('JsonProvider: removed orphan task file %s', orphan);
-        } catch { /* best effort */ }
+        } catch (err) { Logger.getInstance().debug('JsonProvider: failed to unlink orphan file %s: %s', orphan, err); }
       }
 
       this.tasks = [...byId.values()]
         .map(v => v.task)
         .sort((a, b) => (a.createdAt?.getTime() ?? 0) - (b.createdAt?.getTime() ?? 0));
-    } catch {
+    } catch (err) { Logger.getInstance().debug('JsonProvider: failed to enumerate task files: %s', err);
       this.tasks = [];
     }
   }
@@ -259,7 +259,7 @@ export class JsonProvider implements ITaskProvider {
   private deleteTaskFile(task: KanbanTask): void {
     if (!this.tasksDir) { return; }
     const filePath = path.join(this.tasksDir, `${task.nativeId}.json`);
-    try { fs.unlinkSync(filePath); } catch { /* already gone */ }
+    try { fs.unlinkSync(filePath); } catch (err) { Logger.getInstance().debug('JsonProvider: failed to delete task file %s: %s', filePath, err); }
   }
 
   private mapEntry(entry: JsonTaskEntry): KanbanTask {

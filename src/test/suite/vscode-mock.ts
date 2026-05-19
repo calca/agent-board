@@ -64,6 +64,7 @@ const vscodeMock: Record<string, unknown> = {
       dispose() {},
     }),
     onDidChangeConfiguration: () => ({ dispose() {} }),
+    registerTextDocumentContentProvider: () => ({ dispose() {} }),
     fs: {
       readFile: async () => Buffer.from(''),
       writeFile: async () => {},

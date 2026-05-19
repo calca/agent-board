@@ -18,6 +18,40 @@ import {
   UpdateTaskArgs,
 } from './mcpTypes';
 
+// ── Type guards ─────────────────────────────────────────────────────
+
+function isGetTaskArgs(args: unknown): args is GetTaskArgs {
+  return (
+    typeof args === 'object' &&
+    args !== null &&
+    typeof (args as Record<string, unknown>).taskId === 'string'
+  );
+}
+
+function isUpdateTaskArgs(args: unknown): args is UpdateTaskArgs {
+  return (
+    typeof args === 'object' &&
+    args !== null &&
+    typeof (args as Record<string, unknown>).taskId === 'string'
+  );
+}
+
+function isCreateTaskArgs(args: unknown): args is CreateTaskArgs {
+  return (
+    typeof args === 'object' &&
+    args !== null &&
+    typeof (args as Record<string, unknown>).title === 'string'
+  );
+}
+
+function isDeleteTaskArgs(args: unknown): args is DeleteTaskArgs {
+  return (
+    typeof args === 'object' &&
+    args !== null &&
+    typeof (args as Record<string, unknown>).taskId === 'string'
+  );
+}
+
 // ── Tool catalogue ──────────────────────────────────────────────────
 
 export const MCP_TOOLS: McpToolDefinition[] = [
@@ -341,15 +375,27 @@ export async function handleToolCall(
 ): Promise<McpToolResult> {
   switch (toolName) {
     case 'list_tasks':
-      return handleListTasks(adapter, args as unknown as ListTasksArgs);
+      return handleListTasks(adapter, (args ?? {}) as ListTasksArgs);
     case 'get_task':
-      return handleGetTask(adapter, args as unknown as GetTaskArgs);
+      if (!isGetTaskArgs(args)) {
+        return errorResult('Invalid arguments: taskId is required');
+      }
+      return handleGetTask(adapter, args);
     case 'update_task':
-      return handleUpdateTask(adapter, args as unknown as UpdateTaskArgs);
+      if (!isUpdateTaskArgs(args)) {
+        return errorResult('Invalid arguments: taskId is required');
+      }
+      return handleUpdateTask(adapter, args);
     case 'create_task':
-      return handleCreateTask(adapter, args as unknown as CreateTaskArgs);
+      if (!isCreateTaskArgs(args)) {
+        return errorResult('Invalid arguments: title is required');
+      }
+      return handleCreateTask(adapter, args);
     case 'delete_task':
-      return handleDeleteTask(adapter, args as unknown as DeleteTaskArgs);
+      if (!isDeleteTaskArgs(args)) {
+        return errorResult('Invalid arguments: taskId is required');
+      }
+      return handleDeleteTask(adapter, args);
     default:
       return errorResult(`Unknown tool: ${toolName}`);
   }

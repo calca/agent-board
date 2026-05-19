@@ -1,6 +1,7 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import * as vscode from 'vscode';
+import { Logger } from '../utils/logger';
 
 /**
  * Centralised store for per-task local squad-agent overrides.
@@ -45,10 +46,10 @@ export class LocalSquadAgentStore {
             if (taskId && squadAgent) {
               result[taskId] = squadAgent;
             }
-          } catch { /* skip corrupt files */ }
+          } catch (err) { Logger.getInstance().debug('LocalSquadAgentStore: failed to parse file %s: %s', fp, err); }
         }
       }
-    } catch { /* empty */ }
+    } catch (err) { Logger.getInstance().debug('LocalSquadAgentStore: failed to enumerate providers: %s', err); }
     return result;
   }
 
@@ -70,7 +71,7 @@ export class LocalSquadAgentStore {
   static delete(providerId: string, taskId: string): void {
     const fp = LocalSquadAgentStore.entryPath(providerId, taskId);
     if (!fp) { return; }
-    try { fs.unlinkSync(fp); } catch { /* already gone */ }
+    try { fs.unlinkSync(fp); } catch (err) { Logger.getInstance().debug('LocalSquadAgentStore: unlink failed for %s: %s', fp, err); }
   }
 
   // ── internal ──────────────────────────────────────────────────────
@@ -95,7 +96,8 @@ export class LocalSquadAgentStore {
       const obj = JSON.parse(raw) as Record<string, unknown>;
       const squadAgent = obj?.squadAgent;
       return typeof squadAgent === 'string' && squadAgent ? squadAgent : undefined;
-    } catch {
+    } catch (err) {
+      Logger.getInstance().debug('LocalSquadAgentStore: failed to read agent from %s: %s', fp, err);
       return undefined;
     }
   }

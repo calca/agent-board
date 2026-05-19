@@ -124,7 +124,7 @@ export class ProjectConfig {
       const data = JSON.parse(raw) as ProjectConfigData;
       ProjectConfig._cache = { data, mtimeMs: stat.mtimeMs, filePath };
       return data;
-    } catch {
+    } catch (err) { Logger.getInstance().debug('ProjectConfig: failed to read config file %s: %s', filePath, err);
       // File doesn't exist or is invalid JSON — fall through
       ProjectConfig._cache = undefined;
       return undefined;
