@@ -86,20 +86,43 @@ export class LocalApiServer {
     return this.sessionToken;
   }
 
-  start(port: number = 3333): void {
+  async start(port: number = 3333): Promise<number> {
     if (this.server) {
-      return;
+      return this.port;
     }
-    this.port = port;
     this.sessionToken = crypto.randomUUID();
-    this.server = http.createServer((req, res) => this.handleRequest(req, res));
 
-    this.server.listen(port, '0.0.0.0', () => {
-      this.logger.info(`LocalApiServer listening on http://0.0.0.0:${port}`);
-    });
+    const MAX_RETRIES = 10;
+    for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
+      const candidate = port + attempt;
+      try {
+        await this.tryListen(candidate);
+        this.port = candidate;
+        this.logger.info('LocalApiServer listening on http://0.0.0.0:%d', candidate);
+        return candidate;
+      } catch (err: unknown) {
+        if ((err as NodeJS.ErrnoException).code === 'EADDRINUSE') {
+          this.logger.debug('Port %d in use, trying %d...', candidate, candidate + 1);
+          continue;
+        }
+        throw err;
+      }
+    }
+    throw new Error(`No available port in range ${port}-${port + MAX_RETRIES - 1}`);
+  }
 
-    this.server.on('error', (error) => {
-      this.logger.error(`LocalApiServer error: ${error.message}`);
+  private tryListen(port: number): Promise<void> {
+    return new Promise((resolve, reject) => {
+      const server = http.createServer((req, res) => this.handleRequest(req, res));
+      server.once('error', reject);
+      server.listen(port, '0.0.0.0', () => {
+        server.removeListener('error', reject);
+        server.on('error', (error) => {
+          this.logger.error(`LocalApiServer error: ${error.message}`);
+        });
+        this.server = server;
+        resolve();
+      });
     });
   }
 
